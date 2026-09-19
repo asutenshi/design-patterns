@@ -1,7 +1,7 @@
 [project]
 name = "design-patterns"
 version = "0.1.0"
-description = "Add your description here"
+description = "Автоматизация сети ресторанов «Ромашка»"
 readme = "README.md"
 authors = [
     { name = "asutenshi", email = "zakan.6000@gmail.com" }
@@ -9,15 +9,25 @@ authors = [
 requires-python = ">=3.12"
 dependencies = []
 
-[project.scripts]
-design-patterns = "design_patterns:main"
-
-[build-system]
-requires = ["uv_build>=0.12.15,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false
 
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.1",
     "ruff>=0.16.8",
 ]
+
+[tool.ruff]
+src = ["Src"]
+
+[tool.ruff.lint]
+extend-select = ["N", "D101", "D102", "D103", "D105", "D107"]
+ignore = [
+    "N801",  # классы именуются в lowercase_separated_by_underscores
+    "N999",  # каталоги именуются в CamelCase
+]
+
+[tool.basedpyright]
+include = ["Src"]
+extraPaths = ["Src"]
