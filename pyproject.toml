@@ -12,9 +12,13 @@ dependencies = []
 [tool.uv]
 package = false
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.1",
+    "pytest>=9.1.1",
     "ruff>=0.16.8",
 ]
 
