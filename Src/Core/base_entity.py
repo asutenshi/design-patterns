@@ -1,11 +1,11 @@
 import uuid
-from typing import override
 from abc import ABC
+from typing import override
 
-from Src.Core.exception import arguments_exception
+from Src.Core.exception import ArgumentsException
 
 
-class base_entity(ABC):
+class BaseEntity(ABC):
     """Абстрактный базовый класс для идентифицируемых сущностей."""
 
     # Уникальный идентификатор сущности
@@ -17,7 +17,7 @@ class base_entity(ABC):
         """Инициализирует базовый экземпляр сущности.
 
         :param name: Наименование сущности.
-        :raises arguments_exception: Если наименование не строка, пустое или состоит из пробелов.
+        :raises ArgumentsException: Если наименование не строка, пустое или состоит из пробелов.
         """
         self._id = uuid.uuid4()
         self.name = name
@@ -33,10 +33,10 @@ class base_entity(ABC):
         Устанавливает уникальный идентификатор сущности.
 
         :param value: Новый идентификатор сущности.
-        :raises arguments_exception: Если значение не UUID.
+        :raises ArgumentsException: Если значение не UUID.
         """
         if not isinstance(value, uuid.UUID):
-            raise arguments_exception("value", "Некорректно передан параметр идентификатора")
+            raise ArgumentsException("value", "Некорректно передан параметр идентификатора")
             
         self._id = value
         
@@ -51,13 +51,13 @@ class base_entity(ABC):
         Устанавливает наименование сущности.
 
         :param value: Новое наименование сущности.
-        :raises arguments_exception: Если значение не строка, пустое или состоит из пробелов.
+        :raises ArgumentsException: Если значение не строка, пустое или состоит из пробелов.
         """
         if not isinstance(value, str):
-            raise arguments_exception("value", "Некорректно передан параметр наименования")
+            raise ArgumentsException("value", "Некорректно передан параметр наименования")
         cleaned_value = value.strip()
         if not cleaned_value:
-            raise arguments_exception("value", "Некорректно передан параметр наименования")
+            raise ArgumentsException("value", "Некорректно передан параметр наименования")
 
         self._name = cleaned_value
 

@@ -28,7 +28,6 @@ src = ["Src"]
 [tool.ruff.lint]
 extend-select = ["N", "D101", "D102", "D103", "D105", "D107"]
 ignore = [
-    "N801",  # классы именуются в lowercase_separated_by_underscores
     "N999",  # каталоги именуются в CamelCase
 ]
 
