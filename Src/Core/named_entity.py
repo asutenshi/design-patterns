@@ -1,5 +1,5 @@
 from Src.Core.base_entity import BaseEntity
-from Src.Core.validator import Validator
+from Src.Core.common_validator import CommonValidator
 
 
 class NamedEntity(BaseEntity):
@@ -30,4 +30,4 @@ class NamedEntity(BaseEntity):
         :param value: Новое наименование сущности.
         :raises ArgumentsException: Если значение не строка, пустое или состоит из пробелов.
         """
-        self._name = Validator.validate_string(value, "name")
+        self._name = CommonValidator.validate_string(value, "name")

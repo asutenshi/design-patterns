@@ -3,7 +3,7 @@ import math
 from Src.Core.exception import ArgumentsException
 
 
-class Validator:
+class CommonValidator:
     """Набор общих проверок входных значений для моделей."""
 
     @staticmethod
@@ -69,7 +69,7 @@ class Validator:
         :raises ArgumentsException: Если значение не строка, пустое, содержит не только
             ASCII-цифры или его длина не входит в lengths.
         """
-        cleaned_value = Validator.validate_string(value, field)
+        cleaned_value = CommonValidator.validate_string(value, field)
         # isdigit() пропускает не-ASCII цифры, поэтому isascii() обязателен, см. docstring
         if not (cleaned_value.isascii() and cleaned_value.isdigit()):
             raise ArgumentsException(field, "Ожидаются только цифры")

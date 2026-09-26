@@ -1,7 +1,7 @@
+from Src.Core.common_validator import CommonValidator
 from Src.Core.inn_validator import InnValidator
 from Src.Core.named_entity import NamedEntity
 from Src.Core.ownership_form import OwnershipForm
-from Src.Core.validator import Validator
 
 
 class OrganizationModel(NamedEntity):
@@ -73,7 +73,7 @@ class OrganizationModel(NamedEntity):
         :param value: Новый БИК — строка из 9 цифр.
         :raises ArgumentsException: Если значение не строка из 9 цифр.
         """
-        self._bic = Validator.validate_digits(value, "bic", (self.BIC_LENGTH,))
+        self._bic = CommonValidator.validate_digits(value, "bic", (self.BIC_LENGTH,))
 
     @property
     def account(self) -> str:
@@ -87,7 +87,7 @@ class OrganizationModel(NamedEntity):
         :param value: Новый счёт — строка из 20 цифр.
         :raises ArgumentsException: Если значение не строка из 20 цифр.
         """
-        self._account = Validator.validate_digits(value, "account", (self.ACCOUNT_LENGTH,))
+        self._account = CommonValidator.validate_digits(value, "account", (self.ACCOUNT_LENGTH,))
 
     @property
     def ownership_form(self) -> OwnershipForm:
@@ -101,6 +101,6 @@ class OrganizationModel(NamedEntity):
         :param value: Новая форма собственности.
         :raises ArgumentsException: Если значение не является OwnershipForm.
         """
-        self._ownership_form = Validator.validate_instance(
+        self._ownership_form = CommonValidator.validate_instance(
             value, OwnershipForm, "ownership_form", "Ожидается форма собственности"
         )

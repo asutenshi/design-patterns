@@ -1,5 +1,5 @@
+from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
-from Src.Core.validator import Validator
 
 
 class InnValidator:
@@ -35,7 +35,7 @@ class InnValidator:
         :raises ArgumentsException: Если значение не строка из 10 или 12 ASCII-цифр
             или контрольные цифры не совпадают.
         """
-        inn = Validator.validate_digits(value, field, InnValidator.LENGTHS)
+        inn = CommonValidator.validate_digits(value, field, InnValidator.LENGTHS)
 
         if len(inn) == 10:
             is_valid = InnValidator._check_digit(inn, InnValidator._WEIGHTS_10) == int(inn[9])
@@ -53,7 +53,7 @@ class InnValidator:
     def _check_digit(digits: str, weights: tuple[int, ...]) -> int:
         """Считает контрольную цифру по первым len(weights) цифрам строки.
 
-        :param digits: Строка из ASCII-цифр. Это гарантирует Validator.validate_digits:
+        :param digits: Строка из ASCII-цифр. Это гарантирует CommonValidator.validate_digits:
             для других Unicode-цифр int() мог бы бросить ValueError или принять их молча.
         :param weights: Веса для соответствующих цифр.
         :return: Контрольная цифра от 0 до 9.

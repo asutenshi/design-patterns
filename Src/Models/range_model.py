@@ -1,6 +1,6 @@
+from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
-from Src.Core.validator import Validator
 
 
 class RangeModel(NamedEntity):
@@ -41,14 +41,14 @@ class RangeModel(NamedEntity):
             base не является единицей измерения или не является базовой единицей.
         """
         super().__init__(name)
-        factor = Validator.validate_positive_number(factor, "factor")
+        factor = CommonValidator.validate_positive_number(factor, "factor")
 
         if base is None:
             if factor != 1:
                 raise ArgumentsException("factor", "У базовой единицы коэффициент пересчёта должен быть равен 1")
             base = self
         else:
-            base = Validator.validate_instance(base, RangeModel, "base", "Ожидается единица измерения")
+            base = CommonValidator.validate_instance(base, RangeModel, "base", "Ожидается единица измерения")
             if not base.is_base:
                 raise ArgumentsException("base", "В качестве базовой можно указать только базовую единицу измерения")
 

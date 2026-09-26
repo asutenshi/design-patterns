@@ -1,7 +1,7 @@
 from typing import override
 
+from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
-from Src.Core.validator import Validator
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.range_model import RangeModel
 
@@ -69,7 +69,7 @@ class NomenclatureModel(NamedEntity):
         :raises ArgumentsException: Если значение не строка, пустое, состоит из пробелов
             или длиннее NAME_MAX_LENGTH символов.
         """
-        self._name = Validator.validate_string(value, "name", self.NAME_MAX_LENGTH)
+        self._name = CommonValidator.validate_string(value, "name", self.NAME_MAX_LENGTH)
 
     @property
     def full_name(self) -> str:
@@ -84,7 +84,7 @@ class NomenclatureModel(NamedEntity):
         :raises ArgumentsException: Если значение не строка, пустое, состоит из пробелов
             или длиннее FULL_NAME_MAX_LENGTH символов.
         """
-        self._full_name = Validator.validate_string(value, "full_name", self.FULL_NAME_MAX_LENGTH)
+        self._full_name = CommonValidator.validate_string(value, "full_name", self.FULL_NAME_MAX_LENGTH)
 
     @property
     def group(self) -> NomenclatureGroupModel:
@@ -98,7 +98,7 @@ class NomenclatureModel(NamedEntity):
         :param value: Новая группа.
         :raises ArgumentsException: Если значение не является NomenclatureGroupModel.
         """
-        self._group = Validator.validate_instance(value, NomenclatureGroupModel, "group", "Ожидается группа номенклатуры")
+        self._group = CommonValidator.validate_instance(value, NomenclatureGroupModel, "group", "Ожидается группа номенклатуры")
 
     @property
     def range(self) -> RangeModel:
@@ -112,4 +112,4 @@ class NomenclatureModel(NamedEntity):
         :param value: Новая единица измерения.
         :raises ArgumentsException: Если значение не является RangeModel.
         """
-        self._range = Validator.validate_instance(value, RangeModel, "range", "Ожидается единица измерения")
+        self._range = CommonValidator.validate_instance(value, RangeModel, "range", "Ожидается единица измерения")
