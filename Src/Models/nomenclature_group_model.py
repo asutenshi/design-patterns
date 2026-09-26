@@ -1,11 +1,11 @@
-from Src.Core.base_entity import BaseEntity
+from Src.Core.named_entity import NamedEntity
 
 
-class NomenclatureGroupModel(BaseEntity):
+class NomenclatureGroupModel(NamedEntity):
     """Модель группы номенклатуры — классификатор номенклатурных позиций.
 
     Собственных полей нет: ТЗ требует только наименование и идентификатор,
-    которые приходят из BaseEntity. Ограничения на длину наименования нет.
+    которые приходят из NamedEntity. Ограничения на длину наименования нет.
     Связь «номенклатура → группа» (N–1) хранится на стороне NomenclatureModel.
     """
 

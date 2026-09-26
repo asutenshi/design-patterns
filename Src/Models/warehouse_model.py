@@ -1,11 +1,11 @@
-from Src.Core.base_entity import BaseEntity
+from Src.Core.named_entity import NamedEntity
 
 
-class WarehouseModel(BaseEntity):
+class WarehouseModel(NamedEntity):
     """Модель склада — места хранения остатков.
 
     Собственных полей нет: ТЗ требует только наименование и идентификатор,
-    которые приходят из BaseEntity. Ограничения на длину наименования нет.
+    которые приходят из NamedEntity. Ограничения на длину наименования нет.
     Связь «склад → помещение» (N–1) из Docs/DomainEntities.md пока не реализована,
     так как модель помещения в текущем ТЗ не запрашивалась.
     """

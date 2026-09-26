@@ -3,25 +3,22 @@ from abc import ABC
 from typing import override
 
 from Src.Core.exception import ArgumentsException
-from Src.Core.validator import Validator
 
 
 class BaseEntity(ABC):
-    """Абстрактный базовый класс для идентифицируемых сущностей."""
+    """Абстрактный базовый класс для идентифицируемых сущностей.
+
+    Хранит только идентификатор и определяет равенство и хэш по нему.
+    Сущности без наименования (остатки, записи журнала, документы) наследуются отсюда,
+    сущности с наименованием — от NamedEntity.
+    """
 
     # Уникальный идентификатор сущности
     _id: uuid.UUID
-    # Наименование сущности
-    _name: str
 
-    def __init__(self, name: str) -> None:
-        """Инициализирует базовый экземпляр сущности.
-
-        :param name: Наименование сущности.
-        :raises ArgumentsException: Если наименование не строка, пустое или состоит из пробелов.
-        """
+    def __init__(self) -> None:
+        """Инициализирует базовый экземпляр сущности с новым идентификатором."""
         self._id = uuid.uuid4()
-        self.name = name
 
     @property
     def id(self) -> uuid.UUID:
@@ -38,23 +35,8 @@ class BaseEntity(ABC):
         """
         if not isinstance(value, uuid.UUID):
             raise ArgumentsException("value", "Некорректно передан параметр идентификатора")
-            
-        self._id = value
-        
-    @property
-    def name(self) -> str:
-        """Возвращает наименование сущности."""
-        return self._name
-    
-    @name.setter
-    def name(self, value: str) -> None:
-        """
-        Устанавливает наименование сущности.
 
-        :param value: Новое наименование сущности.
-        :raises ArgumentsException: Если значение не строка, пустое или состоит из пробелов.
-        """
-        self._name = Validator.validate_string(value, "name")
+        self._id = value
 
     @override
     def __eq__(self, value: object, /) -> bool:

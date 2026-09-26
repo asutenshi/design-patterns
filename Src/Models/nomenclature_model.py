@@ -1,20 +1,20 @@
 from typing import override
 
-from Src.Core.base_entity import BaseEntity
+from Src.Core.named_entity import NamedEntity
 from Src.Core.validator import Validator
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.range_model import RangeModel
 
 
-class NomenclatureModel(BaseEntity):
+class NomenclatureModel(NamedEntity):
     """Модель номенклатуры — единицы учёта.
 
-    Помимо наименования и идентификатора из BaseEntity хранит полное наименование,
+    Помимо наименования и идентификатора из NamedEntity хранит полное наименование,
     группу номенклатуры и единицу измерения. Группа и единица обязательны:
     каждый элемент номенклатуры включён в группу (п. 1.1 ТЗ) и учитывается в единице измерения.
 
     Ограничение в 50 символов действует на обычное наименование (``name``) только у номенклатуры,
-    поэтому свойство переопределено здесь, а не в BaseEntity. Полное наименование (``full_name``)
+    поэтому свойство переопределено здесь, а не в NamedEntity. Полное наименование (``full_name``)
     ограничено 255 символами независимо от ``name``.
 
     Идентичность и хэш определяются по ``id`` (см. BaseEntity), поэтому номенклатуру можно

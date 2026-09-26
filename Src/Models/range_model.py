@@ -1,9 +1,9 @@
-from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
+from Src.Core.named_entity import NamedEntity
 from Src.Core.validator import Validator
 
 
-class RangeModel(BaseEntity):
+class RangeModel(NamedEntity):
     """Модель единицы измерения.
 
     Хранит базовую единицу измерения и коэффициент пересчёта в неё.

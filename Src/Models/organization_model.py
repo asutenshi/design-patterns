@@ -1,10 +1,10 @@
-from Src.Core.base_entity import BaseEntity
 from Src.Core.inn_validator import InnValidator
+from Src.Core.named_entity import NamedEntity
 from Src.Core.ownership_form import OwnershipForm
 from Src.Core.validator import Validator
 
 
-class OrganizationModel(BaseEntity):
+class OrganizationModel(NamedEntity):
     """Модель организации с банковскими реквизитами.
 
     ИНН, БИК и счёт хранятся строками, а не числами: в них бывают ведущие нули.
