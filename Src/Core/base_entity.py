@@ -3,6 +3,7 @@ from abc import ABC
 from typing import override
 
 from Src.Core.exception import ArgumentsException
+from Src.Core.validator import Validator
 
 
 class BaseEntity(ABC):
@@ -53,13 +54,7 @@ class BaseEntity(ABC):
         :param value: Новое наименование сущности.
         :raises ArgumentsException: Если значение не строка, пустое или состоит из пробелов.
         """
-        if not isinstance(value, str):
-            raise ArgumentsException("value", "Некорректно передан параметр наименования")
-        cleaned_value = value.strip()
-        if not cleaned_value:
-            raise ArgumentsException("value", "Некорректно передан параметр наименования")
-
-        self._name = cleaned_value
+        self._name = Validator.validate_string(value, "name")
 
     @override
     def __eq__(self, value: object, /) -> bool:

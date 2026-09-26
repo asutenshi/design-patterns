@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-
 from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
 
