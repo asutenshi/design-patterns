@@ -121,6 +121,7 @@ def test_init_full_name_with_spaces_stripped():
     assert nomenclature.full_name == "Мука пшеничная"
 
 
+# Подготовка
 @pytest.mark.parametrize("name", ["", "   ", None, 123])
 def test_init_invalid_name_raises(name):
     """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
@@ -129,6 +130,7 @@ def test_init_invalid_name_raises(name):
         make_nomenclature(name=name)
 
 
+# Подготовка
 @pytest.mark.parametrize("full_name", ["", "   ", None, 123])
 def test_init_invalid_full_name_raises(full_name):
     """Пустое, состоящее из пробелов или не строковое полное наименование вызывает ArgumentsException."""
@@ -137,6 +139,7 @@ def test_init_invalid_full_name_raises(full_name):
         make_nomenclature(full_name=full_name)
 
 
+# Подготовка
 @pytest.mark.parametrize("group", [None, "Сырьё", 1, RangeModel("грамм", 1)])
 def test_init_invalid_group_raises(group):
     """Группа, не являющаяся NomenclatureGroupModel (в том числе другая модель), вызывает ArgumentsException."""
@@ -145,6 +148,7 @@ def test_init_invalid_group_raises(group):
         make_nomenclature(group=group)
 
 
+# Подготовка
 @pytest.mark.parametrize("range_", [None, "грамм", 1, NomenclatureGroupModel("Сырьё")])
 def test_init_invalid_range_raises(range_):
     """Единица, не являющаяся RangeModel (в том числе другая модель), вызывает ArgumentsException."""
@@ -184,6 +188,7 @@ def test_setters_valid_values_updated():
     assert nomenclature.range is kilogram
 
 
+# Подготовка
 @pytest.mark.parametrize(
     ("attribute", "value"),
     [

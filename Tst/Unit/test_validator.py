@@ -35,6 +35,7 @@ def test_validate_string_surrounding_spaces_stripped():
     assert result == "Мука"
 
 
+# Подготовка
 @pytest.mark.parametrize("value", ["", "   "])
 def test_validate_string_empty_or_blank_raises(value):
     """Пустая строка и строка из одних пробелов вызывают ArgumentsException."""
@@ -43,6 +44,7 @@ def test_validate_string_empty_or_blank_raises(value):
         Validator.validate_string(value, "name")
 
 
+# Подготовка
 @pytest.mark.parametrize("value", [None, 123, 1.5, [], b"abc"])
 def test_validate_string_not_string_raises(value):
     """Значение не строкового типа вызывает ArgumentsException."""
@@ -85,6 +87,7 @@ def test_validate_string_spaces_not_counted_in_length():
     assert result == "a" * 50
 
 
+# Подготовка
 @pytest.mark.parametrize("value", [1, 1000, 0.001, 2.5])
 def test_validate_positive_number_valid_value_returned(value):
     """Положительные целые и дробные числа возвращаются без изменений."""
@@ -95,6 +98,7 @@ def test_validate_positive_number_valid_value_returned(value):
     assert result == value
 
 
+# Подготовка
 @pytest.mark.parametrize("value", [0, -1, -0.5, float("nan"), float("inf"), -float("inf"), True, None, "1000", [1]])
 def test_validate_positive_number_invalid_value_raises(value):
     """Ноль, отрицательные, нечисловые, bool, NaN и бесконечность вызывают ArgumentsException."""
@@ -103,6 +107,7 @@ def test_validate_positive_number_invalid_value_raises(value):
         Validator.validate_positive_number(value, "factor")
 
 
+# Подготовка
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -121,6 +126,7 @@ def test_validate_digits_valid_value_returned(value, expected):
     assert result == expected
 
 
+# Подготовка
 @pytest.mark.parametrize(
     "value",
     ["", "   ", "123456789", "12345678901", "1234567890123", "12345abc90", "1234 67890", None, 1234567890],
@@ -132,6 +138,7 @@ def test_validate_digits_invalid_value_raises(value):
         Validator.validate_digits(value, "inn", (10, 12))
 
 
+# Подготовка
 @pytest.mark.parametrize("value", ["١٢٣٤٥٦٧٨٩٠", "²²²²²²²²²²"])
 def test_validate_digits_non_ascii_digits_raises(value):
     """Не-ASCII «цифры» отклоняются: str.isdigit() считает их цифрами, но int() на «²» падает с ValueError."""
@@ -167,6 +174,7 @@ def test_validate_instance_subclass_instance_returned():
     assert result is value
 
 
+# Подготовка
 @pytest.mark.parametrize("value", [None, "item", 1, ParentStub])
 def test_validate_instance_other_type_raises(value):
     """Значение другого типа (в том числе сам класс вместо экземпляра) вызывает ArgumentsException."""

@@ -92,6 +92,7 @@ def test_init_several_derived_units_share_base():
     assert tonne.base is gram
 
 
+# Подготовка
 @pytest.mark.parametrize("factor", [2, 0.5, 1000])
 def test_init_base_unit_factor_not_one_raises(factor):
     """У базовой единицы коэффициент, отличный от 1, вызывает ArgumentsException."""
@@ -100,6 +101,7 @@ def test_init_base_unit_factor_not_one_raises(factor):
         RangeModel("грамм", factor)
 
 
+# Подготовка
 @pytest.mark.parametrize("factor", [0, -1, -0.5, float("nan"), float("inf"), True, None, "1000"])
 def test_init_invalid_factor_raises(factor):
     """Ноль, отрицательный, нечисловой, bool, NaN и бесконечный коэффициент вызывают ArgumentsException."""
@@ -111,6 +113,7 @@ def test_init_invalid_factor_raises(factor):
         RangeModel("кг", factor, gram)
 
 
+# Подготовка
 @pytest.mark.parametrize("base", ["грамм", 1, object()])
 def test_init_base_not_range_model_raises(base):
     """База, не являющаяся единицей измерения, вызывает ArgumentsException."""
@@ -130,6 +133,7 @@ def test_init_base_is_derived_unit_raises():
         RangeModel("т", 1000, kilogram)
 
 
+# Подготовка
 @pytest.mark.parametrize("name", ["", "   ", None, 123])
 def test_init_invalid_name_raises(name):
     """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
@@ -138,6 +142,7 @@ def test_init_invalid_name_raises(name):
         RangeModel(name, 1)
 
 
+# Подготовка
 @pytest.mark.parametrize("attribute", ["base", "factor", "is_base"])
 def test_readonly_properties_assignment_raises(attribute):
     """Свойства base, factor и is_base только для чтения: присваивание вызывает AttributeError."""

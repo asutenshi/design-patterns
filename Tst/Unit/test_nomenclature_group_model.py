@@ -67,6 +67,7 @@ def test_init_two_groups_different_ids():
     assert result is False
 
 
+# Подготовка
 @pytest.mark.parametrize("name", ["", "   ", None, 123])
 def test_init_invalid_name_raises(name):
     """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""

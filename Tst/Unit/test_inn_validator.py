@@ -3,6 +3,7 @@ from Src.Core.exception import ArgumentsException
 from Src.Core.inn_validator import InnValidator
 
 
+# Подготовка
 @pytest.mark.parametrize(
     "inn",
     ["7707083893", "7736207543", "1234567894", "0012345673", "500100732259", "123456789047", "001234567887"],
@@ -28,6 +29,7 @@ def test_validate_surrounding_spaces_stripped():
     assert result == "7707083893"
 
 
+# Подготовка
 @pytest.mark.parametrize("inn", ["1234567890", "7707083894", "123456789048", "123456789057", "500100732250"])
 def test_validate_wrong_checksum_raises(inn):
     """ИНН с неверной контрольной цифрой (10-значный, 11-я или 12-я цифра 12-значного) вызывает ArgumentsException."""
@@ -36,6 +38,7 @@ def test_validate_wrong_checksum_raises(inn):
         InnValidator.validate(inn)
 
 
+# Подготовка
 @pytest.mark.parametrize(
     "inn",
     ["", "   ", "123456789", "12345678901", "1234567890123", "77070838a3", None, 7707083893],
@@ -47,6 +50,7 @@ def test_validate_invalid_format_raises(inn):
         InnValidator.validate(inn)
 
 
+# Подготовка
 @pytest.mark.parametrize("inn", ["١٢٣٤٥٦٧٨٩٠", "²²²²²²²²²²"])
 def test_validate_non_ascii_digits_raises_arguments_exception(inn):
     """Не-ASCII «цифры» дают ArgumentsException, а не ValueError из int() при расчёте контрольной суммы."""

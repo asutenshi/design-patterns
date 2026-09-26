@@ -49,6 +49,7 @@ def test_init_any_instance_is_base_entity():
     assert result is True
 
 
+# Подготовка
 @pytest.mark.parametrize("ownership_form", list(OwnershipForm))
 def test_init_each_ownership_form_created(ownership_form):
     """Организация создаётся с каждой из допустимых форм собственности."""
@@ -59,6 +60,7 @@ def test_init_each_ownership_form_created(ownership_form):
     assert organization.ownership_form is ownership_form
 
 
+# Подготовка
 @pytest.mark.parametrize("inn", [VALID_INN, VALID_INN_12])
 def test_init_valid_inn_length_created(inn):
     """ИНН из 10 цифр (юрлицо) и из 12 цифр (ИП) с верной контрольной суммой допустим."""
@@ -91,6 +93,7 @@ def test_init_requisites_with_spaces_stripped():
     assert organization.account == VALID_ACCOUNT
 
 
+# Подготовка
 @pytest.mark.parametrize("name", ["", "   ", None, 123])
 def test_init_invalid_name_raises(name):
     """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
@@ -99,6 +102,7 @@ def test_init_invalid_name_raises(name):
         make_organization(name=name)
 
 
+# Подготовка
 @pytest.mark.parametrize("inn", ["", "123456789", "12345678901", "1234567890123", "12345abc90", None, 1234567894])
 def test_init_invalid_inn_raises(inn):
     """ИНН неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
@@ -107,6 +111,7 @@ def test_init_invalid_inn_raises(inn):
         make_organization(inn=inn)
 
 
+# Подготовка
 @pytest.mark.parametrize("inn", ["1234567890", "123456789048", "123456789057"])
 def test_init_inn_wrong_checksum_raises(inn):
     """ИНН правильной длины, но с неверной контрольной цифрой вызывает ArgumentsException."""
@@ -115,6 +120,7 @@ def test_init_inn_wrong_checksum_raises(inn):
         make_organization(inn=inn)
 
 
+# Подготовка
 @pytest.mark.parametrize("bic", ["", "12345678", "1234567890", "12345abc9", None, 123456789])
 def test_init_invalid_bic_raises(bic):
     """БИК неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
@@ -123,6 +129,7 @@ def test_init_invalid_bic_raises(bic):
         make_organization(bic=bic)
 
 
+# Подготовка
 @pytest.mark.parametrize("account", ["", "1234567890123456789", "123456789012345678901", "1234567890123456789a", None])
 def test_init_invalid_account_raises(account):
     """Счёт неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
@@ -131,6 +138,7 @@ def test_init_invalid_account_raises(account):
         make_organization(account=account)
 
 
+# Подготовка
 @pytest.mark.parametrize("ownership_form", ["ООО", "LLC", None, 1])
 def test_init_invalid_ownership_form_raises(ownership_form):
     """Форма собственности не из OwnershipForm (в том числе строка) вызывает ArgumentsException."""
@@ -157,6 +165,7 @@ def test_setters_valid_values_updated():
     assert organization.ownership_form is OwnershipForm.SOLE_PROPRIETOR
 
 
+# Подготовка
 @pytest.mark.parametrize(
     ("attribute", "value"),
     [
