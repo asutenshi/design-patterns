@@ -200,3 +200,38 @@ def test_validate_instance_error_contains_field_and_message():
         CommonValidator.validate_instance(None, ParentStub, "item", "Ожидается элемент")
     assert "item" in str(exc_info.value)
     assert "Ожидается элемент" in str(exc_info.value)
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "validate",
+    [
+        lambda: CommonValidator.validate_string(None, "my_field"),
+        lambda: CommonValidator.validate_string("   ", "my_field"),
+        lambda: CommonValidator.validate_string("abc", "my_field", max_length=2),
+        lambda: CommonValidator.validate_positive_number("1", "my_field"),
+        lambda: CommonValidator.validate_positive_number(float("nan"), "my_field"),
+        lambda: CommonValidator.validate_positive_number(0, "my_field"),
+        lambda: CommonValidator.validate_digits("12a", "my_field", (3,)),
+        lambda: CommonValidator.validate_digits("12", "my_field", (3,)),
+    ],
+    ids=[
+        "string_not_str",
+        "string_blank",
+        "string_too_long",
+        "number_not_number",
+        "number_nan",
+        "number_zero",
+        "digits_not_digits",
+        "digits_wrong_length",
+    ],
+)
+def test_validate_any_check_error_contains_field(validate):
+    """Каждая проверка валидатора называет в тексте ошибки переданное имя аргумента.
+
+    Модели передают в валидатор имя своего поля, поэтому в их тестах это не проверяется.
+    """
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        validate()
+    assert "my_field" in str(exc_info.value)
