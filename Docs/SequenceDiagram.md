@@ -7,33 +7,36 @@
 ## Получение экземпляра менеджера (Singleton)
 
 Одинаково для любого менеджера: `SettingsManager()` и `StorageManager()` возвращают один и тот же объект.
-Состояние готовится в `AbstractManager.__new__`, а не в конструкторе: конструктор Python вызывает
-при каждом обращении к классу, а состояние нужно создать ровно один раз.
+Каждый конкретный менеджер реализует это в своём `__new__`, базовые классы Singleton не знают.
+Состояние готовится в `__new__`, а не в конструкторе: конструктор Python вызывает при каждом обращении
+к классу, а состояние нужно создать ровно один раз.
 
 ```mermaid
 sequenceDiagram
     participant K as Клиент
     participant M as Класс менеджера
-    participant R as Реестр _instances
+    participant I as Атрибут _instance класса
 
     K->>M: SettingsManager()
-    M->>R: найти экземпляр этого класса
+    M->>I: искать в cls.__dict__ экземпляр этого класса
     alt экземпляра ещё нет
-        R-->>M: пусто
-        M->>M: создать объект, is_loaded = False, данные пусты
-        M->>M: _initialize() готовит состояние наследника
-        M->>R: сохранить экземпляр
+        I-->>M: пусто
+        M->>M: создать объект
+        M->>M: _initialize() готовит состояние: is_loaded = False и своё состояние менеджера
+        M->>I: сохранить экземпляр в _instance
     else экземпляр уже есть
-        R-->>M: существующий экземпляр
+        I-->>M: существующий экземпляр
     end
     M-->>K: единственный экземпляр класса
 ```
 
-Если `_initialize()` упадёт, экземпляр в реестр не попадает: полусозданного менеджера не остаётся.
+Если `_initialize()` упадёт, экземпляр в `_instance` не попадает: полусозданного менеджера не остаётся.
+Экземпляр ищется в `cls.__dict__`, а не через обычное обращение к атрибуту, поэтому наследник
+конкретного менеджера получает собственный экземпляр, а не экземпляр родителя.
 
 ## Загрузка настроек: SettingsManager.load()
 
-Общий порядок задаёт `AbstractManager.load()`: сначала `_read()`, затем `convert()`.
+Общий порядок задаёт `AbstractFileManager.load()`: сначала `_read()`, затем `convert()`.
 Флаг `is_loaded` становится `True` только после успешного `convert()`. Пока он `False`, свойство
 `settings` бросает `OperationException`, даже если раньше настройки уже загружались.
 
@@ -73,9 +76,10 @@ sequenceDiagram
 
 ## Загрузка хранилища и первый старт: StorageManager.load()
 
-`StorageManager` зависит от настроек: флаг `is_first_start` он читает в `convert()` через `SettingsManager`.
-Поэтому `SettingsManager.load()` нужно вызвать до `StorageManager.load()`. Внешнего источника данных пока нет:
-`_read()` возвращает пустой словарь, чтение из SQLite появится позже.
+`StorageManager` зависит от настроек: флаг `is_first_start` он читает в `load()` через `SettingsManager`.
+Поэтому `SettingsManager.load()` нужно вызвать до `StorageManager.load()`. С файлами `StorageManager`
+не работает и сам реализует `load()`, наследуя `AbstractManager`. Внешнего источника данных пока нет:
+чтение из SQLite появится позже.
 
 ```mermaid
 sequenceDiagram
@@ -86,17 +90,16 @@ sequenceDiagram
     participant M as Модели
 
     K->>St: load()
-    St->>St: is_loaded = False, данные сброшены
-    St->>St: _read() возвращает пустой словарь
-    St->>St: convert()
+    St->>St: is_loaded = False
     St->>Se: settings
     alt настройки не загружены
         Se-->>St: OperationException
         St-->>K: OperationException, is_loaded остаётся False
     else настройки есть
         Se-->>St: SettingsModel
-        St->>St: _initialize() создаёт пустые коллекции
+        St->>St: _reset_collections() создаёт пустые коллекции
         alt is_first_start = False
+            St->>St: is_loaded = True
             St-->>K: загрузка завершена, коллекции пусты
         else is_first_start = True
             St->>St: _fill_first_start_data()
@@ -111,7 +114,7 @@ sequenceDiagram
             St->>C: add() для 2 складов
             alt в коллекцию добавлен дубликат по name.casefold()
                 C-->>St: ArgumentsException
-                St->>St: _initialize() очищает коллекции
+                St->>St: _reset_collections() очищает коллекции
                 St-->>K: OperationException, is_loaded остаётся False
             else дубликатов нет
                 St->>St: is_loaded = True

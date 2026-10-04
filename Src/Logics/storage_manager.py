@@ -1,4 +1,4 @@
-from typing import Any, override
+from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
 from Src.Core.exception import ArgumentsException, OperationException
@@ -28,6 +28,9 @@ class StorageManager(AbstractManager):
     (рецепты, рестораны, сотрудники), их стоит вынести в отдельный класс.
     """
 
+    # Единственный экземпляр этого класса
+    _instance: ClassVar["StorageManager | None"] = None
+
     # Единицы измерения
     _ranges: UniqueCollection[RangeModel]
     # Группы номенклатуры
@@ -37,11 +40,31 @@ class StorageManager(AbstractManager):
     # Склады
     _warehouses: UniqueCollection[WarehouseModel]
 
+    def __new__(cls) -> Self:
+        """Возвращает единственный экземпляр класса, при первом обращении создаёт его.
+
+        Состояние готовится здесь, а не в __init__: Python вызывает __init__
+        при каждом обращении к классу. Экземпляр ищется в cls.__dict__, а не через
+        getattr, чтобы наследник не получил экземпляр родителя.
+        """
+        instance = cast(Self | None, cls.__dict__.get("_instance"))
+        if instance is None:
+            instance = super().__new__(cls)
+            instance._initialize()
+            # Сохранение после хука: если он упадёт, полусозданного экземпляра не останется
+            cls._instance = instance
+        return instance
+
     @override
     def _initialize(self) -> None:
+        """Готовит флаг загрузки и создаёт пустые коллекции."""
+        super()._initialize()
+        self._reset_collections()
+
+    def _reset_collections(self) -> None:
         """Создаёт пустые коллекции сущностей.
 
-        Метод вызывается и при создании экземпляра, и в convert() для сброса состояния.
+        Вызывается при создании экземпляра и в load() для сброса состояния.
         """
         self._ranges = UniqueCollection(_name_key)
         self._nomenclature_groups = UniqueCollection(_name_key)
@@ -49,35 +72,26 @@ class StorageManager(AbstractManager):
         self._warehouses = UniqueCollection(_name_key)
 
     @override
-    def _read(self, file_name: str) -> dict[str, Any]:
-        """Возвращает пустые данные: внешнего источника пока нет.
-
-        Сюда придёт чтение из SQLite.
-
-        :param file_name: Не используется.
-        :return: Пустой словарь.
-        """
-        return {}
-
-    @override
-    def convert(self) -> None:
+    def load(self) -> None:
         """Пересоздаёт коллекции и при первом запуске наполняет их начальными данными.
+
+        Флаг is_loaded выставляется только после успеха.
 
         :raises OperationException: Если настройки не загружены или начальные данные
             содержат дубликаты.
         """
+        self._is_loaded = False
         # Обращение к настройкам здесь, а не в _initialize: хук не должен зависеть от других менеджеров
         is_first_start = SettingsManager().settings.is_first_start
 
-        self._initialize()
-        if not is_first_start:
-            return
-
-        try:
-            self._fill_first_start_data()
-        except ArgumentsException as ex:
-            self._initialize()
-            raise OperationException(f"Не удалось сформировать начальные данные: {ex}") from ex
+        self._reset_collections()
+        if is_first_start:
+            try:
+                self._fill_first_start_data()
+            except ArgumentsException as ex:
+                self._reset_collections()
+                raise OperationException(f"Не удалось сформировать начальные данные: {ex}") from ex
+        self._is_loaded = True
 
     def _fill_first_start_data(self) -> None:
         """Наполняет коллекции начальными данными.

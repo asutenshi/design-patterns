@@ -1,15 +1,18 @@
 import json
-from typing import Any, override
+from typing import Any, ClassVar, Self, cast, override
 
-from Src.Core.abstract_manager import AbstractManager
+from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
 
-class SettingsManager(AbstractManager):
+class SettingsManager(AbstractFileManager):
     """Менеджер настроек (Singleton): читает settings.json и собирает SettingsModel."""
+
+    # Единственный экземпляр этого класса
+    _instance: ClassVar["SettingsManager | None"] = None
 
     # Файл настроек по умолчанию, путь относительно текущего каталога
     _default_file_name: str = "settings.json"
@@ -17,9 +20,25 @@ class SettingsManager(AbstractManager):
     # Загруженные настройки, None до первой успешной загрузки
     _settings: SettingsModel | None
 
+    def __new__(cls) -> Self:
+        """Возвращает единственный экземпляр класса, при первом обращении создаёт его.
+
+        Состояние готовится здесь, а не в __init__: Python вызывает __init__
+        при каждом обращении к классу. Экземпляр ищется в cls.__dict__, а не через
+        getattr, чтобы наследник не получил экземпляр родителя.
+        """
+        instance = cast(Self | None, cls.__dict__.get("_instance"))
+        if instance is None:
+            instance = super().__new__(cls)
+            instance._initialize()
+            # Сохранение после хука: если он упадёт, полусозданного экземпляра не останется
+            cls._instance = instance
+        return instance
+
     @override
     def _initialize(self) -> None:
         """Создаёт пустое хранилище настроек."""
+        super()._initialize()
         self._settings = None
 
     @override

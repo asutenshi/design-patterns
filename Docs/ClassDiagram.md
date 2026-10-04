@@ -151,10 +151,13 @@ classDiagram
 
 ## Менеджеры
 
-Менеджеры лежат в `Src/Logics/`, общий базовый класс и `UniqueCollection` — в `Src/Core/`.
-Менеджер — Singleton: `AbstractManager.__new__` создаёт по одному экземпляру на каждый конкретный класс.
-Порядок работы задаёт базовый `load()`: сначала `_read()` читает сырые данные, затем `convert()` превращает их
-в модели. Наследники реализуют `_read()` и `convert()`, но не переопределяют `load()`.
+Менеджеры лежат в `Src/Logics/`, базовые классы и `UniqueCollection` — в `Src/Core/`.
+`AbstractManager` задаёт только общий контракт: флаг `is_loaded` и абстрактный `load()`.
+`AbstractFileManager` добавляет работу с файлами: базовый `load(file_name)` сначала вызывает `_read()`,
+затем `convert()`. Наследники реализуют `_read()` и `convert()`, но не переопределяют `load()`.
+Менеджер без файлов (`StorageManager`) наследует `AbstractManager` напрямую и реализует `load()` сам.
+Менеджер — Singleton: каждый конкретный класс реализует это в своём `__new__` и хранит экземпляр
+в собственном `_instance`. Базовые классы Singleton не реализуют.
 Пунктирная стрелка — зависимость (использует или бросает), стрелка с ромбом — владение.
 
 ### SettingsManager
@@ -168,28 +171,35 @@ classDiagram
 
     class AbstractManager {
         <<abstract>>
-        -_instances$: dict~type, AbstractManager~
         -_is_loaded: bool
-        -_data: dict~str, Any~
         +is_loaded: bool
+        +load()* None
+        #_initialize() None
+    }
+
+    class AbstractFileManager {
+        <<abstract>>
+        -_data: dict~str, Any~
         +load(file_name) None
         #_initialize() None
         #_read(file_name)* dict
         +convert()* None
     }
 
-    note for AbstractManager "Singleton: один экземпляр на конкретный класс, реестр _instances. Состояние создаётся один раз в _initialize()"
+    note for AbstractFileManager "load() задаёт порядок: _read(), затем convert(). is_loaded становится True только после успеха"
 
     class SettingsManager {
+        -_instance$: SettingsManager | None
         -_default_file_name: str
         -_settings: SettingsModel | None
         +settings: SettingsModel
+        +__new__() Self
         #_initialize() None
         #_read(file_name) dict
         +convert() None
     }
 
-    note for SettingsManager "Файл по умолчанию settings.json. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
+    note for SettingsManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Файл по умолчанию settings.json. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
 
     class SettingsModel {
         +organization: OrganizationModel
@@ -205,7 +215,8 @@ classDiagram
     class ArgumentsException
     class OperationException
 
-    AbstractManager <|-- SettingsManager
+    AbstractManager <|-- AbstractFileManager
+    AbstractFileManager <|-- SettingsManager
     SettingsManager --> SettingsModel : settings
     SettingsModel --> OrganizationModel : organization
     OrganizationModel --> OwnershipForm : ownership_form
@@ -218,9 +229,10 @@ classDiagram
 ### StorageManager
 
 Хранит доменные модели в четырёх коллекциях без дубликатов. При первом запуске (`is_first_start` в настройках)
-`convert()` наполняет их начальными данными: 5 единиц измерения, 3 группы, 3 номенклатуры и 2 склада.
+`load()` наполняет их начальными данными: 5 единиц измерения, 3 группы, 3 номенклатуры и 2 склада.
 Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а не на копии.
 Настройки читаются через `SettingsManager`, поэтому они должны быть загружены до `StorageManager.load()`.
+С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
 
 ```mermaid
 classDiagram
@@ -228,13 +240,14 @@ classDiagram
 
     class AbstractManager {
         <<abstract>>
+        -_is_loaded: bool
         +is_loaded: bool
-        +load(file_name) None
-        #_read(file_name)* dict
-        +convert()* None
+        +load()* None
+        #_initialize() None
     }
 
     class StorageManager {
+        -_instance$: StorageManager | None
         -_ranges: UniqueCollection~RangeModel~
         -_nomenclature_groups: UniqueCollection~NomenclatureGroupModel~
         -_nomenclatures: UniqueCollection~NomenclatureModel~
@@ -243,13 +256,14 @@ classDiagram
         +nomenclature_groups: list~NomenclatureGroupModel~
         +nomenclatures: list~NomenclatureModel~
         +warehouses: list~WarehouseModel~
+        +__new__() Self
+        +load() None
         #_initialize() None
-        #_read(file_name) dict
-        +convert() None
+        -_reset_collections() None
         -_fill_first_start_data() None
     }
 
-    note for StorageManager "Свойства возвращают копии списков. convert() каждый раз пересоздаёт коллекции"
+    note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции"
 
     class UniqueCollection~T~ {
         -_key: Callable~T, Hashable~
@@ -280,7 +294,7 @@ classDiagram
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "4" UniqueCollection : коллекции
-    StorageManager ..> SettingsManager : convert() читает is_first_start
+    StorageManager ..> SettingsManager : load() читает is_first_start
     StorageManager --> RangeModel : ranges
     StorageManager --> NomenclatureGroupModel : nomenclature_groups
     StorageManager --> NomenclatureModel : nomenclatures

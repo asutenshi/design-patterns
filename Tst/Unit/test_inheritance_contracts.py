@@ -1,4 +1,7 @@
+import inspect
+
 import pytest
+from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.abstract_manager import AbstractManager
 from Src.Core.base_entity import BaseEntity
 from Src.Core.named_entity import NamedEntity
@@ -26,34 +29,95 @@ def _project_subclasses(base: type) -> list[type]:
     return [cls for cls in _all_subclasses(base) if cls.__module__.startswith("Src.")]
 
 
+def _concrete_subclasses(base: type) -> list[type]:
+    """Возвращает неабстрактные подклассы base из кода проекта."""
+    return [cls for cls in _project_subclasses(base) if not inspect.isabstract(cls)]
+
+
 # ---------------------------------------------------------------------------
-# AbstractManager: наследники не меняют общий порядок работы
+# AbstractManager и AbstractFileManager: наследники не меняют общий порядок работы
 #
-# Тесты Singleton, load() и is_loaded написаны один раз для базового класса
-# (test_abstract_manager). Они распространяются на наследников, пока те не
-# переопределяют эти методы. Здесь это условие проверяется автоматически.
+# Тесты load() для файловых менеджеров написаны один раз для AbstractFileManager
+# (test_abstract_file_manager). Они распространяются на наследников, пока те не
+# переопределяют load(). Singleton базовые классы не реализуют: его делает каждый
+# конкретный менеджер в своём __new__, и здесь это проверяется автоматически.
 # ---------------------------------------------------------------------------
 
 
 def test_managers_project_subclasses_are_discovered():
-    """Поиск подклассов находит реальные менеджеры, иначе проверка ниже ничего не проверяет."""
+    """Поиск подклассов находит реальные менеджеры, иначе проверки ниже ничего не проверяют."""
     # Действие
-    subclasses = _project_subclasses(AbstractManager)
+    managers = _project_subclasses(AbstractManager)
+    file_managers = _project_subclasses(AbstractFileManager)
 
     # Проверка
-    assert SettingsManager in subclasses
-    assert StorageManager in subclasses
+    assert AbstractFileManager in managers
+    assert SettingsManager in managers
+    assert StorageManager in managers
+    assert SettingsManager in file_managers
+
+
+def test_managers_storage_manager_is_not_file_manager():
+    """StorageManager не читает файлы, поэтому не наследует файловую базу (принцип Лисков)."""
+    # Действие и проверка
+    assert not issubclass(StorageManager, AbstractFileManager)
 
 
 # Подготовка
-@pytest.mark.parametrize("manager_type", _project_subclasses(AbstractManager), ids=lambda cls: cls.__name__)
-def test_managers_subclass_does_not_override_new_and_load(manager_type: type):
-    """Менеджер не переопределяет __new__ и load(): Singleton и порядок загрузки задаёт база."""
+@pytest.mark.parametrize("manager_type", _concrete_subclasses(AbstractManager), ids=lambda cls: cls.__name__)
+def test_managers_concrete_class_defines_own_singleton(manager_type: type):
+    """Конкретный менеджер сам реализует Singleton: у него свои __new__ и _instance."""
     # Действие
-    overridden = {"__new__", "load"} & set(vars(manager_type))
+    missing = {"__new__", "_instance"} - set(vars(manager_type))
 
     # Проверка
-    assert overridden == set()
+    assert missing == set()
+
+
+# Подготовка
+@pytest.mark.parametrize("manager_type", _concrete_subclasses(AbstractManager), ids=lambda cls: cls.__name__)
+def test_managers_same_class_returns_same_instance(manager_type: type):
+    """Повторное создание одного класса возвращает тот же экземпляр."""
+    # Действие
+    first = manager_type()
+    second = manager_type()
+
+    # Проверка
+    assert first is second
+
+
+def test_managers_different_classes_return_different_instances():
+    """Разные менеджеры получают разные экземпляры."""
+    # Действие и проверка
+    assert SettingsManager() is not StorageManager()
+
+
+def test_managers_subclass_of_manager_returns_own_instance():
+    """Наследник конкретного менеджера не получает экземпляр родителя."""
+
+    class _ChildSettingsManager(SettingsManager):
+        pass
+
+    # Подготовка
+    parent = SettingsManager()
+
+    # Действие
+    child = _ChildSettingsManager()
+
+    # Проверка
+    assert child is not parent
+    assert type(child) is _ChildSettingsManager
+
+
+# Подготовка
+@pytest.mark.parametrize("manager_type", _project_subclasses(AbstractFileManager), ids=lambda cls: cls.__name__)
+def test_file_managers_subclass_does_not_override_load(manager_type: type):
+    """Файловый менеджер не переопределяет load(): порядок загрузки задаёт AbstractFileManager."""
+    # Действие
+    overrides_load = "load" in vars(manager_type)
+
+    # Проверка
+    assert overrides_load is False
 
 
 # ---------------------------------------------------------------------------
