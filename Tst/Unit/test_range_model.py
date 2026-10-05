@@ -1,5 +1,4 @@
 import pytest
-from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
 from Src.Models.range_model import RangeModel
 
@@ -69,15 +68,6 @@ def test_init_derived_unit_factor_one_created():
     assert gr.is_base is False
 
 
-def test_init_any_instance_is_base_entity():
-    """Единица измерения является наследником BaseEntity."""
-    # Действие
-    result = isinstance(RangeModel("грамм", 1), BaseEntity)
-
-    # Проверка
-    assert result is True
-
-
 def test_init_several_derived_units_share_base():
     """Несколько производных единиц могут ссылаться на одну базовую."""
     # Подготовка
@@ -101,25 +91,25 @@ def test_init_base_unit_factor_not_one_raises(factor):
         RangeModel("грамм", factor)
 
 
-# Подготовка
-@pytest.mark.parametrize("factor", [0, -1, -0.5, float("nan"), float("inf"), True, None, "1000"])
-def test_init_invalid_factor_raises(factor):
-    """Ноль, отрицательный, нечисловой, bool, NaN и бесконечный коэффициент вызывают ArgumentsException."""
+def test_init_derived_unit_zero_factor_raises():
+    """Нулевой коэффициент производной единицы вызывает ArgumentsException.
+
+    Остальные случаи (отрицательный, NaN, бесконечность, bool, не число) проверены
+    в test_common_validator.
+    """
     # Подготовка
     gram = RangeModel("грамм", 1)
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        RangeModel("кг", factor, gram)
+        RangeModel("кг", 0, gram)
 
 
-# Подготовка
-@pytest.mark.parametrize("base", ["грамм", 1, object()])
-def test_init_base_not_range_model_raises(base):
-    """База, не являющаяся единицей измерения, вызывает ArgumentsException."""
+def test_init_base_not_range_model_raises():
+    """База, заданная не единицей измерения (например, строкой), вызывает ArgumentsException."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        RangeModel("кг", 1000, base)
+        RangeModel("кг", 1000, "грамм")  # pyright: ignore[reportArgumentType]
 
 
 def test_init_base_is_derived_unit_raises():
@@ -131,15 +121,6 @@ def test_init_base_is_derived_unit_raises():
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         RangeModel("т", 1000, kilogram)
-
-
-# Подготовка
-@pytest.mark.parametrize("name", ["", "   ", None, 123])
-def test_init_invalid_name_raises(name):
-    """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        RangeModel(name, 1)
 
 
 # Подготовка

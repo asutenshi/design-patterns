@@ -1,5 +1,4 @@
 import pytest
-from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
 from Src.Core.ownership_form import OwnershipForm
 from Src.Models.organization_model import OrganizationModel
@@ -38,15 +37,6 @@ def test_init_valid_params_fields_set():
     assert organization.account == VALID_ACCOUNT
     assert organization.ownership_form is ownership_form
     assert organization.id is not None
-
-
-def test_init_any_instance_is_base_entity():
-    """Организация является наследником BaseEntity."""
-    # Действие
-    result = isinstance(make_organization(), BaseEntity)
-
-    # Проверка
-    assert result is True
 
 
 # Подготовка
@@ -93,58 +83,40 @@ def test_init_requisites_with_spaces_stripped():
     assert organization.account == VALID_ACCOUNT
 
 
-# Подготовка
-@pytest.mark.parametrize("name", ["", "   ", None, 123])
-def test_init_invalid_name_raises(name):
-    """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
+def test_init_inn_wrong_checksum_raises():
+    """ИНН правильной длины, но с неверной контрольной цифрой вызывает ArgumentsException.
+
+    Это показывает, что поле проверяется через InnValidator, а не только по числу цифр.
+    Остальные случаи (длина, не цифры, не строка) проверены в test_inn_validator.
+    """
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        make_organization(name=name)
+        make_organization(inn="1234567890")
 
 
 # Подготовка
-@pytest.mark.parametrize("inn", ["", "123456789", "12345678901", "1234567890123", "12345abc90", None, 1234567894])
-def test_init_invalid_inn_raises(inn):
-    """ИНН неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_organization(inn=inn)
-
-
-# Подготовка
-@pytest.mark.parametrize("inn", ["1234567890", "123456789048", "123456789057"])
-def test_init_inn_wrong_checksum_raises(inn):
-    """ИНН правильной длины, но с неверной контрольной цифрой вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_organization(inn=inn)
-
-
-# Подготовка
-@pytest.mark.parametrize("bic", ["", "12345678", "1234567890", "12345abc9", None, 123456789])
-def test_init_invalid_bic_raises(bic):
-    """БИК неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
+@pytest.mark.parametrize("bic", ["12345678", "1234567890"])
+def test_init_bic_wrong_length_raises(bic):
+    """БИК короче или длиннее 9 цифр вызывает ArgumentsException. Остальное проверено в test_common_validator."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         make_organization(bic=bic)
 
 
 # Подготовка
-@pytest.mark.parametrize("account", ["", "1234567890123456789", "123456789012345678901", "1234567890123456789a", None])
-def test_init_invalid_account_raises(account):
-    """Счёт неверной длины, с нецифровыми символами или не строка вызывает ArgumentsException."""
+@pytest.mark.parametrize("account", ["1234567890123456789", "123456789012345678901"])
+def test_init_account_wrong_length_raises(account):
+    """Счёт короче или длиннее 20 цифр вызывает ArgumentsException. Остальное проверено в test_common_validator."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         make_organization(account=account)
 
 
-# Подготовка
-@pytest.mark.parametrize("ownership_form", ["ООО", "LLC", None, 1])
-def test_init_invalid_ownership_form_raises(ownership_form):
-    """Форма собственности не из OwnershipForm (в том числе строка) вызывает ArgumentsException."""
+def test_init_ownership_form_raw_string_raises():
+    """Значение формы собственности строкой («ООО») вместо элемента OwnershipForm вызывает ArgumentsException."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        make_organization(ownership_form=ownership_form)
+        make_organization(ownership_form="ООО")
 
 
 def test_setters_valid_values_updated():

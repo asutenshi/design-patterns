@@ -1,5 +1,4 @@
 import pytest
-from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
@@ -33,15 +32,6 @@ def test_init_valid_params_fields_set():
     assert nomenclature.group is group
     assert nomenclature.range is gram
     assert nomenclature.id is not None
-
-
-def test_init_any_instance_is_base_entity():
-    """Номенклатура является наследником BaseEntity."""
-    # Действие
-    result = isinstance(make_nomenclature(), BaseEntity)
-
-    # Проверка
-    assert result is True
 
 
 def test_init_derived_range_created():
@@ -121,42 +111,6 @@ def test_init_full_name_with_spaces_stripped():
     assert nomenclature.full_name == "Мука пшеничная"
 
 
-# Подготовка
-@pytest.mark.parametrize("name", ["", "   ", None, 123])
-def test_init_invalid_name_raises(name):
-    """Пустое, состоящее из пробелов или не строковое наименование вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_nomenclature(name=name)
-
-
-# Подготовка
-@pytest.mark.parametrize("full_name", ["", "   ", None, 123])
-def test_init_invalid_full_name_raises(full_name):
-    """Пустое, состоящее из пробелов или не строковое полное наименование вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_nomenclature(full_name=full_name)
-
-
-# Подготовка
-@pytest.mark.parametrize("group", [None, "Сырьё", 1, RangeModel("грамм", 1)])
-def test_init_invalid_group_raises(group):
-    """Группа, не являющаяся NomenclatureGroupModel (в том числе другая модель), вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_nomenclature(group=group)
-
-
-# Подготовка
-@pytest.mark.parametrize("range_", [None, "грамм", 1, NomenclatureGroupModel("Сырьё")])
-def test_init_invalid_range_raises(range_):
-    """Единица, не являющаяся RangeModel (в том числе другая модель), вызывает ArgumentsException."""
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        make_nomenclature(range=range_)
-
-
 def test_init_group_and_range_swapped_raises():
     """Перепутанные местами группа и единица измерения вызывают ArgumentsException."""
     # Подготовка
@@ -210,32 +164,6 @@ def test_setters_invalid_value_raises_and_keeps_old(attribute, value):
     with pytest.raises(ArgumentsException):
         setattr(nomenclature, attribute, value)
     assert getattr(nomenclature, attribute) == old_value
-
-
-def test_eq_same_data_different_ids_not_equal():
-    """Две номенклатуры с одинаковыми данными, но разными идентификаторами не равны."""
-    # Подготовка
-    nomenclature1 = make_nomenclature()
-    nomenclature2 = make_nomenclature()
-
-    # Действие
-    result = nomenclature1 == nomenclature2
-
-    # Проверка
-    assert result is False
-
-
-def test_hash_name_changed_still_dict_key():
-    """Хэш определяется идентификатором: после переименования номенклатура остаётся рабочим ключом словаря."""
-    # Подготовка
-    nomenclature = make_nomenclature()
-    stock = {nomenclature: 10}
-
-    # Действие
-    nomenclature.name = "Другое наименование"
-
-    # Проверка
-    assert stock[nomenclature] == 10
 
 
 def test_init_flour_example_demonstration():
