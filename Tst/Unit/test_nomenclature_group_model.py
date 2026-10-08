@@ -53,6 +53,7 @@ def test_init_long_name_created():
         (NomenclatureGroupModel.create_vegetables, "Овощи"),
         (NomenclatureGroupModel.create_grocery, "Бакалея"),
         (NomenclatureGroupModel.create_semi_finished, "Полуфабрикаты"),
+        (NomenclatureGroupModel.create_dishes, "Блюда"),
         (NomenclatureGroupModel.create_packaging, "Упаковка"),
     ],
     ids=lambda value: value.__name__ if callable(value) else value,

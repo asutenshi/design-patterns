@@ -92,6 +92,7 @@ classDiagram
         +create_vegetables()$ NomenclatureGroupModel
         +create_grocery()$ NomenclatureGroupModel
         +create_semi_finished()$ NomenclatureGroupModel
+        +create_dishes()$ NomenclatureGroupModel
         +create_packaging()$ NomenclatureGroupModel
     }
 
@@ -311,9 +312,12 @@ classDiagram
 
 ### StorageManager
 
-Хранит доменные модели в четырёх коллекциях без дубликатов. При первом запуске (`is_first_start` в настройках)
-`load()` наполняет их начальными данными: 5 единиц измерения, 3 группы, 3 номенклатуры и 2 склада.
-Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а не на копии.
+Хранит доменные модели в пяти коллекциях без дубликатов. При первом запуске (`is_first_start` в настройках)
+`load()` наполняет их начальными данными через фабричные методы моделей: 5 единиц измерения, 7 групп,
+24 номенклатуры, 2 склада и 4 технологические карты из `Recipes.md`.
+Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а карты — на те же объекты номенклатуры, а не на копии.
+Карта регистрируется с проверкой циклов: обходятся карты вложенных полуфабрикатов (глубокая защита, локальную делает `RecipeModel`).
+Карту полуфабриката находит `find_recipe()` по номенклатуре-результату, на одну позицию допускается одна карта.
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
@@ -336,18 +340,24 @@ classDiagram
         -_nomenclature_groups: UniqueCollection~NomenclatureGroupModel~
         -_nomenclatures: UniqueCollection~NomenclatureModel~
         -_warehouses: UniqueCollection~WarehouseModel~
+        -_recipes: UniqueCollection~RecipeModel~
         +ranges: list~RangeModel~
         +nomenclature_groups: list~NomenclatureGroupModel~
         +nomenclatures: list~NomenclatureModel~
         +warehouses: list~WarehouseModel~
+        +recipes: list~RecipeModel~
         +__new__() Self
         +load(settings_manager) None
+        +find_recipe(nomenclature) RecipeModel | None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
+        -_create_nomenclatures() list~NomenclatureModel~
+        -_add_recipe(recipe) None
+        -_creates_cycle(recipe) bool
     }
 
-    note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции"
+    note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции. Ключ коллекции карт — id результата"
 
     class UniqueCollection~T~ {
         -_key: Callable~T, Hashable~
@@ -374,16 +384,18 @@ classDiagram
 
     class NomenclatureGroupModel
     class WarehouseModel
+    class RecipeModel
     class ArgumentsException
     class OperationException
 
     AbstractManager <|-- StorageManager
-    StorageManager "1" *-- "4" UniqueCollection : коллекции
+    StorageManager "1" *-- "5" UniqueCollection : коллекции
     StorageManager ..> SettingsManager : зависимость, параметр load(), читает is_first_start
     StorageManager --> RangeModel : ranges
     StorageManager --> NomenclatureGroupModel : nomenclature_groups
     StorageManager --> NomenclatureModel : nomenclatures
     StorageManager --> WarehouseModel : warehouses
+    StorageManager --> RecipeModel : recipes
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     RangeModel --> RangeModel : base

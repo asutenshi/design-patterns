@@ -43,6 +43,11 @@ class NomenclatureGroupModel(NamedEntity):
         return NomenclatureGroupModel("Полуфабрикаты")
 
     @staticmethod
+    def create_dishes() -> "NomenclatureGroupModel":
+        """Фабричный метод: создаёт группу «Блюда»."""
+        return NomenclatureGroupModel("Блюда")
+
+    @staticmethod
     def create_packaging() -> "NomenclatureGroupModel":
         """Фабричный метод: создаёт группу «Упаковка»."""
         return NomenclatureGroupModel("Упаковка")
