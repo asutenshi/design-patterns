@@ -1,3 +1,4 @@
+import pytest
 from Src.Core.named_entity import NamedEntity
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 
@@ -41,3 +42,29 @@ def test_init_long_name_created():
 
     # Проверка
     assert group.name == name
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("factory", "expected_name"),
+    [
+        (NomenclatureGroupModel.create_meat, "Мясные продукты"),
+        (NomenclatureGroupModel.create_dairy, "Молочные продукты"),
+        (NomenclatureGroupModel.create_vegetables, "Овощи"),
+        (NomenclatureGroupModel.create_grocery, "Бакалея"),
+        (NomenclatureGroupModel.create_semi_finished, "Полуфабрикаты"),
+        (NomenclatureGroupModel.create_dishes, "Блюда"),
+        (NomenclatureGroupModel.create_packaging, "Упаковка"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else value,
+)
+def test_create_group_returns_group_with_expected_name(factory, expected_name):
+    """Фабрика создаёт группу с ожидаемым наименованием, каждый вызов — новый объект."""
+    # Действие
+    first = factory()
+    second = factory()
+
+    # Проверка
+    assert isinstance(first, NomenclatureGroupModel)
+    assert first.name == expected_name
+    assert first is not second
