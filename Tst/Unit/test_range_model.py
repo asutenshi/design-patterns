@@ -136,6 +136,61 @@ def test_readonly_properties_assignment_raises(attribute):
         setattr(kilogram, attribute, gram)
 
 
+def test_create_kilogram_returns_kilogram_with_gram_base():
+    """Фабрика килограмма возвращает килограмм с коэффициентом 1000 и базовым граммом."""
+    # Действие
+    kilogram = RangeModel.create_kilogram()
+
+    # Проверка
+    assert kilogram.name == "килограмм"
+    assert kilogram.factor == 1000
+    assert kilogram.is_base is False
+    assert kilogram.base.name == "грамм"
+    assert kilogram.base.factor == 1
+    assert kilogram.base.is_base is True
+
+
+def test_create_liter_returns_liter_with_milliliter_base():
+    """Фабрика литра возвращает литр с коэффициентом 1000 и базовым миллилитром."""
+    # Действие
+    liter = RangeModel.create_liter()
+
+    # Проверка
+    assert liter.name == "литр"
+    assert liter.factor == 1000
+    assert liter.is_base is False
+    assert liter.base.name == "миллилитр"
+    assert liter.base.factor == 1
+    assert liter.base.is_base is True
+
+
+def test_create_piece_returns_base_unit():
+    """Фабрика штуки возвращает базовую единицу с коэффициентом 1."""
+    # Действие
+    piece = RangeModel.create_piece()
+
+    # Проверка
+    assert piece.name == "штука"
+    assert piece.factor == 1
+    assert piece.is_base is True
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "factory", [RangeModel.create_kilogram, RangeModel.create_liter, RangeModel.create_piece], ids=lambda f: f.__name__
+)
+def test_create_each_call_returns_new_instance(factory):
+    """Каждый вызов фабрики создаёт новый объект, а не возвращает общий экземпляр."""
+    # Действие
+    first = factory()
+    second = factory()
+
+    # Проверка
+    assert first is not second
+    assert first != second
+    assert first.base is not second.base
+
+
 def test_init_gram_and_kilogram_example_demonstration():
     """Демонстрация работы с единицей измерения на примере из ТЗ: грамм и килограмм."""
     # Подготовка

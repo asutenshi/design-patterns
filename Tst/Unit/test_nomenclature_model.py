@@ -228,3 +228,53 @@ def test_init_flour_example_demonstration():
     assert flour.group is salt.group
     assert flour.range.base is salt.range
     assert flour.range.factor == 1000
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("factory", "expected_type"),
+    [
+        (NomenclatureModel.create_raw_material, NomenclatureType.RAW_MATERIAL),
+        (NomenclatureModel.create_semi_finished, NomenclatureType.SEMI_FINISHED),
+        (NomenclatureModel.create_dish, NomenclatureType.DISH),
+        (NomenclatureModel.create_packaging, NomenclatureType.PACKAGING),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else value.name,
+)
+def test_create_typed_factory_returns_nomenclature_of_expected_type(factory, expected_type):
+    """Фабрика типа создаёт номенклатуру с зафиксированным типом и переданными остальными полями."""
+    # Подготовка
+    group = NomenclatureGroupModel("Овощи")
+    milliliter = RangeModel("миллилитр", 1)
+
+    # Действие
+    nomenclature = factory("Бульон", "Бульон костный говяжий", group, milliliter, 0.92)
+
+    # Проверка
+    assert nomenclature.type is expected_type
+    assert nomenclature.name == "Бульон"
+    assert nomenclature.full_name == "Бульон костный говяжий"
+    assert nomenclature.group is group
+    assert nomenclature.range is milliliter
+    assert nomenclature.grams_per_base_unit == 0.92
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "factory",
+    [
+        NomenclatureModel.create_raw_material,
+        NomenclatureModel.create_semi_finished,
+        NomenclatureModel.create_dish,
+        NomenclatureModel.create_packaging,
+    ],
+    ids=lambda value: value.__name__,
+)
+def test_create_typed_factory_invalid_grams_per_base_unit_raises(factory):
+    """Фабрика типа проверяет аргументы так же, как конструктор: нулевой вес базовой единицы недопустим."""
+    # Подготовка
+    group = NomenclatureGroupModel("Овощи")
+    gram = RangeModel("грамм", 1)
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        factory("Лук", "Лук репчатый", group, gram, 0)

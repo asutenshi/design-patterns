@@ -110,7 +110,7 @@ class StorageManager(AbstractManager):
 
         :raises ArgumentsException: Если начальные данные содержат дубликаты.
         """
-        kilogram = RangeModel.create_kilogramm()
+        kilogram = RangeModel.create_kilogram()
         gram = kilogram.base
         milliliter = RangeModel("миллилитр", 1)
         liter = RangeModel("литр", 1000, milliliter)

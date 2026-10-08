@@ -29,7 +29,9 @@ classDiagram
         +base: RangeModel
         +factor: int | float
         +is_base: bool
-        +create_kilogramm()$ RangeModel
+        +create_kilogram()$ RangeModel
+        +create_liter()$ RangeModel
+        +create_piece()$ RangeModel
     }
 
     class NomenclatureModel {
@@ -40,6 +42,10 @@ classDiagram
         +range: RangeModel
         +type: NomenclatureType
         +grams_per_base_unit: int | float
+        +create_raw_material(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
+        +create_semi_finished(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
+        +create_dish(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
+        +create_packaging(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
     }
 
     class NomenclatureType {
@@ -74,11 +80,21 @@ classDiagram
         +remove_ingredient(nomenclature) None
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result"
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result."
 
-    class NomenclatureGroupModel
+    class NomenclatureGroupModel {
+        +create_meat()$ NomenclatureGroupModel
+        +create_dairy()$ NomenclatureGroupModel
+        +create_vegetables()$ NomenclatureGroupModel
+        +create_grocery()$ NomenclatureGroupModel
+        +create_semi_finished()$ NomenclatureGroupModel
+        +create_packaging()$ NomenclatureGroupModel
+    }
 
-    class WarehouseModel
+    class WarehouseModel {
+        +create_restaurant_warehouse()$ WarehouseModel
+        +create_workshop_warehouse()$ WarehouseModel
+    }
 
     class SettingsModel {
         +organization: OrganizationModel

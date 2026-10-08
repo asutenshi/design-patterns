@@ -28,6 +28,11 @@ class NomenclatureModel(NamedEntity):
     Идентичность и хэш определяются по ``id`` (см. BaseEntity), поэтому номенклатуру можно
     использовать ключом словаря или элементом множества, в том числе после переименования.
 
+    Фабричные методы создают номенклатуру нужного типа (сырьё, полуфабрикат, блюдо, упаковка):
+    тип зафиксирован в методе, перепутать его нельзя. Группа и единица передаются готовыми объектами,
+    чтобы номенклатуры ссылались на общие экземпляры, а не на копии. Фабрики для типа «товар»
+    не созданы: при первом старте он не используется.
+
     Не реализовано: блокировка удаления номенклатуры, участвующей в учёте (п. 6.2 ТЗ):
     это логика слоя Logics.
     """
@@ -163,3 +168,67 @@ class NomenclatureModel(NamedEntity):
             не конечное или не больше нуля.
         """
         self._grams_per_base_unit = CommonValidator.validate_positive_number(value, "grams_per_base_unit")
+
+    @staticmethod
+    def create_raw_material(
+        name: str, full_name: str, group: NomenclatureGroupModel, range: RangeModel, grams_per_base_unit: float
+    ) -> "NomenclatureModel":
+        """Фабричный метод: создаёт номенклатуру типа «сырьё».
+
+        :param name: Наименование, не длиннее 50 символов.
+        :param full_name: Полное наименование, не длиннее 255 символов.
+        :param group: Группа номенклатуры.
+        :param range: Единица измерения.
+        :param grams_per_base_unit: Вес одной базовой единицы в граммах, число больше нуля.
+        :return: Номенклатура с типом RAW_MATERIAL.
+        :raises ArgumentsException: Если любой из параметров не соответствует требованиям.
+        """
+        return NomenclatureModel(name, full_name, group, range, NomenclatureType.RAW_MATERIAL, grams_per_base_unit)
+
+    @staticmethod
+    def create_semi_finished(
+        name: str, full_name: str, group: NomenclatureGroupModel, range: RangeModel, grams_per_base_unit: float
+    ) -> "NomenclatureModel":
+        """Фабричный метод: создаёт номенклатуру типа «полуфабрикат».
+
+        :param name: Наименование, не длиннее 50 символов.
+        :param full_name: Полное наименование, не длиннее 255 символов.
+        :param group: Группа номенклатуры.
+        :param range: Единица измерения.
+        :param grams_per_base_unit: Вес одной базовой единицы в граммах, число больше нуля.
+        :return: Номенклатура с типом SEMI_FINISHED.
+        :raises ArgumentsException: Если любой из параметров не соответствует требованиям.
+        """
+        return NomenclatureModel(name, full_name, group, range, NomenclatureType.SEMI_FINISHED, grams_per_base_unit)
+
+    @staticmethod
+    def create_dish(
+        name: str, full_name: str, group: NomenclatureGroupModel, range: RangeModel, grams_per_base_unit: float
+    ) -> "NomenclatureModel":
+        """Фабричный метод: создаёт номенклатуру типа «блюдо».
+
+        :param name: Наименование, не длиннее 50 символов.
+        :param full_name: Полное наименование, не длиннее 255 символов.
+        :param group: Группа номенклатуры.
+        :param range: Единица измерения.
+        :param grams_per_base_unit: Вес одной базовой единицы в граммах, число больше нуля.
+        :return: Номенклатура с типом DISH.
+        :raises ArgumentsException: Если любой из параметров не соответствует требованиям.
+        """
+        return NomenclatureModel(name, full_name, group, range, NomenclatureType.DISH, grams_per_base_unit)
+
+    @staticmethod
+    def create_packaging(
+        name: str, full_name: str, group: NomenclatureGroupModel, range: RangeModel, grams_per_base_unit: float
+    ) -> "NomenclatureModel":
+        """Фабричный метод: создаёт номенклатуру типа «упаковка».
+
+        :param name: Наименование, не длиннее 50 символов.
+        :param full_name: Полное наименование, не длиннее 255 символов.
+        :param group: Группа номенклатуры.
+        :param range: Единица измерения.
+        :param grams_per_base_unit: Вес одной базовой единицы в граммах, число больше нуля.
+        :return: Номенклатура с типом PACKAGING.
+        :raises ArgumentsException: Если любой из параметров не соответствует требованиям.
+        """
+        return NomenclatureModel(name, full_name, group, range, NomenclatureType.PACKAGING, grams_per_base_unit)

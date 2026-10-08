@@ -168,7 +168,7 @@ def test_gross_weight_quantity_in_base_unit_multiplied_by_unit_weight(quantity, 
 def test_gross_weight_kilogram_nomenclature_quantity_in_grams():
     """Для номенклатуры в килограммах количество задаётся в граммах (базовой единице): 800 — это 800 г."""
     # Подготовка
-    kilogram = RangeModel.create_kilogramm()
+    kilogram = RangeModel.create_kilogram()
     ingredient = make_ingredient(nomenclature=make_nomenclature(1, kilogram), quantity=800)
 
     # Действие
