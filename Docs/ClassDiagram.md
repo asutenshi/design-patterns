@@ -188,6 +188,14 @@ classDiagram
 
     note for AbstractFileManager "load() задаёт порядок: _read(), затем convert(). is_loaded становится True только после успеха"
 
+    class Common {
+        -_ROOT_MARKER$: str
+        +find_project_root(start)$ Path
+        +resolve_path(file_name, default_name)$ Path
+    }
+
+    note for Common "Корень проекта ищется вверх от расположения модуля по pyproject.toml, а не от текущего каталога"
+
     class SettingsManager {
         -_instance$: SettingsManager | None
         -_default_file_name: str
@@ -199,7 +207,7 @@ classDiagram
         +convert() None
     }
 
-    note for SettingsManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Файл по умолчанию settings.json. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
+    note for SettingsManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Файл по умолчанию settings.json в корне проекта. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
 
     class SettingsModel {
         +organization: OrganizationModel
@@ -220,6 +228,8 @@ classDiagram
     SettingsManager --> SettingsModel : settings
     SettingsModel --> OrganizationModel : organization
     OrganizationModel --> OwnershipForm : ownership_form
+    SettingsManager ..> Common : путь к файлу
+    Common ..> OperationException : бросает
     SettingsManager ..> OrganizationModel : создаёт в convert()
     SettingsManager ..> OwnershipForm : значение из файла
     SettingsManager ..> ArgumentsException : перехватывает

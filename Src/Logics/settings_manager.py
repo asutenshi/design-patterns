@@ -2,6 +2,7 @@ import json
 from typing import Any, ClassVar, Self, cast, override
 
 from Src.Core.abstract_file_manager import AbstractFileManager
+from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
 from Src.Models.organization_model import OrganizationModel
@@ -14,7 +15,7 @@ class SettingsManager(AbstractFileManager):
     # Единственный экземпляр этого класса
     _instance: ClassVar["SettingsManager | None"] = None
 
-    # Файл настроек по умолчанию, путь относительно текущего каталога
+    # Файл настроек по умолчанию, ищется в корне проекта
     _default_file_name: str = "settings.json"
 
     # Загруженные настройки, None до первой успешной загрузки
@@ -45,14 +46,14 @@ class SettingsManager(AbstractFileManager):
     def _read(self, file_name: str) -> dict[str, Any]:
         """Читает JSON-файл настроек.
 
-        :param file_name: Путь к файлу, пустая строка — файл по умолчанию.
+        :param file_name: Путь к файлу, пустая строка — settings.json в корне проекта.
         :return: Содержимое файла.
         :raises OperationException: Если файл недоступен, не является JSON-объектом
             или не читается как UTF-8.
         """
-        path = file_name.strip() or self._default_file_name
+        path = Common.resolve_path(file_name, self._default_file_name)
         try:
-            with open(path, encoding="utf-8") as file:
+            with path.open(encoding="utf-8") as file:
                 data = json.load(file)
         except (OSError, ValueError) as ex:
             raise OperationException(f"Не удалось прочитать файл настроек {path}: {ex}") from ex

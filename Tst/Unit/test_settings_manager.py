@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
 from Src.Logics.settings_manager import SettingsManager
@@ -97,17 +98,51 @@ def test_load_without_is_first_start_defaults_to_true(tmp_path: Path, settings_d
 
 # Подготовка
 @pytest.mark.parametrize("file_name", ["", "   "])
-def test_load_empty_file_name_reads_default_file_from_current_directory(
-    tmp_path: Path, settings_data: dict[str, Any], monkeypatch: pytest.MonkeyPatch, file_name: str
+def test_load_empty_file_name_other_cwd_reads_settings_from_project_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, file_name: str
 ):
-    """Пустое имя файла означает settings.json в текущем каталоге."""
+    """Пустое имя файла означает settings.json в корне проекта, а не в текущем каталоге."""
     # Подготовка
-    _write_json(tmp_path, settings_data)
+    root_file = Common.find_project_root() / "settings.json"
+    expected_name = json.loads(root_file.read_text(encoding="utf-8"))["organization"]["name"]
     monkeypatch.chdir(tmp_path)
     manager = SettingsManager()
 
     # Действие
     manager.load(file_name)
+
+    # Проверка
+    assert manager.settings.organization.name == expected_name
+
+
+def test_load_empty_file_name_ignores_settings_in_current_directory(
+    tmp_path: Path, settings_data: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+):
+    """Файл settings.json в текущем каталоге не подменяет файл из корня проекта."""
+    # Подготовка
+    settings_data["organization"]["name"] = "Подмена"
+    _write_json(tmp_path, settings_data)
+    monkeypatch.chdir(tmp_path)
+    manager = SettingsManager()
+
+    # Действие
+    manager.load()
+
+    # Проверка
+    assert manager.settings.organization.name != "Подмена"
+
+
+def test_load_relative_file_name_resolved_from_current_directory(
+    tmp_path: Path, settings_data: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+):
+    """Явно переданный относительный путь отсчитывается от текущего каталога."""
+    # Подготовка
+    _write_json(tmp_path, settings_data, "custom.json")
+    monkeypatch.chdir(tmp_path)
+    manager = SettingsManager()
+
+    # Действие
+    manager.load("custom.json")
 
     # Проверка
     assert manager.settings.organization.name == "Ромашка"
