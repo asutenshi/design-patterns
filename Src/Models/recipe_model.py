@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import ClassVar, cast
 
 from Src.Core.common_validator import CommonValidator
@@ -19,6 +19,35 @@ def _nomenclature_key(nomenclature: NomenclatureModel) -> uuid.UUID:
 def _ingredient_key(ingredient: IngredientModel) -> uuid.UUID:
     """Возвращает ключ уникальности ингредиента в карте: идентификатор его номенклатуры."""
     return _nomenclature_key(ingredient.nomenclature)
+
+
+def _find(nomenclatures: Mapping[str, NomenclatureModel], name: str) -> NomenclatureModel:
+    """Возвращает номенклатуру по наименованию из словаря.
+
+    :param nomenclatures: Номенклатура, ключ — наименование.
+    :param name: Искомое наименование.
+    :return: Найденная номенклатура.
+    :raises ArgumentsException: Если номенклатуры с таким наименованием нет.
+    """
+    nomenclature = nomenclatures.get(name)
+    if nomenclature is None:
+        raise ArgumentsException("nomenclatures", f"Нет номенклатуры «{name}»")
+    return nomenclature
+
+
+def _ingredient(
+    nomenclatures: Mapping[str, NomenclatureModel], name: str, quantity: float, loss_ratio: float = 0
+) -> IngredientModel:
+    """Создаёт ингредиент по наименованию номенклатуры.
+
+    :param nomenclatures: Номенклатура, ключ — наименование.
+    :param name: Наименование номенклатуры ингредиента.
+    :param quantity: Количество в базовой единице номенклатуры.
+    :param loss_ratio: Доля потерь при приготовлении.
+    :return: Ингредиент.
+    :raises ArgumentsException: Если номенклатуры нет или параметры некорректны.
+    """
+    return IngredientModel(_find(nomenclatures, name), quantity, loss_ratio)
 
 
 class RecipeModel(NamedEntity):
@@ -208,3 +237,135 @@ class RecipeModel(NamedEntity):
             nomenclature, NomenclatureModel, "nomenclature", "Ожидается номенклатура"
         )
         self._ingredients.remove(_nomenclature_key(nomenclature))
+
+    @staticmethod
+    def create_beef_bouillon(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+        """Фабричный метод: создаёт карту «Бульон костный говяжий» (Recipes.md, карта 1).
+
+        Кости, овощи, лавровый лист и перец удаляются после варки, поэтому их потери равны 0,9.
+
+        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :return: Карта полуфабриката.
+        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        """
+        name = "Бульон костный говяжий"
+        return RecipeModel(
+            name,
+            _find(nomenclatures, name),
+            2000,
+            240,
+            [
+                "Кости промыть и выдержать в холодной воде 1 час, воду слить.",
+                "Кости залить 3500 мл холодной воды (вне учёта), довести до кипения и снять пену.",
+                "Варить на слабом огне 3 часа, не допуская бурного кипения.",
+                "Лук и морковь очистить, лук разрезать пополам и подпечь на сухой сковороде до тёмных краёв.",
+                "За 40 минут до конца добавить овощи, лавровый лист, перец и соль.",
+                "Бульон процедить, довести до 2000 мл, при необходимости упарить. Кости и овощи не используются.",
+            ],
+            [
+                _ingredient(nomenclatures, "Кости говяжьи мозговые", 1500, 0.9),
+                _ingredient(nomenclatures, "Лук репчатый", 100, 0.9),
+                _ingredient(nomenclatures, "Морковь", 80, 0.9),
+                _ingredient(nomenclatures, "Лавровый лист", 1, 0.9),
+                _ingredient(nomenclatures, "Перец чёрный горошком", 3, 0.9),
+                _ingredient(nomenclatures, "Соль", 12),
+            ],
+        )
+
+    @staticmethod
+    def create_boiled_beef(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+        """Фабричный метод: создаёт карту «Говядина отварная» (Recipes.md, карта 2).
+
+        Потери: говядина теряет 38% при варке, лавровый лист удаляется (0,9), половина соли остаётся в отваре.
+
+        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :return: Карта полуфабриката.
+        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        """
+        name = "Говядина отварная"
+        return RecipeModel(
+            name,
+            _find(nomenclatures, name),
+            500,
+            120,
+            [
+                "Мякоть зачистить от плёнок и сухожилий, нарезать кусками по 200–250 г.",
+                "Залить 2000 мл кипящей воды (вне учёта), добавить соль и лавровый лист.",
+                "Варить на слабом огне 1,5 часа до мягкости, готовое мясо остудить в отваре.",
+                "Отвар не используется. Мясо нарезать полосками, дать выход 500 г.",
+            ],
+            [
+                _ingredient(nomenclatures, "Говядина (мякоть)", 800, 0.38),
+                _ingredient(nomenclatures, "Лавровый лист", 1, 0.9),
+                _ingredient(nomenclatures, "Соль", 8, 0.5),
+            ],
+        )
+
+    @staticmethod
+    def create_beet_fry(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+        """Фабричный метод: создаёт карту «Зажарка свекольная» (Recipes.md, карта 3).
+
+        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :return: Карта полуфабриката.
+        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        """
+        name = "Зажарка свекольная"
+        return RecipeModel(
+            name,
+            _find(nomenclatures, name),
+            700,
+            30,
+            [
+                "Свёклу и морковь очистить и натереть на крупной тёрке, лук нарезать кубиком.",
+                "На сковороде разогреть масло, обжарить лук 3 минуты до прозрачности.",
+                "Добавить морковь, жарить ещё 4 минуты, затем свёклу.",
+                "Влить уксус (сохраняет цвет свёклы), всыпать сахар и соль, тушить 5 минут.",
+                "Добавить томатную пасту, перемешать, тушить 10 минут до мягкости свёклы.",
+            ],
+            [
+                _ingredient(nomenclatures, "Свёкла", 400, 0.05),
+                _ingredient(nomenclatures, "Морковь", 120, 0.05),
+                _ingredient(nomenclatures, "Лук репчатый", 120, 0.1),
+                _ingredient(nomenclatures, "Томатная паста", 50, 0.1),
+                _ingredient(nomenclatures, "Масло подсолнечное", 40, 0.1),
+                _ingredient(nomenclatures, "Уксус 9%", 10, 0.5),
+                _ingredient(nomenclatures, "Сахар", 10),
+                _ingredient(nomenclatures, "Соль", 5),
+            ],
+        )
+
+    @staticmethod
+    def create_borscht(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+        """Фабричный метод: создаёт карту «Борщ с говядиной» (Recipes.md, карта 4).
+
+        Состав включает три полуфабриката и упаковку. Карты полуфабрикатов здесь не нужны:
+        ингредиент ссылается на номенклатуру, а карту находят по результату в слое Logics.
+
+        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :return: Карта блюда.
+        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        """
+        name = "Борщ с говядиной"
+        return RecipeModel(
+            name,
+            _find(nomenclatures, name),
+            1,
+            15,
+            [
+                "Бульон довести до кипения, добавить картофель, нарезанный брусочками, варить 8 минут.",
+                "Добавить нашинкованную капусту, варить ещё 4 минуты.",
+                "Добавить зажарку и отварную говядину, прогреть 2 минуты, не допуская бурного кипения.",
+                "Подавать со сметаной и рубленым укропом. Для доставки разлить в контейнер, "
+                + "сметану и укроп положить сверху.",
+            ],
+            [
+                _ingredient(nomenclatures, "Бульон костный говяжий", 250, 0.1),
+                _ingredient(nomenclatures, "Говядина отварная", 60, 0.05),
+                _ingredient(nomenclatures, "Зажарка свекольная", 70, 0.05),
+                _ingredient(nomenclatures, "Картофель", 80, 0.15),
+                _ingredient(nomenclatures, "Капуста белокочанная", 70, 0.15),
+                _ingredient(nomenclatures, "Сметана 20%", 20),
+                _ingredient(nomenclatures, "Укроп", 3),
+                _ingredient(nomenclatures, "Контейнер для супа 500 мл", 1),
+            ],
+        )

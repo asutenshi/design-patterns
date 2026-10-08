@@ -78,9 +78,13 @@ classDiagram
         +net_weight: float
         +add_ingredient(ingredient) None
         +remove_ingredient(nomenclature) None
+        +create_beef_bouillon(nomenclatures)$ RecipeModel
+        +create_boiled_beef(nomenclatures)$ RecipeModel
+        +create_beet_fry(nomenclatures)$ RecipeModel
+        +create_borscht(nomenclatures)$ RecipeModel
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result."
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result. Фабрики карт принимают словарь «наименование → номенклатура» и бросают ArgumentsException, если нужной позиции в нём нет"
 
     class NomenclatureGroupModel {
         +create_meat()$ NomenclatureGroupModel
