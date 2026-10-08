@@ -24,6 +24,10 @@ class StorageManager(AbstractManager):
     коллекции начальными данными. Иначе коллекции остаются пустыми: загружать
     данные пока неоткуда, чтение из БД появится вместе с SQLite.
 
+    Хранилище зависит от менеджера настроек: ``load()`` принимает его параметром,
+    по умолчанию берёт единственный экземпляр SettingsManager. Настройки должны быть
+    загружены заранее, сам ``load()`` их не загружает.
+
     Начальные данные формируются здесь же, в приватном методе. Когда их станет много
     (рецепты, рестораны, сотрудники), их стоит вынести в отдельный класс.
     """
@@ -72,17 +76,21 @@ class StorageManager(AbstractManager):
         self._warehouses = UniqueCollection(_name_key)
 
     @override
-    def load(self) -> None:
+    def load(self, settings_manager: SettingsManager | None = None) -> None:
         """Пересоздаёт коллекции и при первом запуске наполняет их начальными данными.
 
         Флаг is_loaded выставляется только после успеха.
 
+        :param settings_manager: Менеджер настроек, от которого зависит хранилище,
+            None — единственный экземпляр SettingsManager. Настройки в нём должны быть загружены.
         :raises OperationException: Если настройки не загружены или начальные данные
             содержат дубликаты.
         """
         self._is_loaded = False
-        # Обращение к настройкам здесь, а не в _initialize: хук не должен зависеть от других менеджеров
-        is_first_start = SettingsManager().settings.is_first_start
+        # Зависимость разрешается здесь, а не в _initialize: хук не должен зависеть от других менеджеров
+        if settings_manager is None:
+            settings_manager = SettingsManager()
+        is_first_start = settings_manager.settings.is_first_start
 
         self._reset_collections()
         if is_first_start:

@@ -246,7 +246,8 @@ classDiagram
 Хранит доменные модели в четырёх коллекциях без дубликатов. При первом запуске (`is_first_start` в настройках)
 `load()` наполняет их начальными данными: 5 единиц измерения, 3 группы, 3 номенклатуры и 2 склада.
 Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а не на копии.
-Настройки читаются через `SettingsManager`, поэтому они должны быть загружены до `StorageManager.load()`.
+Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
+единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
 
 ```mermaid
@@ -272,7 +273,7 @@ classDiagram
         +nomenclatures: list~NomenclatureModel~
         +warehouses: list~WarehouseModel~
         +__new__() Self
-        +load() None
+        +load(settings_manager) None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
@@ -309,7 +310,7 @@ classDiagram
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "4" UniqueCollection : коллекции
-    StorageManager ..> SettingsManager : load() читает is_first_start
+    StorageManager ..> SettingsManager : зависимость, параметр load(), читает is_first_start
     StorageManager --> RangeModel : ranges
     StorageManager --> NomenclatureGroupModel : nomenclature_groups
     StorageManager --> NomenclatureModel : nomenclatures

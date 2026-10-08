@@ -84,8 +84,9 @@ sequenceDiagram
 
 ## Загрузка хранилища и первый старт: StorageManager.load()
 
-`StorageManager` зависит от настроек: флаг `is_first_start` он читает в `load()` через `SettingsManager`.
-Поэтому `SettingsManager.load()` нужно вызвать до `StorageManager.load()`. С файлами `StorageManager`
+`StorageManager` зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию
+берёт единственный `SettingsManager`, и читает из него флаг `is_first_start`. Настройки сам `load()` не загружает,
+поэтому `SettingsManager.load()` нужно вызвать до `StorageManager.load()`. С файлами `StorageManager`
 не работает и сам реализует `load()`, наследуя `AbstractManager`. Внешнего источника данных пока нет:
 чтение из SQLite появится позже.
 
@@ -97,8 +98,9 @@ sequenceDiagram
     participant C as UniqueCollection
     participant M as Модели
 
-    K->>St: load()
+    K->>St: load(settings_manager)
     St->>St: is_loaded = False
+    Note over St,Se: если менеджер не передан, берётся единственный SettingsManager()
     St->>Se: settings
     alt настройки не загружены
         Se-->>St: OperationException

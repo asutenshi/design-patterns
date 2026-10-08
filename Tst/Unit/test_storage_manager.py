@@ -276,6 +276,68 @@ def test_load_settings_reload_fails_raises_and_is_loaded_becomes_false(
     assert first_start_storage.is_loaded is False
 
 
+class OtherSettingsManager(SettingsManager):
+    """Менеджер настроек-заглушка: наследник с собственным экземпляром, независимым от SettingsManager."""
+
+
+def _load_other_settings(tmp_path: Path, is_first_start: bool) -> OtherSettingsManager:
+    """Загружает в независимый менеджер настроек файл с заданным флагом первого запуска."""
+    data = SettingsManager._default_data()  # pyright: ignore[reportPrivateUsage]
+    data["is_first_start"] = is_first_start
+    path = tmp_path / "other.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    other = OtherSettingsManager()
+    other.load(str(path))
+    return other
+
+
+def test_load_explicit_settings_manager_is_used_instead_of_singleton(
+    load_settings: Callable[[bool], None], tmp_path: Path
+):
+    """Переданный менеджер настроек используется вместо единственного экземпляра SettingsManager."""
+    # Подготовка
+    load_settings(True)
+    other = _load_other_settings(tmp_path, is_first_start=False)
+    storage = StorageManager()
+
+    # Действие
+    storage.load(other)
+
+    # Проверка
+    assert storage.is_loaded is True
+    assert storage.ranges == []
+
+
+def test_load_explicit_settings_manager_first_start_fills_collections(
+    load_settings: Callable[[bool], None], tmp_path: Path
+):
+    """Флаг первого запуска берётся из переданного менеджера, а не из SettingsManager."""
+    # Подготовка
+    load_settings(False)
+    other = _load_other_settings(tmp_path, is_first_start=True)
+    storage = StorageManager()
+
+    # Действие
+    storage.load(other)
+
+    # Проверка
+    assert [unit.name for unit in storage.ranges] == EXPECTED_RANGES
+
+
+def test_load_explicit_settings_manager_not_loaded_raises_operation_exception(
+    load_settings: Callable[[bool], None],
+):
+    """Если переданный менеджер не загружен, бросается OperationException, даже когда SettingsManager загружен."""
+    # Подготовка
+    load_settings(True)
+    storage = StorageManager()
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        storage.load(OtherSettingsManager())
+    assert storage.is_loaded is False
+
+
 # ---------------------------------------------------------------------------
 # Защита от изменения снаружи
 # ---------------------------------------------------------------------------
