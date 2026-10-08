@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -178,14 +179,15 @@ def test_settings_before_load_raises_operation_exception():
 
 
 def test_settings_after_failed_reload_raises_operation_exception(tmp_path: Path, settings_data: dict[str, Any]):
-    """После неудачной повторной загрузки старые настройки недоступны."""
+    """После неудачной повторной загрузки (неверные данные) старые настройки недоступны."""
     # Подготовка
     manager = SettingsManager()
     manager.load(_write_json(tmp_path, settings_data))
+    del settings_data["boss_name"]
 
     # Действие
     with pytest.raises(OperationException):
-        manager.load(str(tmp_path / "missing.json"))
+        manager.load(_write_json(tmp_path, settings_data, "broken.json"))
 
     # Проверка
     with pytest.raises(OperationException):
@@ -193,60 +195,179 @@ def test_settings_after_failed_reload_raises_operation_exception(tmp_path: Path,
 
 
 # ---------------------------------------------------------------------------
-# load: чтение файла
+# load: чтение файла, настройки по умолчанию
 # ---------------------------------------------------------------------------
 
 
-def test_load_missing_file_raises_operation_exception_with_file_name(tmp_path: Path):
-    """Если файла нет, бросается OperationException с именем файла в тексте."""
+def _assert_default_settings(manager: SettingsManager) -> None:
+    """Проверяет, что загружены настройки по умолчанию."""
+    settings = manager.settings
+    assert manager.is_loaded is True
+    assert settings.organization.name == "Ромашка"
+    assert settings.organization.inn == "1234567894"
+    assert settings.organization.bic == "123456789"
+    assert settings.organization.account == "12345678901234567890"
+    assert settings.organization.ownership_form == OwnershipForm.LLC
+    assert settings.boss_name == "Иванов Иван Иванович"
+    assert settings.account_name == "Петрова Анна Александровна"
+    assert settings.is_first_start is True
+
+
+def test_load_missing_file_uses_default_settings(tmp_path: Path):
+    """Если файла нет, загружаются настройки по умолчанию."""
+    # Подготовка
+    manager = SettingsManager()
+
+    # Действие
+    manager.load(str(tmp_path / "missing.json"))
+
+    # Проверка
+    _assert_default_settings(manager)
+
+
+def test_load_missing_file_logs_warning_with_file_name(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    """Подмена настройками по умолчанию записывается в лог с именем файла."""
+    # Подготовка
+    manager = SettingsManager()
+
+    # Действие
+    with caplog.at_level(logging.WARNING, logger="Src.Logics.settings_manager"):
+        manager.load(str(tmp_path / "missing.json"))
+
+    # Проверка
+    assert "missing.json" in caplog.text
+    assert "по умолчанию" in caplog.text
+
+
+def test_load_missing_file_creates_file_with_default_settings(tmp_path: Path):
+    """Отсутствующий файл создаётся с настройками по умолчанию."""
     # Подготовка
     manager = SettingsManager()
     path = tmp_path / "missing.json"
 
-    # Действие и проверка
-    with pytest.raises(OperationException) as exc_info:
-        manager.load(str(path))
-    assert "missing.json" in str(exc_info.value)
-    assert isinstance(exc_info.value.__cause__, FileNotFoundError)
-    assert manager.is_loaded is False
+    # Действие
+    manager.load(str(path))
+
+    # Проверка
+    assert path.is_file()
+    assert json.loads(path.read_text(encoding="utf-8")) == SettingsManager._default_data()  # pyright: ignore[reportPrivateUsage]
 
 
-def test_load_invalid_json_raises_operation_exception(tmp_path: Path):
-    """Файл с некорректным JSON бросает OperationException."""
+def test_load_created_default_file_is_read_without_fallback(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    """Созданный файл читается при следующей загрузке без подмены."""
+    # Подготовка
+    manager = SettingsManager()
+    path = str(tmp_path / "missing.json")
+    manager.load(path)
+    caplog.clear()
+
+    # Действие
+    with caplog.at_level(logging.WARNING, logger="Src.Logics.settings_manager"):
+        manager.load(path)
+
+    # Проверка
+    _assert_default_settings(manager)
+    assert caplog.text == ""
+
+
+def test_load_missing_file_in_missing_directory_uses_defaults_without_exception(tmp_path: Path):
+    """Если файл создать нельзя, настройки по умолчанию остаются в памяти."""
+    # Подготовка
+    manager = SettingsManager()
+    path = tmp_path / "no_such_dir" / "settings.json"
+
+    # Действие
+    manager.load(str(path))
+
+    # Проверка
+    _assert_default_settings(manager)
+    assert not path.exists()
+
+
+def test_load_invalid_json_uses_default_settings_and_keeps_file(tmp_path: Path):
+    """Файл с некорректным JSON заменяется настройками по умолчанию в памяти, но не перезаписывается."""
     # Подготовка
     manager = SettingsManager()
     path = tmp_path / "broken.json"
     path.write_text("{ not json", encoding="utf-8")
 
-    # Действие и проверка
-    with pytest.raises(OperationException):
-        manager.load(str(path))
-    assert manager.is_loaded is False
+    # Действие
+    manager.load(str(path))
+
+    # Проверка
+    _assert_default_settings(manager)
+    assert path.read_text(encoding="utf-8") == "{ not json"
 
 
-def test_load_not_utf8_file_raises_operation_exception(tmp_path: Path):
-    """Файл не в UTF-8 бросает OperationException, а не UnicodeDecodeError."""
+def test_load_not_utf8_file_uses_default_settings_and_keeps_file(tmp_path: Path):
+    """Файл не в UTF-8 заменяется настройками по умолчанию в памяти, но не перезаписывается."""
     # Подготовка
     manager = SettingsManager()
     path = tmp_path / "cp1251.json"
-    path.write_bytes('{"name": "Ромашка"}'.encode("cp1251"))
+    content = '{"name": "Ромашка"}'.encode("cp1251")
+    path.write_bytes(content)
 
-    # Действие и проверка
-    with pytest.raises(OperationException):
-        manager.load(str(path))
+    # Действие
+    manager.load(str(path))
+
+    # Проверка
+    _assert_default_settings(manager)
+    assert path.read_bytes() == content
 
 
 # Подготовка
 @pytest.mark.parametrize("content", [[], "text", 42, None])
-def test_load_json_root_is_not_object_raises_operation_exception(tmp_path: Path, content: object):
-    """Если корень JSON не объект, бросается OperationException."""
+def test_load_json_root_is_not_object_uses_default_settings_and_keeps_file(tmp_path: Path, content: object):
+    """Если корень JSON не объект, берутся настройки по умолчанию, файл не перезаписывается."""
     # Подготовка
     manager = SettingsManager()
     path = _write_json(tmp_path, content)
+    original = Path(path).read_text(encoding="utf-8")
+
+    # Действие
+    manager.load(path)
+
+    # Проверка
+    _assert_default_settings(manager)
+    assert Path(path).read_text(encoding="utf-8") == original
+
+
+def test_load_after_fallback_second_valid_file_replaces_defaults(tmp_path: Path, settings_data: dict[str, Any]):
+    """После подмены настройками по умолчанию корректный файл заменяет их."""
+    # Подготовка
+    manager = SettingsManager()
+    manager.load(str(tmp_path / "missing.json"))
+    settings_data["boss_name"] = "Сидоров Пётр Петрович"
+
+    # Действие
+    manager.load(_write_json(tmp_path, settings_data))
+
+    # Проверка
+    assert manager.settings.boss_name == "Сидоров Пётр Петрович"
+
+
+def test_default_data_returns_new_dict_each_call():
+    """Изменение настроек по умолчанию не влияет на следующие вызовы."""
+    # Подготовка
+    first = SettingsManager._default_data()  # pyright: ignore[reportPrivateUsage]
+    first["organization"]["name"] = "Изменено"
+
+    # Действие
+    second = SettingsManager._default_data()  # pyright: ignore[reportPrivateUsage]
+
+    # Проверка
+    assert second["organization"]["name"] == "Ромашка"
+
+
+def test_load_invalid_data_in_readable_file_does_not_use_defaults(tmp_path: Path, settings_data: dict[str, Any]):
+    """Неверные данные в прочитанном файле не подменяются: бросается OperationException."""
+    # Подготовка
+    manager = SettingsManager()
+    del settings_data["boss_name"]
 
     # Действие и проверка
     with pytest.raises(OperationException):
-        manager.load(path)
+        manager.load(_write_json(tmp_path, settings_data))
     assert manager.is_loaded is False
 
 

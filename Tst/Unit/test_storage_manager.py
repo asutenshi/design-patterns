@@ -265,8 +265,10 @@ def test_load_settings_reload_fails_raises_and_is_loaded_becomes_false(
 ):
     """Если настройки не удалось перечитать, повторная загрузка хранилища падает и сбрасывает is_loaded."""
     # Подготовка
+    broken = tmp_path / "broken.json"
+    broken.write_text("{}", encoding="utf-8")
     with pytest.raises(OperationException):
-        SettingsManager().load(str(tmp_path / "missing.json"))
+        SettingsManager().load(str(broken))
 
     # Действие и проверка
     with pytest.raises(OperationException):

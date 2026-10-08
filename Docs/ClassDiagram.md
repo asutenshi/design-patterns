@@ -204,12 +204,15 @@ classDiagram
         +settings: SettingsModel
         +__new__() Self
         #_initialize() None
+        -_default_data()$ dict
         #_read(file_name) dict
+        -_read_file(path)$ dict
+        -_write_defaults(path) None
         -_values(model, data, optional)$ dict
         +convert() None
     }
 
-    note for SettingsManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Файл по умолчанию settings.json в корне проекта. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
+    note for SettingsManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Файл по умолчанию settings.json в корне проекта. Если файл не читается, берутся настройки по умолчанию, отсутствующий файл создаётся. Модель присваивается только целиком, при ошибке прежние настройки не затираются"
 
     class SettingsModel {
         +organization: OrganizationModel

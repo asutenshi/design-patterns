@@ -50,27 +50,35 @@ sequenceDiagram
 
     K->>S: load(file_name)
     S->>S: is_loaded = False, данные сброшены
-    Note over S: путь = file_name без пробелов или settings.json
+    Note over S: путь = file_name без пробелов или settings.json в корне проекта
     S->>F: открыть и разобрать JSON
     alt файл недоступен, не UTF-8, не JSON или корень не объект
         F-->>S: ошибка чтения
-        S-->>K: OperationException, is_loaded остаётся False
+        S->>S: предупреждение в лог
+        opt файла нет
+            S->>F: создать файл с настройками по умолчанию
+            Note over S,F: ошибка записи только пишется в лог. Существующий файл не перезаписывается
+        end
+        S->>S: данные = настройки по умолчанию
     else данные прочитаны
         F-->>S: словарь с настройками
-        S->>S: convert()
-        S->>O: OrganizationModel(name, inn, bic, account, OwnershipForm)
-        O-->>S: карточка организации
-        S->>P: SettingsModel(organization, boss_name, account_name, is_first_start)
-        P-->>S: настройки
-        alt нет ключа, неверный тип, неизвестная форма собственности или модель отклонила значение
-            S-->>K: OperationException, is_loaded остаётся False
-        else все данные корректны
-            S->>S: _settings = модель, is_loaded = True
-            S-->>K: загрузка завершена
-        end
+    end
+    S->>S: convert()
+    S->>O: OrganizationModel(name, inn, bic, account, OwnershipForm)
+    O-->>S: карточка организации
+    S->>P: SettingsModel(organization, boss_name, account_name, is_first_start)
+    P-->>S: настройки
+    alt нет ключа, неверный тип, неизвестная форма собственности или модель отклонила значение
+        S-->>K: OperationException, is_loaded остаётся False
+    else все данные корректны
+        S->>S: _settings = модель, is_loaded = True
+        S-->>K: загрузка завершена
     end
 ```
 
+Настройки по умолчанию подменяют только то, что не удалось прочитать. Если файл прочитан, но данные в нём
+неверны, `convert()` бросает `OperationException`: некорректные настройки не маскируются значениями по умолчанию.
+Настройки по умолчанию записаны в коде в формате файла и проходят тот же `convert()`.
 Если в файле нет `is_first_start`, флаг принимается равным `True`.
 Модель присваивается только целиком: при ошибке прежние настройки не затираются наполовину собранными.
 

@@ -1,4 +1,6 @@
 import json
+import logging
+from pathlib import Path
 from typing import Any, ClassVar, Self, cast, override
 
 from Src.Core.abstract_file_manager import AbstractFileManager
@@ -8,9 +10,16 @@ from Src.Core.ownership_form import OwnershipForm
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
+_logger = logging.getLogger(__name__)
+
 
 class SettingsManager(AbstractFileManager):
-    """Менеджер настроек (Singleton): читает settings.json и собирает SettingsModel."""
+    """Менеджер настроек (Singleton): читает settings.json и собирает SettingsModel.
+
+    Если файл не читается (нет файла, не JSON, не UTF-8, корень не объект), берутся настройки
+    по умолчанию, а отсутствующий файл создаётся с ними. Некорректные данные в прочитанном файле
+    подменой не маскируются: convert() бросает OperationException.
+    """
 
     # Единственный экземпляр этого класса
     _instance: ClassVar["SettingsManager | None"] = None
@@ -42,16 +51,54 @@ class SettingsManager(AbstractFileManager):
         super()._initialize()
         self._settings = None
 
+    @staticmethod
+    def _default_data() -> dict[str, Any]:
+        """Возвращает настройки по умолчанию в формате файла настроек.
+
+        Каждый вызов создаёт новый словарь, чтобы изменения не попали в следующие вызовы.
+        Данные проходят через convert() наравне с содержимым файла.
+        """
+        return {
+            "organization": {
+                "name": "Ромашка",
+                "inn": "1234567894",
+                "bic": "123456789",
+                "account": "12345678901234567890",
+                "ownership_form": "ООО",
+            },
+            "boss_name": "Иванов Иван Иванович",
+            "account_name": "Петрова Анна Александровна",
+            "is_first_start": True,
+        }
+
     @override
     def _read(self, file_name: str) -> dict[str, Any]:
-        """Читает JSON-файл настроек.
+        """Читает JSON-файл настроек, а если он не читается, возвращает настройки по умолчанию.
+
+        Подмена только на уровне чтения: если файл прочитан, но данные в нём неверны,
+        ошибку выдаст convert(). Причина подмены пишется в лог предупреждением.
 
         :param file_name: Путь к файлу, пустая строка — settings.json в корне проекта.
+        :return: Содержимое файла или настройки по умолчанию.
+        :raises OperationException: Если нужен файл по умолчанию, но корень проекта не найден.
+        """
+        path = Common.resolve_path(file_name, self._default_file_name)
+        try:
+            return self._read_file(path)
+        except OperationException as ex:
+            _logger.warning("%s. Используются настройки по умолчанию", ex.args[0])  # pyright: ignore[reportAny]
+            self._write_defaults(path)
+            return self._default_data()
+
+    @staticmethod
+    def _read_file(path: Path) -> dict[str, Any]:
+        """Читает JSON-файл настроек.
+
+        :param path: Полный путь к файлу.
         :return: Содержимое файла.
         :raises OperationException: Если файл недоступен, не является JSON-объектом
             или не читается как UTF-8.
         """
-        path = Common.resolve_path(file_name, self._default_file_name)
         try:
             with path.open(encoding="utf-8") as file:
                 data = json.load(file)
@@ -61,6 +108,21 @@ class SettingsManager(AbstractFileManager):
         if not isinstance(data, dict):
             raise OperationException(f"Файл настроек {path} должен содержать JSON-объект")
         return data
+
+    def _write_defaults(self, path: Path) -> None:
+        """Создаёт файл с настройками по умолчанию, если его ещё нет.
+
+        Существующий файл не перезаписывается: повреждённый файл пользователя не должен
+        пропасть. Ошибка записи работу не прерывает, настройки остаются в памяти.
+
+        :param path: Полный путь к файлу настроек.
+        """
+        if path.exists():
+            return
+        try:
+            _ = path.write_text(json.dumps(self._default_data(), ensure_ascii=False, indent=4), encoding="utf-8")
+        except OSError as ex:
+            _logger.warning("Не удалось создать файл настроек %s: %s", path, ex)
 
     @staticmethod
     def _values(model: type, data: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
