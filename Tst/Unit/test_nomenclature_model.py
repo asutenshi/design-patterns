@@ -1,5 +1,6 @@
 import pytest
 from Src.Core.exception import ArgumentsException
+from Src.Core.nomenclature_type import NomenclatureType
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
@@ -12,6 +13,8 @@ def make_nomenclature(**overrides) -> NomenclatureModel:
         "full_name": "Мука пшеничная высшего сорта",
         "group": NomenclatureGroupModel("Сырьё"),
         "range": RangeModel("грамм", 1),
+        "type": NomenclatureType.RAW_MATERIAL,
+        "grams_per_base_unit": 1,
     }
     params.update(overrides)
     return NomenclatureModel(**params)
@@ -24,14 +27,41 @@ def test_init_valid_params_fields_set():
     gram = RangeModel("грамм", 1)
 
     # Действие
-    nomenclature = NomenclatureModel("Мука", "Мука пшеничная высшего сорта", group, gram)
+    nomenclature = NomenclatureModel(
+        "Мука", "Мука пшеничная высшего сорта", group, gram, NomenclatureType.RAW_MATERIAL, 1
+    )
 
     # Проверка
     assert nomenclature.name == "Мука"
     assert nomenclature.full_name == "Мука пшеничная высшего сорта"
     assert nomenclature.group is group
     assert nomenclature.range is gram
+    assert nomenclature.type is NomenclatureType.RAW_MATERIAL
+    assert nomenclature.grams_per_base_unit == 1
     assert nomenclature.id is not None
+
+
+# Подготовка
+@pytest.mark.parametrize("nomenclature_type", list(NomenclatureType))
+def test_init_any_nomenclature_type_created(nomenclature_type: NomenclatureType):
+    """Номенклатуру можно создать с любым типом позиции из перечисления."""
+    # Действие
+    nomenclature = make_nomenclature(type=nomenclature_type)
+
+    # Проверка
+    assert nomenclature.type is nomenclature_type
+
+
+def test_init_fractional_grams_per_base_unit_created():
+    """Дробный вес базовой единицы (плотность масла 0,92 г/мл) допустим."""
+    # Подготовка
+    milliliter = RangeModel("миллилитр", 1)
+
+    # Действие
+    nomenclature = make_nomenclature(range=milliliter, grams_per_base_unit=0.92)
+
+    # Проверка
+    assert nomenclature.grams_per_base_unit == 0.92
 
 
 def test_init_derived_range_created():
@@ -119,11 +149,18 @@ def test_init_group_and_range_swapped_raises():
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        NomenclatureModel("Мука", "Мука пшеничная", gram, group)  # pyright: ignore[reportArgumentType]
+        NomenclatureModel(
+            "Мука",
+            "Мука пшеничная",
+            gram,  # pyright: ignore[reportArgumentType]
+            group,  # pyright: ignore[reportArgumentType]
+            NomenclatureType.RAW_MATERIAL,
+            1,
+        )
 
 
 def test_setters_valid_values_updated():
-    """Сеттеры обновляют наименование, полное наименование, группу и единицу измерения."""
+    """Сеттеры обновляют наименование, полное наименование, группу, единицу, тип и вес базовой единицы."""
     # Подготовка
     nomenclature = make_nomenclature()
     new_group = NomenclatureGroupModel("Полуфабрикаты")
@@ -134,12 +171,16 @@ def test_setters_valid_values_updated():
     nomenclature.full_name = "Тесто дрожжевое"
     nomenclature.group = new_group
     nomenclature.range = kilogram
+    nomenclature.type = NomenclatureType.SEMI_FINISHED
+    nomenclature.grams_per_base_unit = 2.5
 
     # Проверка
     assert nomenclature.name == "Тесто"
     assert nomenclature.full_name == "Тесто дрожжевое"
     assert nomenclature.group is new_group
     assert nomenclature.range is kilogram
+    assert nomenclature.type is NomenclatureType.SEMI_FINISHED
+    assert nomenclature.grams_per_base_unit == 2.5
 
 
 # Подготовка
@@ -152,6 +193,12 @@ def test_setters_valid_values_updated():
         ("full_name", None),
         ("group", None),
         ("range", None),
+        ("type", None),
+        ("type", "сырьё"),
+        ("grams_per_base_unit", 0),
+        ("grams_per_base_unit", -1),
+        ("grams_per_base_unit", None),
+        ("grams_per_base_unit", "1"),
     ],
 )
 def test_setters_invalid_value_raises_and_keeps_old(attribute, value):
@@ -174,8 +221,8 @@ def test_init_flour_example_demonstration():
     kilogram = RangeModel("кг", 1000, gram)
 
     # Действие
-    flour = NomenclatureModel("Мука", "Мука пшеничная высшего сорта", raw, kilogram)
-    salt = NomenclatureModel("Соль", "Соль поваренная пищевая", raw, gram)
+    flour = NomenclatureModel("Мука", "Мука пшеничная высшего сорта", raw, kilogram, NomenclatureType.RAW_MATERIAL, 1)
+    salt = NomenclatureModel("Соль", "Соль поваренная пищевая", raw, gram, NomenclatureType.RAW_MATERIAL, 1)
 
     # Проверка
     assert flour.group is salt.group

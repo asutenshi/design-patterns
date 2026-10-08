@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from Src.Core.exception import OperationException
+from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 
@@ -106,6 +107,33 @@ def test_load_first_start_creates_nomenclatures(first_start_storage: StorageMana
 
     # Проверка
     assert names == EXPECTED_NOMENCLATURES
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("nomenclature_name", "expected_type", "expected_grams_per_base_unit"),
+    [
+        ("Говядина", NomenclatureType.RAW_MATERIAL, 1),
+        ("Молоко", NomenclatureType.RAW_MATERIAL, 1),
+        ("Стакан", NomenclatureType.PACKAGING, 10),
+    ],
+)
+def test_load_first_start_nomenclature_has_type_and_weight(
+    first_start_storage: StorageManager,
+    nomenclature_name: str,
+    expected_type: NomenclatureType,
+    expected_grams_per_base_unit: float,
+):
+    """Начальная номенклатура создаётся с ожидаемым типом позиции и весом базовой единицы."""
+    # Подготовка
+    nomenclatures = {item.name: item for item in first_start_storage.nomenclatures}
+
+    # Действие
+    nomenclature = nomenclatures[nomenclature_name]
+
+    # Проверка
+    assert nomenclature.type is expected_type
+    assert nomenclature.grams_per_base_unit == expected_grams_per_base_unit
 
 
 def test_load_first_start_creates_warehouses(first_start_storage: StorageManager):

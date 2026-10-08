@@ -3,6 +3,7 @@ from typing import ClassVar, Self, cast, override
 from Src.Core.abstract_manager import AbstractManager
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.named_entity import NamedEntity
+from Src.Core.nomenclature_type import NomenclatureType
 from Src.Core.unique_collection import UniqueCollection
 from Src.Logics.settings_manager import SettingsManager
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
@@ -109,8 +110,8 @@ class StorageManager(AbstractManager):
 
         :raises ArgumentsException: Если начальные данные содержат дубликаты.
         """
-        gram = RangeModel("грамм", 1)
-        kilogram = RangeModel("килограмм", 1000, gram)
+        kilogram = RangeModel.create_kilogramm()
+        gram = kilogram.base
         milliliter = RangeModel("миллилитр", 1)
         liter = RangeModel("литр", 1000, milliliter)
         piece = RangeModel("штука", 1)
@@ -124,9 +125,10 @@ class StorageManager(AbstractManager):
             self._nomenclature_groups.add(group)
 
         for nomenclature in (
-            NomenclatureModel("Говядина", "Говядина охлаждённая", meat, kilogram),
-            NomenclatureModel("Молоко", "Молоко пастеризованное 3,2%", dairy, liter),
-            NomenclatureModel("Стакан", "Стакан бумажный 300 мл", packaging, piece),
+            NomenclatureModel("Говядина", "Говядина охлаждённая", meat, kilogram, NomenclatureType.RAW_MATERIAL, 1),
+            # Плотность молока принята за 1 г/мл
+            NomenclatureModel("Молоко", "Молоко пастеризованное 3,2%", dairy, liter, NomenclatureType.RAW_MATERIAL, 1),
+            NomenclatureModel("Стакан", "Стакан бумажный 300 мл", packaging, piece, NomenclatureType.PACKAGING, 10),
         ):
             self._nomenclatures.add(nomenclature)
 

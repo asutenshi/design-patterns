@@ -29,6 +29,7 @@ classDiagram
         +base: RangeModel
         +factor: int | float
         +is_base: bool
+        +create_kilogramm()$ RangeModel
     }
 
     class NomenclatureModel {
@@ -37,6 +38,17 @@ classDiagram
         +full_name: str
         +group: NomenclatureGroupModel
         +range: RangeModel
+        +type: NomenclatureType
+        +grams_per_base_unit: int | float
+    }
+
+    class NomenclatureType {
+        <<enumeration>>
+        RAW_MATERIAL
+        PRODUCT
+        SEMI_FINISHED
+        DISH
+        PACKAGING
     }
 
     class NomenclatureGroupModel
@@ -77,6 +89,7 @@ classDiagram
 
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
+    NomenclatureModel --> NomenclatureType : type
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
@@ -143,7 +156,7 @@ classDiagram
     BaseEntity ..> ArgumentsException : id
     NamedEntity ..> CommonValidator : name
     RangeModel ..> CommonValidator : factor, base
-    NomenclatureModel ..> CommonValidator : name, full_name, group, range
+    NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
     OrganizationModel ..> InnValidator : inn
     SettingsModel ..> CommonValidator : organization, boss_name, account_name, is_first_start

@@ -76,3 +76,12 @@ class RangeModel(NamedEntity):
     def is_base(self) -> bool:
         """Возвращает True, если единица измерения является базовой."""
         return self._base is self
+
+    @staticmethod
+    def create_kilogramm() -> "RangeModel":
+        """Фабричный метод: создаёт килограмм вместе с его базовой единицей — граммом.
+
+        :return: Единица измерения «Килограмм» с коэффициентом 1000 и базой «Грамм».
+        """
+        gramm = RangeModel("грамм", 1)
+        return RangeModel("килограмм", 1000, gramm)
