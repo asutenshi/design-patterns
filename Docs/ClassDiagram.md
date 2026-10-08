@@ -61,6 +61,21 @@ classDiagram
 
     note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются"
 
+    class RecipeModel {
+        +RESULT_TYPES: frozenset~NomenclatureType~
+        +result: NomenclatureModel
+        +output_quantity: int | float
+        +cooking_time_minutes: int | float
+        +steps: list~str~
+        +ingredients: list~IngredientModel~
+        +gross_weight: float
+        +net_weight: float
+        +add_ingredient(ingredient) None
+        +remove_ingredient(nomenclature) None
+    }
+
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result"
+
     class NomenclatureGroupModel
 
     class WarehouseModel
@@ -96,11 +111,14 @@ classDiagram
     NamedEntity <|-- NomenclatureGroupModel
     NamedEntity <|-- WarehouseModel
     NamedEntity <|-- OrganizationModel
+    NamedEntity <|-- RecipeModel
 
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     NomenclatureModel --> NomenclatureType : type
     IngredientModel --> NomenclatureModel : nomenclature
+    RecipeModel --> NomenclatureModel : result
+    RecipeModel "1" *-- "*" IngredientModel : ingredients
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
@@ -157,6 +175,7 @@ classDiagram
     class RangeModel
     class NomenclatureModel
     class IngredientModel
+    class RecipeModel
     class OrganizationModel
     class SettingsModel
 
@@ -171,6 +190,8 @@ classDiagram
     RangeModel ..> CommonValidator : factor, base
     NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
     IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio
+    RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, ingredient, nomenclature
+    RecipeModel ..> ArgumentsException : тип результата, шаги, результат как ингредиент
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
     OrganizationModel ..> InnValidator : inn
     SettingsModel ..> CommonValidator : organization, boss_name, account_name, is_first_start
@@ -312,9 +333,10 @@ classDiagram
         -_key: Callable~T, Hashable~
         -_items: dict~Hashable, T~
         +add(item) None
+        +remove(key) None
     }
 
-    note for UniqueCollection "Уникальность по ключу name.casefold(), регистр не учитывается. Поддерживает итерацию и len()"
+    note for UniqueCollection "Ключ уникальности задаёт функция: в StorageManager это name.casefold() (регистр не учитывается), в RecipeModel — id номенклатуры. add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
 
     class SettingsManager {
         +settings: SettingsModel
@@ -345,6 +367,6 @@ classDiagram
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     RangeModel --> RangeModel : base
-    UniqueCollection ..> ArgumentsException : бросает при дубликате
+    UniqueCollection ..> ArgumentsException : бросает при дубликате и удалении отсутствующего ключа
     StorageManager ..> OperationException : бросает
 ```

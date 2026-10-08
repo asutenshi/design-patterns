@@ -36,6 +36,20 @@ class UniqueCollection[T]:
 
         self._items[item_key] = item
 
+    def remove(self, key: Hashable) -> None:
+        """Удаляет из коллекции элемент по его ключу.
+
+        Принимает именно ключ, а не элемент: вызывающему коду часто известен только ключ
+        (например, идентификатор номенклатуры), а самого элемента у него нет.
+
+        :param key: Ключ удаляемого элемента, то есть то, что возвращает функция ключа коллекции.
+        :raises ArgumentsException: Если элемента с таким ключом нет в коллекции.
+        """
+        if key not in self._items:
+            raise ArgumentsException("key", f"Элемента с ключом {key!r} нет в коллекции")
+
+        del self._items[key]
+
     def __iter__(self) -> Iterator[T]:
         """Возвращает итератор по элементам в порядке добавления."""
         return iter(self._items.values())
