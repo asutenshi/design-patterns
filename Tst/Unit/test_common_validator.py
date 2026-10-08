@@ -108,6 +108,28 @@ def test_validate_positive_number_invalid_value_raises(value):
 
 
 # Подготовка
+@pytest.mark.parametrize("value", [0, 0.0, 0.35, 0.999, 1e-9])
+def test_validate_fraction_valid_value_returned(value):
+    """Числа от 0 включительно до 1 не включая возвращаются без изменений."""
+    # Действие
+    result = CommonValidator.validate_fraction(value, "loss_ratio")
+
+    # Проверка
+    assert result == value
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "value", [-0.1, -1, 1, 1.0, 1.5, float("nan"), float("inf"), -float("inf"), True, False, None, "0.1", [0.1]]
+)
+def test_validate_fraction_invalid_value_raises(value):
+    """Числа вне промежутка [0, 1), нечисловые значения, bool, NaN и бесконечность вызывают ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_fraction(value, "loss_ratio")
+
+
+# Подготовка
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -212,6 +234,8 @@ def test_validate_instance_error_contains_field_and_message():
         lambda: CommonValidator.validate_positive_number("1", "my_field"),
         lambda: CommonValidator.validate_positive_number(float("nan"), "my_field"),
         lambda: CommonValidator.validate_positive_number(0, "my_field"),
+        lambda: CommonValidator.validate_fraction("0.1", "my_field"),
+        lambda: CommonValidator.validate_fraction(1, "my_field"),
         lambda: CommonValidator.validate_digits("12a", "my_field", (3,)),
         lambda: CommonValidator.validate_digits("12", "my_field", (3,)),
     ],
@@ -222,6 +246,8 @@ def test_validate_instance_error_contains_field_and_message():
         "number_not_number",
         "number_nan",
         "number_zero",
+        "fraction_not_number",
+        "fraction_one",
         "digits_not_digits",
         "digits_wrong_length",
     ],

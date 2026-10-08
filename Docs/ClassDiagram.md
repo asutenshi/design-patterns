@@ -51,6 +51,16 @@ classDiagram
         PACKAGING
     }
 
+    class IngredientModel {
+        +nomenclature: NomenclatureModel
+        +quantity: int | float
+        +loss_ratio: int | float
+        +gross_weight: float
+        +net_weight: float
+    }
+
+    note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются"
+
     class NomenclatureGroupModel
 
     class WarehouseModel
@@ -90,6 +100,7 @@ classDiagram
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     NomenclatureModel --> NomenclatureType : type
+    IngredientModel --> NomenclatureModel : nomenclature
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
@@ -108,6 +119,7 @@ classDiagram
     class CommonValidator {
         +validate_string(value, field, max_length)$ str
         +validate_positive_number(value, field)$ int | float
+        +validate_fraction(value, field)$ int | float
         +validate_digits(value, field, lengths)$ str
         +validate_instance(value, expected_type, field, message)$ T
     }
@@ -144,6 +156,7 @@ classDiagram
 
     class RangeModel
     class NomenclatureModel
+    class IngredientModel
     class OrganizationModel
     class SettingsModel
 
@@ -157,6 +170,7 @@ classDiagram
     NamedEntity ..> CommonValidator : name
     RangeModel ..> CommonValidator : factor, base
     NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
+    IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
     OrganizationModel ..> InnValidator : inn
     SettingsModel ..> CommonValidator : organization, boss_name, account_name, is_first_start
