@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from pathlib import Path
 from typing import ClassVar
 
@@ -43,3 +44,26 @@ class Common:
         if not name:
             return Common.find_project_root() / default_name
         return Path(name).expanduser().resolve()
+
+    @staticmethod
+    def get_fields(source: object, exclude: Collection[str] = ()) -> list[str]:
+        """Возвращает имена полей класса: публичных свойств, включая унаследованные.
+
+        Работает с классом, а не с экземпляром, поэтому геттеры не вызываются
+        и метод безопасен для объектов в неготовом состоянии. Константы, методы и
+        приватные атрибуты не входят. Порядок: сначала поля базовых классов,
+        затем производных, внутри класса — в порядке объявления. Переопределённое
+        свойство (например, name в NomenclatureModel) остаётся на месте первого объявления.
+
+        :param source: Класс или его экземпляр.
+        :param exclude: Имена полей, которые нужно пропустить (например, служебный id).
+        :return: Имена полей без повторов.
+        """
+        cls = source if isinstance(source, type) else type(source)
+        # dict служит упорядоченным множеством: порядок вставки сохраняется, дубли отсекаются
+        fields: dict[str, None] = {}
+        for klass in reversed(cls.__mro__):
+            for name, member in vars(klass).items():  # pyright: ignore[reportAny]
+                if not name.startswith("_") and name not in exclude and isinstance(member, property):
+                    fields[name] = None
+        return list(fields)

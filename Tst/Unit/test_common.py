@@ -1,8 +1,64 @@
 from pathlib import Path
+from typing import override
 
 import pytest
 from Src.Core.common import Common
 from Src.Core.exception import OperationException
+from Src.Models.settings_model import SettingsModel
+
+
+class FieldsParentStub:
+    """Родитель-заглушка: два свойства, константа, метод и приватное свойство."""
+
+    LIMIT: int = 10
+
+    @property
+    def alpha(self) -> int:
+        """Первое свойство родителя."""
+        return 1
+
+    @property
+    def beta(self) -> int:
+        """Второе свойство родителя."""
+        return 2
+
+    @property
+    def _hidden(self) -> int:
+        """Приватное свойство, не поле."""
+        return 3
+
+    def action(self) -> None:
+        """Метод, не поле."""
+
+
+class FieldsChildStub(FieldsParentStub):
+    """Наследник-заглушка: переопределяет alpha и добавляет gamma."""
+
+    @property
+    @override
+    def alpha(self) -> int:
+        """Переопределённое свойство родителя."""
+        return 10
+
+    @property
+    def gamma(self) -> int:
+        """Собственное свойство наследника."""
+        return 4
+
+
+class FailingGetterStub:
+    """Заглушка, у которой геттер падает: показывает, что get_fields его не вызывает."""
+
+    @property
+    def broken(self) -> int:
+        """Свойство, чтение которого всегда бросает исключение."""
+        raise RuntimeError("геттер не должен вызываться")
+
+
+class EmptyStub:
+    """Заглушка без свойств."""
+
+    LIMIT: int = 1
 
 
 def test_find_project_root_default_start_returns_dir_with_pyproject():
@@ -148,3 +204,108 @@ def test_resolve_path_name_with_spaces_around_stripped(tmp_path: Path):
 
     # Проверка
     assert path == file_path.resolve()
+
+
+def test_get_fields_class_returns_public_property_names():
+    """Для класса возвращаются имена публичных свойств."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(FieldsParentStub)
+
+    # Проверка
+    assert fields == ["alpha", "beta"]
+
+
+def test_get_fields_instance_returns_same_as_class():
+    """Для экземпляра результат тот же, что для его класса."""
+    # Подготовка
+    instance = FieldsChildStub()
+
+    # Действие
+    from_instance = Common.get_fields(instance)
+    from_class = Common.get_fields(FieldsChildStub)
+
+    # Проверка
+    assert from_instance == from_class
+
+
+def test_get_fields_constants_methods_private_excluded():
+    """Константы, методы и приватные свойства в поля не попадают."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(FieldsParentStub)
+
+    # Проверка
+    assert "LIMIT" not in fields
+    assert "action" not in fields
+    assert "_hidden" not in fields
+
+
+def test_get_fields_inherited_properties_listed_before_own():
+    """Поля базового класса идут раньше полей наследника."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(FieldsChildStub)
+
+    # Проверка
+    assert fields == ["alpha", "beta", "gamma"]
+
+
+def test_get_fields_overridden_property_listed_once_at_base_position():
+    """Переопределённое свойство не дублируется и остаётся на месте первого объявления."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(FieldsChildStub)
+
+    # Проверка
+    assert fields.count("alpha") == 1
+    assert fields.index("alpha") == 0
+
+
+def test_get_fields_exclude_names_removed():
+    """Имена из exclude в результат не попадают."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(FieldsChildStub, exclude=("beta", "gamma"))
+
+    # Проверка
+    assert fields == ["alpha"]
+
+
+def test_get_fields_instance_with_failing_getter_does_not_call_it():
+    """Геттеры не вызываются, поэтому падающее свойство не мешает получить список."""
+    # Подготовка
+    instance = FailingGetterStub()
+
+    # Действие
+    fields = Common.get_fields(instance)
+
+    # Проверка
+    assert fields == ["broken"]
+
+
+def test_get_fields_class_without_properties_returns_empty_list():
+    """У класса без свойств список полей пуст."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(EmptyStub)
+
+    # Проверка
+    assert fields == []
+
+
+def test_get_fields_settings_model_returns_expected_fields():
+    """Контракт: поля настроек перечислены в порядке объявления, id идёт первым."""
+    # Подготовка
+
+    # Действие
+    fields = Common.get_fields(SettingsModel)
+
+    # Проверка
+    assert fields == ["id", "organization", "boss_name", "account_name", "is_first_start"]

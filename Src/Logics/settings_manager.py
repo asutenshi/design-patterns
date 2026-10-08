@@ -62,6 +62,27 @@ class SettingsManager(AbstractFileManager):
             raise OperationException(f"Файл настроек {path} должен содержать JSON-объект")
         return data
 
+    @staticmethod
+    def _values(model: type, data: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
+        """Берёт из data значения полей модели по совпадению имён.
+
+        Служебный id пропускается: его нет в файле, а конструкторы моделей его не принимают.
+        Вложенные объекты и значения, требующие преобразования (перечисления), вызывающий
+        подменяет сам.
+
+        :param model: Класс модели, чьи поля нужны.
+        :param data: Данные из файла.
+        :param optional: Поля, которых в data может не быть: модель подставит значение по умолчанию.
+        :return: Значения полей модели по именам.
+        :raises KeyError: Если в data нет обязательного поля, в ошибке его имя.
+        :raises TypeError: Если data не словарь.
+        """
+        return {
+            field: data[field]
+            for field in Common.get_fields(model, exclude=("id",))
+            if field in data or field not in optional
+        }
+
     @override
     def convert(self) -> None:
         """Собирает SettingsModel из прочитанных данных.
@@ -73,20 +94,13 @@ class SettingsManager(AbstractFileManager):
             неверный тип или не проходит проверку модели.
         """
         try:
-            org = self._data["organization"]
-            organization = OrganizationModel(
-                name=org["name"],
-                inn=org["inn"],
-                bic=org["bic"],
-                account=org["account"],
-                ownership_form=OwnershipForm(org["ownership_form"]),
-            )
-            self._settings = SettingsModel(
-                organization=organization,
-                boss_name=self._data["boss_name"],
-                account_name=self._data["account_name"],
-                is_first_start=self._data.get("is_first_start", True),
-            )
+            values = self._values(OrganizationModel, self._data["organization"])
+            values["ownership_form"] = OwnershipForm(values["ownership_form"])
+            organization = OrganizationModel(**values)
+
+            values = self._values(SettingsModel, self._data, optional=("is_first_start",))
+            values["organization"] = organization
+            self._settings = SettingsModel(**values)
         except KeyError as ex:
             raise OperationException(f"В настройках нет обязательного поля {ex}") from ex
         except (TypeError, ValueError, ArgumentsException) as ex:

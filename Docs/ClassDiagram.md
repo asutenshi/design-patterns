@@ -192,9 +192,10 @@ classDiagram
         -_ROOT_MARKER$: str
         +find_project_root(start)$ Path
         +resolve_path(file_name, default_name)$ Path
+        +get_fields(source, exclude)$ list~str~
     }
 
-    note for Common "Корень проекта ищется вверх от расположения модуля по pyproject.toml, а не от текущего каталога"
+    note for Common "Корень проекта ищется вверх от расположения модуля по pyproject.toml, а не от текущего каталога. get_fields работает с классом: геттеры не вызываются"
 
     class SettingsManager {
         -_instance$: SettingsManager | None
@@ -204,6 +205,7 @@ classDiagram
         +__new__() Self
         #_initialize() None
         #_read(file_name) dict
+        -_values(model, data, optional)$ dict
         +convert() None
     }
 
@@ -228,7 +230,7 @@ classDiagram
     SettingsManager --> SettingsModel : settings
     SettingsModel --> OrganizationModel : organization
     OrganizationModel --> OwnershipForm : ownership_form
-    SettingsManager ..> Common : путь к файлу
+    SettingsManager ..> Common : путь к файлу, поля моделей
     Common ..> OperationException : бросает
     SettingsManager ..> OrganizationModel : создаёт в convert()
     SettingsManager ..> OwnershipForm : значение из файла
