@@ -339,15 +339,21 @@ def test_load_first_start_recipe_results_are_stored_nomenclature(first_start_sto
 
 
 def test_load_first_start_every_semi_finished_ingredient_has_recipe(first_start_storage: StorageManager):
-    """У каждого полуфабриката в составе любой карты есть собственная карта."""
+    """У каждого полуфабриката в составе любой карты есть собственная карта и ингредиент на неё ссылается."""
     # Подготовка
-    ingredients = [ingredient for recipe in first_start_storage.recipes for ingredient in recipe.ingredients]
-    semi_finished = [i.nomenclature for i in ingredients if i.nomenclature.type is NomenclatureType.SEMI_FINISHED]
+    semi_ingredients = [
+        ingredient
+        for recipe in first_start_storage.recipes
+        for ingredient in recipe.ingredients
+        if ingredient.nomenclature.type is NomenclatureType.SEMI_FINISHED
+    ]
 
     # Действие и проверка
-    assert len(semi_finished) > 0
-    for nomenclature in semi_finished:
-        assert first_start_storage.find_recipe(nomenclature) is not None
+    assert len(semi_ingredients) > 0
+    for ingredient in semi_ingredients:
+        recipe = first_start_storage.find_recipe(ingredient.nomenclature)
+        assert recipe is not None
+        assert ingredient.recipe is recipe
 
 
 def test_load_first_start_recipe_results_have_allowed_types(first_start_storage: StorageManager):

@@ -5,16 +5,21 @@ from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
+from Src.Models.recipe_model import RecipeModel
 
 
-def make_nomenclature(grams_per_base_unit: float = 1, range: RangeModel | None = None) -> NomenclatureModel:
-    """Создаёт номенклатуру с корректными данными и заданным весом базовой единицы."""
+def make_nomenclature(
+    grams_per_base_unit: float = 1,
+    range: RangeModel | None = None,
+    type: NomenclatureType = NomenclatureType.RAW_MATERIAL,
+) -> NomenclatureModel:
+    """Создаёт номенклатуру с корректными данными, заданным типом и весом базовой единицы."""
     return NomenclatureModel(
         "Картофель",
         "Картофель свежий",
         NomenclatureGroupModel("Овощи"),
         range if range is not None else RangeModel("грамм", 1),
-        NomenclatureType.RAW_MATERIAL,
+        type,
         grams_per_base_unit,
     )
 
@@ -271,3 +276,113 @@ def test_nomenclature_key_different_nomenclatures_keys_differ():
 
     # Действие и проверка
     assert first.nomenclature_key() != second.nomenclature_key()
+
+
+def test_init_with_recipe_sets_field():
+    """Ингредиент сохраняет переданную технологическую карту."""
+    # Подготовка
+    nomenclature = make_nomenclature(type=NomenclatureType.SEMI_FINISHED)
+    recipe = RecipeModel("Карта", nomenclature, 100, 10, ["Шаг"])
+
+    # Действие
+    ingredient = IngredientModel(nomenclature, 50, recipe=recipe)
+
+    # Проверка
+    assert ingredient.recipe is recipe
+
+
+def test_init_without_recipe_recipe_is_none():
+    """Без переданной карты ингредиент не ссылается на карту: вес считается из номенклатуры."""
+    # Действие
+    ingredient = make_ingredient()
+
+    # Проверка
+    assert ingredient.recipe is None
+
+
+def test_recipe_setter_not_allowed_raises():
+    """Карту ингредиента нельзя заменить: иначе в обход RecipeModel.add_ingredient можно замкнуть цикл."""
+    # Подготовка
+    nomenclature = make_nomenclature(type=NomenclatureType.SEMI_FINISHED)
+    recipe = RecipeModel("Карта", nomenclature, 100, 10, ["Шаг"])
+    ingredient = make_ingredient(nomenclature=nomenclature)
+
+    # Действие и проверка
+    with pytest.raises(AttributeError):
+        ingredient.recipe = recipe  # pyright: ignore[reportAttributeAccessIssue]
+    assert ingredient.recipe is None
+
+
+def test_init_with_invalid_recipe_type_raises():
+    """Объект, не реализующий протокол карты, вызывает ArgumentsException."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        IngredientModel(nomenclature, 50, recipe="не карта")  # pyright: ignore[reportArgumentType]
+
+
+def test_init_with_mismatched_recipe_result_raises():
+    """Если результат карты не совпадает с номенклатурой ингредиента, бросается ArgumentsException."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+    other_nomenclature = NomenclatureModel(
+        "Другая",
+        "Другая полная",
+        NomenclatureGroupModel("Группа"),
+        RangeModel("грамм", 1),
+        NomenclatureType.SEMI_FINISHED,
+        1,
+    )
+    recipe = RecipeModel("Карта", other_nomenclature, 100, 10, ["Шаг"])
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        IngredientModel(nomenclature, 50, recipe=recipe)
+
+
+def test_gross_weight_with_recipe_calculated_recursively_proportionally():
+    """Вес брутто ингредиента с рецептом вычисляется пропорционально выходу карты: ratio * recipe.gross_weight."""
+    # Подготовка
+    semi_result = NomenclatureModel(
+        "П/ф",
+        "П/ф",
+        NomenclatureGroupModel("Группа"),
+        RangeModel("грамм", 1),
+        NomenclatureType.SEMI_FINISHED,
+        1,
+    )
+    raw = make_nomenclature(grams_per_base_unit=1)
+    raw_ing = IngredientModel(raw, quantity=400)
+    recipe = RecipeModel("Карта п/ф", semi_result, 200, 30, ["Шаг"], [raw_ing])
+    ingredient = IngredientModel(semi_result, quantity=50, recipe=recipe)
+
+    # Действие
+    gross_weight = ingredient.gross_weight
+
+    # Проверка
+    assert gross_weight == pytest.approx(100)
+
+
+def test_net_weight_with_recipe_calculated_recursively_proportionally_with_loss():
+    """Вес нетто ингредиента с рецептом вычисляется по net_weight карты, пропорции и потерям строки."""
+    # Подготовка
+    semi_result = NomenclatureModel(
+        "П/ф",
+        "П/ф",
+        NomenclatureGroupModel("Группа"),
+        RangeModel("грамм", 1),
+        NomenclatureType.SEMI_FINISHED,
+        1,
+    )
+    raw = make_nomenclature(grams_per_base_unit=1)
+    raw_ing = IngredientModel(raw, quantity=400, loss_ratio=0.5)
+    recipe = RecipeModel("Карта п/ф", semi_result, 200, 30, ["Шаг"], [raw_ing])
+    ingredient = IngredientModel(semi_result, quantity=100, loss_ratio=0.1, recipe=recipe)
+
+    # Действие
+    net_weight = ingredient.net_weight
+
+    # Проверка
+    assert net_weight == pytest.approx(90)

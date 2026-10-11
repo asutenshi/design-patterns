@@ -64,12 +64,13 @@ classDiagram
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
+        +recipe: RecipeProtocol | None
         +gross_weight: float
         +net_weight: float
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются"
+    note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются рекурсивно (паттерн Компоновщик), если задан recipe. recipe, как и nomenclature, только для чтения: цикл проверяется при добавлении в карту"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -86,16 +87,18 @@ classDiagram
         +ingredients: list~IngredientModel~
         +gross_weight: float
         +net_weight: float
+        +gross_weight_for(output_quantity) float
+        +net_weight_for(output_quantity) float
         +add_ingredient(ingredient) None
         +remove_ingredient(nomenclature) None
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
         +create_beet_fry(catalog)$ RecipeModel
-        +create_borscht(catalog)$ RecipeModel
+        +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result. Фабрики карт принимают NomenclatureCatalog и бросают ArgumentsException, если нужной позиции в нём нет"
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются рекурсивно с учётом вложенных карт. gross_weight_for и net_weight_for масштабируют веса под заданный выход. Фабрики карт принимают NomenclatureCatalog. create_borscht сам создаёт не переданные карты полуфабрикатов, ошибки не скрывает"
 
     class NomenclatureGroupModel {
         +create_meat()$ NomenclatureGroupModel
@@ -149,6 +152,7 @@ classDiagram
     NomenclatureModel --> RangeModel : range
     NomenclatureModel --> NomenclatureType : type
     IngredientModel --> NomenclatureModel : nomenclature
+    IngredientModel --> RecipeModel : recipe
     RecipeModel --> NomenclatureModel : result
     RecipeModel "1" *-- "*" IngredientModel : ingredients
     NomenclatureCatalog o-- NomenclatureModel : items
@@ -194,12 +198,13 @@ classDiagram
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
+        +recipe: RecipeProtocol | None
         +gross_weight: float
         +net_weight: float
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава карты, без id. loss_ratio от 0 включительно до 1 не включая. Упаковка — обычный ингредиент без потерь"
+    note for IngredientModel "Строка состава карты, без id. loss_ratio от 0 включительно до 1 не включая. recipe (только для чтения) задаёт карту для рекурсивного расчёта весов. Упаковка — обычный ингредиент без потерь"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -216,16 +221,18 @@ classDiagram
         +ingredients: list~IngredientModel~
         +gross_weight: float
         +net_weight: float
+        +gross_weight_for(output_quantity) float
+        +net_weight_for(output_quantity) float
         +add_ingredient(ingredient) None
         +remove_ingredient(nomenclature) None
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
         +create_beet_fry(catalog)$ RecipeModel
-        +create_borscht(catalog)$ RecipeModel
+        +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто, нетто и выход (output_quantity * grams_per_base_unit результата) не сверяются друг с другом. Результат не может быть ингредиентом своей карты"
+    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто и нетто рассчитываются рекурсивно. gross_weight_for и net_weight_for масштабируют веса под заданный объём. Результат не может быть ингредиентом своей карты"
 
     class UniqueCollection~T~ {
         +add(item) None
@@ -247,6 +254,7 @@ classDiagram
 
     NomenclatureModel --> NomenclatureType : type
     IngredientModel --> NomenclatureModel : nomenclature
+    IngredientModel --> RecipeModel : recipe
     RecipeModel --> NomenclatureModel : result
     RecipeModel "1" *-- "*" IngredientModel : ingredients
     NomenclatureCatalog o-- NomenclatureModel : items

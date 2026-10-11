@@ -7,7 +7,7 @@ from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Core.unique_collection import UniqueCollection
-from Src.Models.ingredient_model import IngredientModel
+from Src.Models.ingredient_model import IngredientModel, RecipeProtocol
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_model import NomenclatureModel
 
@@ -20,22 +20,17 @@ class RecipeModel(NamedEntity):
     (п. 2.5 ТЗ): полуфабрикат входит в другую карту как обычный ингредиент-номенклатура,
     а его собственную карту находят по результату (``result``), см. слой Logics.
 
-    Веса брутто и нетто — суммы по ингредиентам. Они не хранятся, а вычисляются при каждом
-    обращении, поэтому добавление, удаление ингредиента или изменение его количества и потерь
-    сразу отражаются в расчёте. Вес вложенного полуфабриката берётся по его количеству в строке,
-    а не рекурсивно по его карте.
+    Веса брутто и нетто вычисляются динамически при каждом обращении (паттерн «Компоновщик» / Composite):
+    если ингредиент ссылается на технологическую карту полуфабриката или блюда, его вес
+    рассчитывается рекурсивно через вложенную карту с учётом доли выхода (ratio = quantity / nested.output_quantity).
+    Если карта не привязана (сырьё, упаковка), вес рассчитывается из количества и веса базовой единицы.
 
-    Брутто, нетто и выход — три разные величины, и друг с другом они не сверяются:
-
-    - брутто — исходный вес учтённых ингредиентов;
-    - нетто — вес этих ингредиентов после потерь, то есть то, что от них осталось в продукте;
-    - вес выхода — ``output_quantity * result.grams_per_base_unit``, сколько продукта получилось.
-
-    Они расходятся по разным причинам. Вода «вне учёта» (например, 3500 мл при варке бульона) не является
-    ингредиентом: на складе её нет, и списывать её нельзя. Упаковка входит в состав и в нетто, но не в вес
-    блюда. Поэтому нетто нельзя проверять на равенство выходу. Расчёты на единицу продукции (масштабирование
-    состава под нужное количество, стоимость, калорийность на 100 г) идут по выходу, а не по нетто.
-    Нетто — справочный вес учтённых ингредиентов.
+    Брутто, нетто и выход:
+    - брутто — суммарный вес исходного сырья, необходимого для приготовления (с учётом сырья во вложенных картах);
+    - нетто — суммарный вес ингредиентов после всех стадий обработки и потерь;
+    - выход (output_quantity) — плановый объём или масса готового продукта по карте.
+    Для масштабирования карты под произвольный выход (например, порция 200 г при базовой карте на 400 г)
+    предусмотрены методы gross_weight_for и net_weight_for.
 
     Проектные решения:
 
@@ -173,26 +168,71 @@ class RecipeModel(NamedEntity):
 
     @property
     def gross_weight(self) -> float:
-        """Возвращает вес брутто карты в граммах: сумму брутто всех ингредиентов."""
+        """Возвращает вес брутто карты в граммах: сумму брутто всех ингредиентов (с учётом вложенных карт)."""
         return sum((ingredient.gross_weight for ingredient in self._ingredients), 0.0)
 
     @property
     def net_weight(self) -> float:
-        """Возвращает вес нетто карты в граммах: сумму нетто всех ингредиентов."""
+        """Возвращает вес нетто карты в граммах: сумму нетто всех ингредиентов (с учётом вложенных карт)."""
         return sum((ingredient.net_weight for ingredient in self._ingredients), 0.0)
+
+    def gross_weight_for(self, output_quantity: float) -> float:
+        """Возвращает вес брутто карты в граммах, масштабированный под указанный выход.
+
+        Используется для расчёта веса сырья при изменении размера порции (например,
+        порция 200 г при базовой карте на 400 г).
+
+        :param output_quantity: Желаемый выход в базовой единице результата, число больше нуля.
+        :return: Масштабированный вес брутто в граммах.
+        :raises ArgumentsException: Если значение не число (в том числе bool),
+            не конечное или не больше нуля.
+        """
+        output_quantity = CommonValidator.validate_positive_number(output_quantity, "output_quantity")
+        ratio = output_quantity / self._output_quantity
+        return self.gross_weight * ratio
+
+    def net_weight_for(self, output_quantity: float) -> float:
+        """Возвращает вес нетто карты в граммах, масштабированный под указанный выход.
+
+        Используется для расчёта веса нетто при изменении размера порции (например,
+        порция 200 г при базовой карте на 400 г).
+
+        :param output_quantity: Желаемый выход в базовой единице результата, число больше нуля.
+        :return: Масштабированный вес нетто в граммах.
+        :raises ArgumentsException: Если значение не число (в том числе bool),
+            не конечное или не больше нуля.
+        """
+        output_quantity = CommonValidator.validate_positive_number(output_quantity, "output_quantity")
+        ratio = output_quantity / self._output_quantity
+        return self.net_weight * ratio
 
     def add_ingredient(self, ingredient: IngredientModel) -> None:
         """Добавляет ингредиент в состав карты.
 
         :param ingredient: Добавляемый ингредиент.
         :raises ArgumentsException: Если значение не ингредиент, номенклатура ингредиента
-            совпадает с результатом карты или уже есть в составе.
+            совпадает с результатом карты, уже есть в составе или вложенная карта
+            образует цикл с текущей.
         """
         ingredient = CommonValidator.validate_instance(
             ingredient, IngredientModel, "ingredient", "Ожидается ингредиент"
         )
         if ingredient.nomenclature == self._result:
             raise ArgumentsException("ingredient", "Результат карты не может быть ингредиентом этой же карты")
+
+        if ingredient.recipe is not None:
+            visited: set[uuid.UUID] = set()
+            stack = [ingredient.recipe]
+            while stack:
+                curr = stack.pop()
+                if curr is self or curr.result == self._result:
+                    raise ArgumentsException("ingredient", "Вложенная карта образует цикл с текущей картой")
+                if curr.id in visited:
+                    continue
+                visited.add(curr.id)
+                for item in curr.ingredients:
+                    if item.recipe is not None:
+                        stack.append(item.recipe)
 
         self._ingredients.add(ingredient)
 
@@ -305,17 +345,36 @@ class RecipeModel(NamedEntity):
         )
 
     @staticmethod
-    def create_borscht(catalog: NomenclatureCatalog) -> "RecipeModel":
+    def create_borscht(
+        catalog: NomenclatureCatalog,
+        bouillon: "RecipeProtocol | None" = None,
+        boiled_beef: "RecipeProtocol | None" = None,
+        beet_fry: "RecipeProtocol | None" = None,
+    ) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Борщ с говядиной» (Recipes.md, карта 4).
 
-        Состав включает три полуфабриката и упаковку. Карты полуфабрикатов здесь не нужны:
-        ингредиент ссылается на номенклатуру, а карту находят по результату в слое Logics.
+        Состав включает три полуфабриката (бульон, отварная говядина, зажарка) и упаковку.
+        Каждый полуфабрикат входит в состав вместе со своей картой (паттерн «Компоновщик»),
+        поэтому брутто и нетто считаются рекурсивно. Карту, которую не передали, фабрика создаёт
+        из справочника; если это не получается, ошибка не скрывается. Чтобы борщ ссылался на карты,
+        лежащие в хранилище, а не на их копии, передавайте их явно.
 
-        :param catalog: Справочник номенклатуры. Нужны результат карты и все её ингредиенты.
+        :param catalog: Справочник номенклатуры. Нужны результат карты, все её ингредиенты
+            и всё, что нужно для создания не переданных карт полуфабрикатов.
+        :param bouillon: Карта бульона. Если None, создаётся из справочника.
+        :param boiled_beef: Карта отварной говядины. Если None, создаётся из справочника.
+        :param beet_fry: Карта зажарки. Если None, создаётся из справочника.
         :return: Карта блюда.
         :raises ArgumentsException: Если в справочнике нет нужной номенклатуры.
         """
         name = "Борщ с говядиной"
+        if bouillon is None:
+            bouillon = RecipeModel.create_beef_bouillon(catalog)
+        if boiled_beef is None:
+            boiled_beef = RecipeModel.create_boiled_beef(catalog)
+        if beet_fry is None:
+            beet_fry = RecipeModel.create_beet_fry(catalog)
+
         return RecipeModel(
             name,
             catalog.get(name),
@@ -329,9 +388,9 @@ class RecipeModel(NamedEntity):
                 + "сметану и укроп положить сверху.",
             ],
             [
-                IngredientModel(catalog.get("Бульон костный говяжий"), 250, 0.1),
-                IngredientModel(catalog.get("Говядина отварная"), 60, 0.05),
-                IngredientModel(catalog.get("Зажарка свекольная"), 70, 0.05),
+                IngredientModel(catalog.get("Бульон костный говяжий"), 250, 0.1, bouillon),
+                IngredientModel(catalog.get("Говядина отварная"), 60, 0.05, boiled_beef),
+                IngredientModel(catalog.get("Зажарка свекольная"), 70, 0.05, beet_fry),
                 IngredientModel(catalog.get("Картофель"), 80, 0.15),
                 IngredientModel(catalog.get("Капуста белокочанная"), 70, 0.15),
                 IngredientModel(catalog.get("Сметана 20%"), 20),

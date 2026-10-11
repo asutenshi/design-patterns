@@ -140,12 +140,11 @@ class StorageManager(AbstractManager):
             self._warehouses.add(warehouse)
 
         catalog = NomenclatureCatalog(self._nomenclatures)
-        for recipe in (
-            RecipeModel.create_beef_bouillon(catalog),
-            RecipeModel.create_boiled_beef(catalog),
-            RecipeModel.create_beet_fry(catalog),
-            RecipeModel.create_borscht(catalog),
-        ):
+        bouillon = RecipeModel.create_beef_bouillon(catalog)
+        boiled_beef = RecipeModel.create_boiled_beef(catalog)
+        beet_fry = RecipeModel.create_beet_fry(catalog)
+        borscht = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
+        for recipe in (bouillon, boiled_beef, beet_fry, borscht):
             self._add_recipe(recipe)
 
     def _create_nomenclatures(self) -> list[NomenclatureModel]:

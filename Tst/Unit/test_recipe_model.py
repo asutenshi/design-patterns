@@ -495,6 +495,62 @@ def test_result_key_same_result_keys_equal():
     assert first.result_key() == second.result_key()
 
 
+def test_gross_weight_for_scales_proportionally():
+    """Масштабирование брутто: для выхода 200 г при базовом 400 г вес уменьшается вдвое."""
+    # Подготовка
+    raw = make_ingredient("Мясо", quantity=400)
+    recipe = make_recipe(output_quantity=400, ingredients=[raw])
+
+    # Действие
+    scaled = recipe.gross_weight_for(200)
+
+    # Проверка
+    assert scaled == pytest.approx(200)
+
+
+def test_net_weight_for_scales_proportionally():
+    """Масштабирование нетто: для выхода 600 г при базовом 400 г вес увеличивается в 1,5 раза."""
+    # Подготовка
+    raw = make_ingredient("Мясо", quantity=400, loss_ratio=0.25)
+    recipe = make_recipe(output_quantity=400, ingredients=[raw])
+
+    # Действие
+    scaled = recipe.net_weight_for(600)
+
+    # Проверка
+    assert scaled == pytest.approx(450)
+
+
+# Подготовка
+@pytest.mark.parametrize("method_name", ["gross_weight_for", "net_weight_for"])
+@pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), True, None, "200"])
+def test_weights_for_invalid_output_raises(method_name, value):
+    """Нулевой, отрицательный, нечисловой, bool, NaN и бесконечный выход вызывает ArgumentsException."""
+    # Подготовка
+    recipe = make_recipe()
+    method = getattr(recipe, method_name)
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        method(value)
+
+
+def test_add_ingredient_cycle_in_nested_recipe_raises():
+    """Добавление ингредиента, чья вложенная карта ссылается на текущую карту, бросает ArgumentsException."""
+    # Подготовка
+    soup = make_nomenclature("Суп", NomenclatureType.DISH)
+    broth = make_nomenclature("Бульон", NomenclatureType.SEMI_FINISHED)
+    soup_recipe = RecipeModel("Суп", soup, 500, 30, ["Шаг"])
+    broth_recipe = RecipeModel("Бульон", broth, 1000, 60, ["Шаг"])
+
+    # Добавляем суп во вложенную карту бульона
+    broth_recipe.add_ingredient(IngredientModel(soup, 200, recipe=soup_recipe))
+
+    # Действие и проверка: теперь попытка добавить бульон в суп замыкает цикл
+    with pytest.raises(ArgumentsException):
+        soup_recipe.add_ingredient(IngredientModel(broth, 300, recipe=broth_recipe))
+
+
 # Номенклатура, отличающаяся от «сырья весом 1 г на базовую единицу»: тип и вес базовой единицы
 SPECIAL_NOMENCLATURE = {
     "Бульон костный говяжий": (NomenclatureType.SEMI_FINISHED, 1),
@@ -538,6 +594,8 @@ BORSCHT_NAMES = (
     "Укроп",
     "Контейнер для супа 500 мл",
 )
+# Всё, что нужно борщу вместе со своими полуфабрикатами, без повторов
+ALL_NAMES = tuple(dict.fromkeys(BORSCHT_NAMES + BOUILLON_NAMES + BOILED_BEEF_NAMES + BEET_FRY_NAMES))
 
 
 def make_catalog(*names: str) -> NomenclatureCatalog:
@@ -610,7 +668,7 @@ def test_create_beet_fry_full_catalog_fields_and_weights():
 def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition():
     """Карта борща включает три полуфабриката и упаковку, ссылаясь на объекты справочника; результата в составе нет."""
     # Подготовка
-    catalog = make_catalog(*BORSCHT_NAMES)
+    catalog = make_catalog(*ALL_NAMES)
 
     # Действие
     recipe = RecipeModel.create_borscht(catalog)
@@ -629,21 +687,71 @@ def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition(
     assert NomenclatureType.PACKAGING in [n.type for n in nomenclatures]
 
 
-def test_create_borscht_full_catalog_weights_include_packaging():
-    """Брутто борща 573 г и нетто 519 г включают контейнер (20 г); без него 553 и 499 г, выход блюда 500 г."""
+def test_create_borscht_without_recipes_builds_them_from_catalog():
+    """Не переданные карты полуфабрикатов создаются из справочника, и ингредиенты ссылаются на них."""
     # Подготовка
-    catalog = make_catalog(*BORSCHT_NAMES)
+    catalog = make_catalog(*ALL_NAMES)
 
     # Действие
     recipe = RecipeModel.create_borscht(catalog)
 
     # Проверка
-    assert recipe.gross_weight == pytest.approx(573)
-    assert recipe.net_weight == pytest.approx(519)
+    nested = {i.nomenclature.name: i.recipe for i in recipe.ingredients if i.nomenclature.type.name == "SEMI_FINISHED"}
+    assert set(nested) == {"Бульон костный говяжий", "Говядина отварная", "Зажарка свекольная"}
+    for name, nested_recipe in nested.items():
+        assert nested_recipe is not None
+        assert nested_recipe.result is catalog.get(name)
+
+
+def test_create_borscht_passed_recipes_are_used_as_is():
+    """Переданные карты полуфабрикатов попадают в состав борща без копирования."""
+    # Подготовка
+    catalog = make_catalog(*ALL_NAMES)
+    bouillon = RecipeModel.create_beef_bouillon(catalog)
+    boiled_beef = RecipeModel.create_boiled_beef(catalog)
+    beet_fry = RecipeModel.create_beet_fry(catalog)
+
+    # Действие
+    recipe = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
+
+    # Проверка
+    by_name = {i.nomenclature.name: i.recipe for i in recipe.ingredients}
+    assert by_name["Бульон костный говяжий"] is bouillon
+    assert by_name["Говядина отварная"] is boiled_beef
+    assert by_name["Зажарка свекольная"] is beet_fry
+
+
+def test_create_borscht_full_catalog_weights_include_packaging():
+    """Брутто 577.14 г и нетто 314.31 г считаются рекурсивно и включают контейнер (20 г)."""
+    # Подготовка
+    catalog = make_catalog(*ALL_NAMES)
+
+    # Действие
+    recipe = RecipeModel.create_borscht(catalog)
+
+    # Проверка
+    assert recipe.gross_weight == pytest.approx(577.1375)
+    assert recipe.net_weight == pytest.approx(314.306475)
     recipe.remove_ingredient(catalog.get("Контейнер для супа 500 мл"))
-    assert recipe.gross_weight == pytest.approx(553)
-    assert recipe.net_weight == pytest.approx(499)
+    assert recipe.gross_weight == pytest.approx(557.1375)
+    assert recipe.net_weight == pytest.approx(294.306475)
     assert recipe.output_quantity * recipe.result.grams_per_base_unit == 500
+
+
+def test_create_borscht_with_recipes_calculates_recursive_weights():
+    """С явно переданными картами брутто и нетто борща совпадают с расчётом по картам из справочника."""
+    # Подготовка
+    catalog = make_catalog(*ALL_NAMES)
+    bouillon = RecipeModel.create_beef_bouillon(catalog)
+    boiled_beef = RecipeModel.create_boiled_beef(catalog)
+    beet_fry = RecipeModel.create_beet_fry(catalog)
+
+    # Действие
+    recipe = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
+
+    # Проверка
+    assert recipe.gross_weight == pytest.approx(577.1375)
+    assert recipe.net_weight == pytest.approx(314.306475)
 
 
 # Подготовка
@@ -655,7 +763,7 @@ def test_create_borscht_full_catalog_weights_include_packaging():
             (RecipeModel.create_beef_bouillon, BOUILLON_NAMES),
             (RecipeModel.create_boiled_beef, BOILED_BEEF_NAMES),
             (RecipeModel.create_beet_fry, BEET_FRY_NAMES),
-            (RecipeModel.create_borscht, BORSCHT_NAMES),
+            (RecipeModel.create_borscht, ALL_NAMES),
         )
         for name in names
     ],
@@ -663,8 +771,7 @@ def test_create_borscht_full_catalog_weights_include_packaging():
 def test_create_recipe_missing_nomenclature_raises(factory, missing):
     """Если в справочнике нет результата или любого ингредиента, фабрика бросает ArgumentsException."""
     # Подготовка
-    all_names = {*BOUILLON_NAMES, *BOILED_BEEF_NAMES, *BEET_FRY_NAMES, *BORSCHT_NAMES}
-    catalog = make_catalog(*all_names - {missing})
+    catalog = make_catalog(*(name for name in ALL_NAMES if name != missing))
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
