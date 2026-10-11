@@ -6,21 +6,12 @@ from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
 from Src.Logics.settings_manager import SettingsManager
+from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
 from Src.Models.recipe_model import RecipeModel
 from Src.Models.warehouse_model import WarehouseModel
-
-
-def _name_key(entity: NamedEntity) -> str:
-    """Возвращает ключ уникальности по наименованию без учёта регистра."""
-    return entity.name.casefold()
-
-
-def _result_key(recipe: RecipeModel) -> uuid.UUID:
-    """Возвращает ключ уникальности карты: идентификатор номенклатуры-результата (одна карта на позицию)."""
-    return recipe.result.id
 
 
 class StorageManager(AbstractManager):
@@ -82,11 +73,11 @@ class StorageManager(AbstractManager):
 
         Вызывается при создании экземпляра и в load() для сброса состояния.
         """
-        self._ranges = UniqueCollection(_name_key)
-        self._nomenclature_groups = UniqueCollection(_name_key)
-        self._nomenclatures = UniqueCollection(_name_key)
-        self._warehouses = UniqueCollection(_name_key)
-        self._recipes = UniqueCollection(_result_key)
+        self._ranges = UniqueCollection(NamedEntity.name_key)
+        self._nomenclature_groups = UniqueCollection(NamedEntity.name_key)
+        self._nomenclatures = UniqueCollection(NamedEntity.name_key)
+        self._warehouses = UniqueCollection(NamedEntity.name_key)
+        self._recipes = UniqueCollection(RecipeModel.result_key)
 
     @override
     def load(self, settings_manager: SettingsManager | None = None) -> None:
@@ -148,12 +139,12 @@ class StorageManager(AbstractManager):
         ):
             self._warehouses.add(warehouse)
 
-        nomenclatures = {item.name: item for item in self._nomenclatures}
+        catalog = NomenclatureCatalog(self._nomenclatures)
         for recipe in (
-            RecipeModel.create_beef_bouillon(nomenclatures),
-            RecipeModel.create_boiled_beef(nomenclatures),
-            RecipeModel.create_beet_fry(nomenclatures),
-            RecipeModel.create_borscht(nomenclatures),
+            RecipeModel.create_beef_bouillon(catalog),
+            RecipeModel.create_boiled_beef(catalog),
+            RecipeModel.create_beet_fry(catalog),
+            RecipeModel.create_borscht(catalog),
         ):
             self._add_recipe(recipe)
 

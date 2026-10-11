@@ -23,7 +23,10 @@ classDiagram
     class NamedEntity {
         <<abstract>>
         +name: str
+        +name_key() str
     }
+
+    note for NamedEntity "name_key — ключ уникальности по наименованию без учёта регистра, функция ключа UniqueCollection"
 
     class RangeModel {
         +base: RangeModel
@@ -63,9 +66,16 @@ classDiagram
         +loss_ratio: int | float
         +gross_weight: float
         +net_weight: float
+        +nomenclature_key() UUID
     }
 
     note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются"
+
+    class NomenclatureCatalog {
+        +get(name) NomenclatureModel
+    }
+
+    note for NomenclatureCatalog "Справочник номенклатуры: поиск по наименованию. Не владеет позициями, возвращает те же экземпляры. Повтор наименования отвергается"
 
     class RecipeModel {
         +RESULT_TYPES: frozenset~NomenclatureType~
@@ -78,13 +88,14 @@ classDiagram
         +net_weight: float
         +add_ingredient(ingredient) None
         +remove_ingredient(nomenclature) None
-        +create_beef_bouillon(nomenclatures)$ RecipeModel
-        +create_boiled_beef(nomenclatures)$ RecipeModel
-        +create_beet_fry(nomenclatures)$ RecipeModel
-        +create_borscht(nomenclatures)$ RecipeModel
+        +result_key() UUID
+        +create_beef_bouillon(catalog)$ RecipeModel
+        +create_boiled_beef(catalog)$ RecipeModel
+        +create_beet_fry(catalog)$ RecipeModel
+        +create_borscht(catalog)$ RecipeModel
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result. Фабрики карт принимают словарь «наименование → номенклатура» и бросают ArgumentsException, если нужной позиции в нём нет"
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются как суммы по ингредиентам. Карту полуфабриката находят по result. Фабрики карт принимают NomenclatureCatalog и бросают ArgumentsException, если нужной позиции в нём нет"
 
     class NomenclatureGroupModel {
         +create_meat()$ NomenclatureGroupModel
@@ -140,6 +151,8 @@ classDiagram
     IngredientModel --> NomenclatureModel : nomenclature
     RecipeModel --> NomenclatureModel : result
     RecipeModel "1" *-- "*" IngredientModel : ingredients
+    NomenclatureCatalog o-- NomenclatureModel : items
+    RecipeModel ..> NomenclatureCatalog : фабрики карт
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
@@ -157,7 +170,7 @@ classDiagram
   Вес карты — сумма по ингредиентам, вычисляется при каждом обращении.
 - Полуфабрикат входит в состав как обычная номенклатура, его карту находит `StorageManager.find_recipe()`
   по результату. Упаковка — обычный ингредиент.
-- Фабрики `create_*` собирают карты из `Recipes.md` по словарю «наименование → номенклатура».
+- Фабрики `create_*` собирают карты из `Recipes.md` по справочнику `NomenclatureCatalog` (поиск номенклатуры по наименованию).
 
 ```mermaid
 classDiagram
@@ -183,9 +196,16 @@ classDiagram
         +loss_ratio: int | float
         +gross_weight: float
         +net_weight: float
+        +nomenclature_key() UUID
     }
 
     note for IngredientModel "Строка состава карты, без id. loss_ratio от 0 включительно до 1 не включая. Упаковка — обычный ингредиент без потерь"
+
+    class NomenclatureCatalog {
+        +get(name) NomenclatureModel
+    }
+
+    note for NomenclatureCatalog "Справочник номенклатуры: поиск по наименованию. Не владеет позициями, возвращает те же экземпляры. Повтор наименования отвергается"
 
     class RecipeModel {
         +RESULT_TYPES: frozenset~NomenclatureType~
@@ -198,10 +218,11 @@ classDiagram
         +net_weight: float
         +add_ingredient(ingredient) None
         +remove_ingredient(nomenclature) None
-        +create_beef_bouillon(nomenclatures)$ RecipeModel
-        +create_boiled_beef(nomenclatures)$ RecipeModel
-        +create_beet_fry(nomenclatures)$ RecipeModel
-        +create_borscht(nomenclatures)$ RecipeModel
+        +result_key() UUID
+        +create_beef_bouillon(catalog)$ RecipeModel
+        +create_boiled_beef(catalog)$ RecipeModel
+        +create_beet_fry(catalog)$ RecipeModel
+        +create_borscht(catalog)$ RecipeModel
     }
 
     note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто, нетто и выход (output_quantity * grams_per_base_unit результата) не сверяются друг с другом. Результат не может быть ингредиентом своей карты"
@@ -211,7 +232,7 @@ classDiagram
         +remove(key) None
     }
 
-    note for UniqueCollection "В RecipeModel ключ — id номенклатуры ингредиента, в StorageManager — id результата карты"
+    note for UniqueCollection "Функцию ключа даёт сама модель: IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата), NamedEntity.name_key (наименование)"
 
     class StorageManager {
         +recipes: list~RecipeModel~
@@ -228,10 +249,12 @@ classDiagram
     IngredientModel --> NomenclatureModel : nomenclature
     RecipeModel --> NomenclatureModel : result
     RecipeModel "1" *-- "*" IngredientModel : ingredients
+    NomenclatureCatalog o-- NomenclatureModel : items
+    RecipeModel ..> NomenclatureCatalog : фабрики карт
     RecipeModel *-- UniqueCollection : ingredients
     StorageManager *-- UniqueCollection : recipes
     StorageManager --> RecipeModel : recipes
-    RecipeModel ..> ArgumentsException : нет номенклатуры в словаре, дубликат, результат в составе
+    RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе
     StorageManager ..> ArgumentsException : цикл включений, вторая карта на результат
 ```
 
@@ -290,6 +313,7 @@ classDiagram
     class RangeModel
     class NomenclatureModel
     class IngredientModel
+    class NomenclatureCatalog
     class RecipeModel
     class OrganizationModel
     class SettingsModel
@@ -305,6 +329,8 @@ classDiagram
     RangeModel ..> CommonValidator : factor, base
     NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
     IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio
+    NomenclatureCatalog ..> CommonValidator : nomenclatures
+    NomenclatureCatalog ..> ArgumentsException : повтор наименования, нет позиции
     RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, ingredient, nomenclature
     RecipeModel ..> ArgumentsException : тип результата, шаги, результат как ингредиент
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
@@ -460,7 +486,7 @@ classDiagram
         +remove(key) None
     }
 
-    note for UniqueCollection "Ключ уникальности задаёт функция: в StorageManager это name.casefold() (регистр не учитывается), в RecipeModel — id номенклатуры. add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
+    note for UniqueCollection "Ключ уникальности задаёт функция, которую даёт модель: NamedEntity.name_key (наименование без учёта регистра), IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата). add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
 
     class SettingsManager {
         +settings: SettingsModel
@@ -479,6 +505,7 @@ classDiagram
     class NomenclatureGroupModel
     class WarehouseModel
     class RecipeModel
+    class NomenclatureCatalog
     class ArgumentsException
     class OperationException
 
@@ -490,6 +517,7 @@ classDiagram
     StorageManager --> NomenclatureModel : nomenclatures
     StorageManager --> WarehouseModel : warehouses
     StorageManager --> RecipeModel : recipes
+    StorageManager ..> NomenclatureCatalog : при первом старте строит и передаёт в фабрики карт
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     RangeModel --> RangeModel : base

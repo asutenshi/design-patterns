@@ -31,3 +31,12 @@ class NamedEntity(BaseEntity):
         :raises ArgumentsException: Если значение не строка, пустое или состоит из пробелов.
         """
         self._name = CommonValidator.validate_string(value, "name")
+
+    def name_key(self) -> str:
+        """Возвращает ключ уникальности по наименованию без учёта регистра.
+
+        Ключ по умолчанию для сущностей, уникальных по наименованию. Другим сущностям он не обязателен:
+        у карты уникальность по результату, а составные ключи задаются своей функцией.
+        Передаётся как функция ключа в UniqueCollection: ``UniqueCollection(NamedEntity.name_key)``.
+        """
+        return self.name.casefold()

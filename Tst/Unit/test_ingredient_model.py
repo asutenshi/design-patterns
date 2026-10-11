@@ -237,3 +237,37 @@ def test_weights_nomenclature_unit_weight_changed_recalculated():
     # Проверка
     assert ingredient.gross_weight == pytest.approx(200)
     assert ingredient.net_weight == pytest.approx(100)
+
+
+def test_nomenclature_key_returns_nomenclature_id():
+    """Ключ ингредиента в карте — идентификатор его номенклатуры."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+    ingredient = make_ingredient(nomenclature=nomenclature)
+
+    # Действие
+    result = ingredient.nomenclature_key()
+
+    # Проверка
+    assert result == nomenclature.id
+
+
+def test_nomenclature_key_same_nomenclature_different_quantity_keys_equal():
+    """Ингредиенты одной номенклатуры дают один ключ независимо от количества и потерь."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+    first = make_ingredient(nomenclature=nomenclature, quantity=10)
+    second = make_ingredient(nomenclature=nomenclature, quantity=500, loss_ratio=0.5)
+
+    # Действие и проверка
+    assert first.nomenclature_key() == second.nomenclature_key()
+
+
+def test_nomenclature_key_different_nomenclatures_keys_differ():
+    """Ингредиенты разных номенклатур дают разные ключи, даже если наименования совпадают."""
+    # Подготовка
+    first = make_ingredient(nomenclature=make_nomenclature())
+    second = make_ingredient(nomenclature=make_nomenclature())
+
+    # Действие и проверка
+    assert first.nomenclature_key() != second.nomenclature_key()

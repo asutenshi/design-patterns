@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import ClassVar, cast
 
 from Src.Core.common_validator import CommonValidator
@@ -8,46 +8,8 @@ from Src.Core.named_entity import NamedEntity
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Core.unique_collection import UniqueCollection
 from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_model import NomenclatureModel
-
-
-def _nomenclature_key(nomenclature: NomenclatureModel) -> uuid.UUID:
-    """Возвращает ключ ингредиента в карте по его номенклатуре: идентификатор номенклатуры."""
-    return nomenclature.id
-
-
-def _ingredient_key(ingredient: IngredientModel) -> uuid.UUID:
-    """Возвращает ключ уникальности ингредиента в карте: идентификатор его номенклатуры."""
-    return _nomenclature_key(ingredient.nomenclature)
-
-
-def _find(nomenclatures: Mapping[str, NomenclatureModel], name: str) -> NomenclatureModel:
-    """Возвращает номенклатуру по наименованию из словаря.
-
-    :param nomenclatures: Номенклатура, ключ — наименование.
-    :param name: Искомое наименование.
-    :return: Найденная номенклатура.
-    :raises ArgumentsException: Если номенклатуры с таким наименованием нет.
-    """
-    nomenclature = nomenclatures.get(name)
-    if nomenclature is None:
-        raise ArgumentsException("nomenclatures", f"Нет номенклатуры «{name}»")
-    return nomenclature
-
-
-def _ingredient(
-    nomenclatures: Mapping[str, NomenclatureModel], name: str, quantity: float, loss_ratio: float = 0
-) -> IngredientModel:
-    """Создаёт ингредиент по наименованию номенклатуры.
-
-    :param nomenclatures: Номенклатура, ключ — наименование.
-    :param name: Наименование номенклатуры ингредиента.
-    :param quantity: Количество в базовой единице номенклатуры.
-    :param loss_ratio: Доля потерь при приготовлении.
-    :return: Ингредиент.
-    :raises ArgumentsException: Если номенклатуры нет или параметры некорректны.
-    """
-    return IngredientModel(_find(nomenclatures, name), quantity, loss_ratio)
 
 
 class RecipeModel(NamedEntity):
@@ -133,7 +95,7 @@ class RecipeModel(NamedEntity):
         self.output_quantity = output_quantity
         self.cooking_time_minutes = cooking_time_minutes
         self.steps = steps
-        self._ingredients = UniqueCollection(_ingredient_key)
+        self._ingredients = UniqueCollection(IngredientModel.nomenclature_key)
         for ingredient in ingredients:
             self.add_ingredient(ingredient)
 
@@ -144,6 +106,13 @@ class RecipeModel(NamedEntity):
         Только для чтения: задаётся в конструкторе.
         """
         return self._result
+
+    def result_key(self) -> uuid.UUID:
+        """Возвращает ключ уникальности карты: идентификатор номенклатуры-результата (одна карта на позицию).
+
+        Передаётся как функция ключа в UniqueCollection: ``UniqueCollection(RecipeModel.result_key)``.
+        """
+        return self._result.id
 
     @property
     def output_quantity(self) -> int | float:
@@ -236,22 +205,23 @@ class RecipeModel(NamedEntity):
         nomenclature = CommonValidator.validate_instance(
             nomenclature, NomenclatureModel, "nomenclature", "Ожидается номенклатура"
         )
-        self._ingredients.remove(_nomenclature_key(nomenclature))
+        # Ключ ингредиента в карте — идентификатор его номенклатуры (см. IngredientModel.nomenclature_key)
+        self._ingredients.remove(nomenclature.id)
 
     @staticmethod
-    def create_beef_bouillon(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+    def create_beef_bouillon(catalog: NomenclatureCatalog) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Бульон костный говяжий» (Recipes.md, карта 1).
 
         Кости, овощи, лавровый лист и перец удаляются после варки, поэтому их потери равны 0,9.
 
-        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :param catalog: Справочник номенклатуры. Нужны результат карты и все её ингредиенты.
         :return: Карта полуфабриката.
-        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        :raises ArgumentsException: Если в справочнике нет нужной номенклатуры.
         """
         name = "Бульон костный говяжий"
         return RecipeModel(
             name,
-            _find(nomenclatures, name),
+            catalog.get(name),
             2000,
             240,
             [
@@ -263,29 +233,29 @@ class RecipeModel(NamedEntity):
                 "Бульон процедить, довести до 2000 мл, при необходимости упарить. Кости и овощи не используются.",
             ],
             [
-                _ingredient(nomenclatures, "Кости говяжьи мозговые", 1500, 0.9),
-                _ingredient(nomenclatures, "Лук репчатый", 100, 0.9),
-                _ingredient(nomenclatures, "Морковь", 80, 0.9),
-                _ingredient(nomenclatures, "Лавровый лист", 1, 0.9),
-                _ingredient(nomenclatures, "Перец чёрный горошком", 3, 0.9),
-                _ingredient(nomenclatures, "Соль", 12),
+                IngredientModel(catalog.get("Кости говяжьи мозговые"), 1500, 0.9),
+                IngredientModel(catalog.get("Лук репчатый"), 100, 0.9),
+                IngredientModel(catalog.get("Морковь"), 80, 0.9),
+                IngredientModel(catalog.get("Лавровый лист"), 1, 0.9),
+                IngredientModel(catalog.get("Перец чёрный горошком"), 3, 0.9),
+                IngredientModel(catalog.get("Соль"), 12),
             ],
         )
 
     @staticmethod
-    def create_boiled_beef(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+    def create_boiled_beef(catalog: NomenclatureCatalog) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Говядина отварная» (Recipes.md, карта 2).
 
         Потери: говядина теряет 38% при варке, лавровый лист удаляется (0,9), половина соли остаётся в отваре.
 
-        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :param catalog: Справочник номенклатуры. Нужны результат карты и все её ингредиенты.
         :return: Карта полуфабриката.
-        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        :raises ArgumentsException: Если в справочнике нет нужной номенклатуры.
         """
         name = "Говядина отварная"
         return RecipeModel(
             name,
-            _find(nomenclatures, name),
+            catalog.get(name),
             500,
             120,
             [
@@ -295,24 +265,24 @@ class RecipeModel(NamedEntity):
                 "Отвар не используется. Мясо нарезать полосками, дать выход 500 г.",
             ],
             [
-                _ingredient(nomenclatures, "Говядина (мякоть)", 800, 0.38),
-                _ingredient(nomenclatures, "Лавровый лист", 1, 0.9),
-                _ingredient(nomenclatures, "Соль", 8, 0.5),
+                IngredientModel(catalog.get("Говядина (мякоть)"), 800, 0.38),
+                IngredientModel(catalog.get("Лавровый лист"), 1, 0.9),
+                IngredientModel(catalog.get("Соль"), 8, 0.5),
             ],
         )
 
     @staticmethod
-    def create_beet_fry(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+    def create_beet_fry(catalog: NomenclatureCatalog) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Зажарка свекольная» (Recipes.md, карта 3).
 
-        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :param catalog: Справочник номенклатуры. Нужны результат карты и все её ингредиенты.
         :return: Карта полуфабриката.
-        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        :raises ArgumentsException: Если в справочнике нет нужной номенклатуры.
         """
         name = "Зажарка свекольная"
         return RecipeModel(
             name,
-            _find(nomenclatures, name),
+            catalog.get(name),
             700,
             30,
             [
@@ -323,32 +293,32 @@ class RecipeModel(NamedEntity):
                 "Добавить томатную пасту, перемешать, тушить 10 минут до мягкости свёклы.",
             ],
             [
-                _ingredient(nomenclatures, "Свёкла", 400, 0.05),
-                _ingredient(nomenclatures, "Морковь", 120, 0.05),
-                _ingredient(nomenclatures, "Лук репчатый", 120, 0.1),
-                _ingredient(nomenclatures, "Томатная паста", 50, 0.1),
-                _ingredient(nomenclatures, "Масло подсолнечное", 40, 0.1),
-                _ingredient(nomenclatures, "Уксус 9%", 10, 0.5),
-                _ingredient(nomenclatures, "Сахар", 10),
-                _ingredient(nomenclatures, "Соль", 5),
+                IngredientModel(catalog.get("Свёкла"), 400, 0.05),
+                IngredientModel(catalog.get("Морковь"), 120, 0.05),
+                IngredientModel(catalog.get("Лук репчатый"), 120, 0.1),
+                IngredientModel(catalog.get("Томатная паста"), 50, 0.1),
+                IngredientModel(catalog.get("Масло подсолнечное"), 40, 0.1),
+                IngredientModel(catalog.get("Уксус 9%"), 10, 0.5),
+                IngredientModel(catalog.get("Сахар"), 10),
+                IngredientModel(catalog.get("Соль"), 5),
             ],
         )
 
     @staticmethod
-    def create_borscht(nomenclatures: Mapping[str, NomenclatureModel]) -> "RecipeModel":
+    def create_borscht(catalog: NomenclatureCatalog) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Борщ с говядиной» (Recipes.md, карта 4).
 
         Состав включает три полуфабриката и упаковку. Карты полуфабрикатов здесь не нужны:
         ингредиент ссылается на номенклатуру, а карту находят по результату в слое Logics.
 
-        :param nomenclatures: Номенклатура, ключ — наименование. Нужны результат карты и все её ингредиенты.
+        :param catalog: Справочник номенклатуры. Нужны результат карты и все её ингредиенты.
         :return: Карта блюда.
-        :raises ArgumentsException: Если в словаре нет нужной номенклатуры.
+        :raises ArgumentsException: Если в справочнике нет нужной номенклатуры.
         """
         name = "Борщ с говядиной"
         return RecipeModel(
             name,
-            _find(nomenclatures, name),
+            catalog.get(name),
             1,
             15,
             [
@@ -359,13 +329,13 @@ class RecipeModel(NamedEntity):
                 + "сметану и укроп положить сверху.",
             ],
             [
-                _ingredient(nomenclatures, "Бульон костный говяжий", 250, 0.1),
-                _ingredient(nomenclatures, "Говядина отварная", 60, 0.05),
-                _ingredient(nomenclatures, "Зажарка свекольная", 70, 0.05),
-                _ingredient(nomenclatures, "Картофель", 80, 0.15),
-                _ingredient(nomenclatures, "Капуста белокочанная", 70, 0.15),
-                _ingredient(nomenclatures, "Сметана 20%", 20),
-                _ingredient(nomenclatures, "Укроп", 3),
-                _ingredient(nomenclatures, "Контейнер для супа 500 мл", 1),
+                IngredientModel(catalog.get("Бульон костный говяжий"), 250, 0.1),
+                IngredientModel(catalog.get("Говядина отварная"), 60, 0.05),
+                IngredientModel(catalog.get("Зажарка свекольная"), 70, 0.05),
+                IngredientModel(catalog.get("Картофель"), 80, 0.15),
+                IngredientModel(catalog.get("Капуста белокочанная"), 70, 0.15),
+                IngredientModel(catalog.get("Сметана 20%"), 20),
+                IngredientModel(catalog.get("Укроп"), 3),
+                IngredientModel(catalog.get("Контейнер для супа 500 мл"), 1),
             ],
         )

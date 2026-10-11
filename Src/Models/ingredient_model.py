@@ -1,3 +1,5 @@
+import uuid
+
 from Src.Core.common_validator import CommonValidator
 from Src.Models.nomenclature_model import NomenclatureModel
 
@@ -50,6 +52,13 @@ class IngredientModel:
         Только для чтения: задаётся в конструкторе.
         """
         return self._nomenclature
+
+    def nomenclature_key(self) -> uuid.UUID:
+        """Возвращает ключ уникальности ингредиента в карте: идентификатор его номенклатуры.
+
+        Передаётся как функция ключа в UniqueCollection: ``UniqueCollection(IngredientModel.nomenclature_key)``.
+        """
+        return self._nomenclature.id
 
     @property
     def quantity(self) -> int | float:

@@ -2,6 +2,7 @@ import pytest
 from Src.Core.exception import ArgumentsException
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
@@ -470,6 +471,30 @@ def test_weights_packaging_counted_in_gross_and_net():
     assert recipe.net_weight == pytest.approx(20)
 
 
+def test_result_key_returns_result_id():
+    """Ключ карты в хранилище — идентификатор номенклатуры-результата."""
+    # Подготовка
+    result = make_result()
+    recipe = make_recipe(result=result)
+
+    # Действие
+    key = recipe.result_key()
+
+    # Проверка
+    assert key == result.id
+
+
+def test_result_key_same_result_keys_equal():
+    """Две карты одного результата дают один ключ, поэтому в хранилище вторая карта на позицию не пройдёт."""
+    # Подготовка
+    result = make_result()
+    first = make_recipe(name="Зажарка", result=result)
+    second = make_recipe(name="Зажарка другая", result=result)
+
+    # Действие и проверка
+    assert first.result_key() == second.result_key()
+
+
 # Номенклатура, отличающаяся от «сырья весом 1 г на базовую единицу»: тип и вес базовой единицы
 SPECIAL_NOMENCLATURE = {
     "Бульон костный говяжий": (NomenclatureType.SEMI_FINISHED, 1),
@@ -480,7 +505,7 @@ SPECIAL_NOMENCLATURE = {
     "Масло подсолнечное": (NomenclatureType.RAW_MATERIAL, 0.92),
     "Контейнер для супа 500 мл": (NomenclatureType.PACKAGING, 20),
 }
-# Результат и ингредиенты каждой карты: именно эти наименования ищет фабрика в словаре
+# Результат и ингредиенты каждой карты: именно эти наименования ищет фабрика в справочнике
 BOUILLON_NAMES = (
     "Бульон костный говяжий",
     "Кости говяжьи мозговые",
@@ -515,17 +540,17 @@ BORSCHT_NAMES = (
 )
 
 
-def make_catalog(*names: str) -> dict[str, NomenclatureModel]:
-    """Создаёт словарь номенклатуры по наименованиям: особые позиции — из SPECIAL_NOMENCLATURE, остальные — сырьё по 1 г."""
-    catalog = {}
+def make_catalog(*names: str) -> NomenclatureCatalog:
+    """Создаёт справочник номенклатуры по наименованиям: особые позиции — из SPECIAL_NOMENCLATURE, остальные — сырьё по 1 г."""
+    nomenclatures = []
     for name in names:
         type, grams_per_base_unit = SPECIAL_NOMENCLATURE.get(name, (NomenclatureType.RAW_MATERIAL, 1))
-        catalog[name] = make_nomenclature(name, type, grams_per_base_unit)
-    return catalog
+        nomenclatures.append(make_nomenclature(name, type, grams_per_base_unit))
+    return NomenclatureCatalog(nomenclatures)
 
 
 def test_create_beef_bouillon_full_catalog_fields_and_weights():
-    """Карта бульона берёт результат из словаря, выход и время — из рецепта, веса считаются по потерям."""
+    """Карта бульона берёт результат из справочника, выход и время — из рецепта, веса считаются по потерям."""
     # Подготовка
     catalog = make_catalog(*BOUILLON_NAMES)
 
@@ -534,7 +559,7 @@ def test_create_beef_bouillon_full_catalog_fields_and_weights():
 
     # Проверка
     assert recipe.name == "Бульон костный говяжий"
-    assert recipe.result is catalog["Бульон костный говяжий"]
+    assert recipe.result is catalog.get("Бульон костный говяжий")
     assert recipe.output_quantity == 2000
     assert recipe.cooking_time_minutes == 240
     assert len(recipe.steps) == 6
@@ -554,7 +579,7 @@ def test_create_boiled_beef_full_catalog_fields_and_weights():
 
     # Проверка
     assert recipe.name == "Говядина отварная"
-    assert recipe.result is catalog["Говядина отварная"]
+    assert recipe.result is catalog.get("Говядина отварная")
     assert recipe.output_quantity == 500
     assert recipe.cooking_time_minutes == 120
     assert len(recipe.steps) == 4
@@ -573,7 +598,7 @@ def test_create_beet_fry_full_catalog_fields_and_weights():
 
     # Проверка
     assert recipe.name == "Зажарка свекольная"
-    assert recipe.result is catalog["Зажарка свекольная"]
+    assert recipe.result is catalog.get("Зажарка свекольная")
     assert recipe.output_quantity == 700
     assert recipe.cooking_time_minutes == 30
     assert len(recipe.steps) == 5
@@ -583,7 +608,7 @@ def test_create_beet_fry_full_catalog_fields_and_weights():
 
 
 def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition():
-    """Карта борща включает три полуфабриката и упаковку, ссылаясь на объекты словаря; результата в составе нет."""
+    """Карта борща включает три полуфабриката и упаковку, ссылаясь на объекты справочника; результата в составе нет."""
     # Подготовка
     catalog = make_catalog(*BORSCHT_NAMES)
 
@@ -593,12 +618,12 @@ def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition(
     # Проверка
     nomenclatures = [i.nomenclature for i in recipe.ingredients]
     assert recipe.name == "Борщ с говядиной"
-    assert recipe.result is catalog["Борщ с говядиной"]
+    assert recipe.result is catalog.get("Борщ с говядиной")
     assert recipe.output_quantity == 1
     assert recipe.cooking_time_minutes == 15
     assert len(recipe.steps) == 4
     assert len(nomenclatures) == len(BORSCHT_NAMES) - 1
-    assert all(a is catalog[name] for a, name in zip(nomenclatures, BORSCHT_NAMES[1:], strict=True))
+    assert all(a is catalog.get(name) for a, name in zip(nomenclatures, BORSCHT_NAMES[1:], strict=True))
     assert recipe.result not in nomenclatures
     assert [n.type for n in nomenclatures].count(NomenclatureType.SEMI_FINISHED) == 3
     assert NomenclatureType.PACKAGING in [n.type for n in nomenclatures]
@@ -615,7 +640,7 @@ def test_create_borscht_full_catalog_weights_include_packaging():
     # Проверка
     assert recipe.gross_weight == pytest.approx(573)
     assert recipe.net_weight == pytest.approx(519)
-    recipe.remove_ingredient(catalog["Контейнер для супа 500 мл"])
+    recipe.remove_ingredient(catalog.get("Контейнер для супа 500 мл"))
     assert recipe.gross_weight == pytest.approx(553)
     assert recipe.net_weight == pytest.approx(499)
     assert recipe.output_quantity * recipe.result.grams_per_base_unit == 500
@@ -636,11 +661,10 @@ def test_create_borscht_full_catalog_weights_include_packaging():
     ],
 )
 def test_create_recipe_missing_nomenclature_raises(factory, missing):
-    """Если в словаре нет результата или любого ингредиента, фабрика бросает ArgumentsException."""
+    """Если в справочнике нет результата или любого ингредиента, фабрика бросает ArgumentsException."""
     # Подготовка
     all_names = {*BOUILLON_NAMES, *BOILED_BEEF_NAMES, *BEET_FRY_NAMES, *BORSCHT_NAMES}
-    catalog = make_catalog(*all_names)
-    del catalog[missing]
+    catalog = make_catalog(*all_names - {missing})
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):

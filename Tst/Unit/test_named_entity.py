@@ -102,3 +102,35 @@ def test_hash_after_rename_unchanged():
 
     # Проверка
     assert hash(entity) == old_hash
+
+
+def test_name_key_different_case_keys_equal():
+    """Ключ по наименованию не зависит от регистра: «Мука» и «МУКА» дают один ключ."""
+    # Подготовка
+    first = NamedEntityStub("Мука")
+    second = NamedEntityStub("МУКА")
+
+    # Действие и проверка
+    assert first.name_key() == second.name_key()
+
+
+def test_name_key_different_names_keys_differ():
+    """Разные наименования дают разные ключи."""
+    # Подготовка
+    first = NamedEntityStub("Мука")
+    second = NamedEntityStub("Сахар")
+
+    # Действие и проверка
+    assert first.name_key() != second.name_key()
+
+
+def test_name_key_after_rename_follows_new_name():
+    """Ключ вычисляется при каждом вызове, поэтому после переименования он меняется."""
+    # Подготовка
+    entity = NamedEntityStub("Мука")
+
+    # Действие
+    entity.name = "Сахар"
+
+    # Проверка
+    assert entity.name_key() == "сахар"
