@@ -76,3 +76,31 @@ class RangeModel(NamedEntity):
     def is_base(self) -> bool:
         """Возвращает True, если единица измерения является базовой."""
         return self._base is self
+
+    @staticmethod
+    def create_kilogram() -> "RangeModel":
+        """Фабричный метод: создаёт килограмм вместе с его базовой единицей — граммом.
+
+        :return: Единица измерения «Килограмм» с коэффициентом 1000 и базой «Грамм».
+        """
+        gram = RangeModel("грамм", 1)
+        return RangeModel("килограмм", 1000, gram)
+
+    @staticmethod
+    def create_liter() -> "RangeModel":
+        """Фабричный метод: создаёт литр вместе с его базовой единицей — миллилитром.
+
+        Миллилитр доступен как ``base`` возвращённой единицы.
+
+        :return: Единица измерения «Литр» с коэффициентом 1000 и базой «Миллилитр».
+        """
+        milliliter = RangeModel("миллилитр", 1)
+        return RangeModel("литр", 1000, milliliter)
+
+    @staticmethod
+    def create_piece() -> "RangeModel":
+        """Фабричный метод: создаёт штуку — базовую единицу измерения штучных позиций.
+
+        :return: Базовая единица измерения «Штука» с коэффициентом 1.
+        """
+        return RangeModel("штука", 1)

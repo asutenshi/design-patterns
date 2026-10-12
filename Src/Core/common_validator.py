@@ -29,6 +29,22 @@ class CommonValidator:
         return cleaned_value
 
     @staticmethod
+    def _validate_finite_number(value: object, field: str) -> int | float:
+        """Проверяет, что значение — конечное число (не bool, не NaN, не бесконечность).
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Проверенное число.
+        :raises ArgumentsException: Если значение не число (в том числе bool) или не конечное.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ArgumentsException(field, "Ожидается число")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ArgumentsException(field, "Значение должно быть конечным числом")
+
+        return value
+
+    @staticmethod
     def validate_positive_number(value: object, field: str) -> int | float:
         """Проверяет, что значение — конечное число строго больше нуля.
 
@@ -38,14 +54,30 @@ class CommonValidator:
         :raises ArgumentsException: Если значение не число (в том числе bool),
             не конечное (NaN, бесконечность) или не больше нуля.
         """
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ArgumentsException(field, "Ожидается число")
-        if isinstance(value, float) and not math.isfinite(value):
-            raise ArgumentsException(field, "Значение должно быть конечным числом")
-        if value <= 0:
+        number = CommonValidator._validate_finite_number(value, field)
+        if number <= 0:
             raise ArgumentsException(field, "Значение должно быть больше нуля")
 
-        return value
+        return number
+
+    @staticmethod
+    def validate_fraction(value: object, field: str) -> int | float:
+        """Проверяет, что значение — число от 0 включительно до 1 не включая.
+
+        Единица исключена намеренно: доля, равная 1, означает полную потерю (или полную наценку),
+        и такое значение обессмысливает расчёты, в которых на неё умножают или от неё вычитают.
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Проверенное число.
+        :raises ArgumentsException: Если значение не число (в том числе bool), не конечное
+            (NaN, бесконечность) или не лежит в промежутке [0, 1).
+        """
+        number = CommonValidator._validate_finite_number(value, field)
+        if not 0 <= number < 1:
+            raise ArgumentsException(field, "Значение должно быть не меньше 0 и меньше 1")
+
+        return number
 
     @staticmethod
     def validate_digits(value: object, field: str, lengths: tuple[int, ...]) -> str:

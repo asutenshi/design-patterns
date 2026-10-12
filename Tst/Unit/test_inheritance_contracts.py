@@ -11,6 +11,7 @@ from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.range_model import RangeModel
+from Src.Models.recipe_model import RecipeModel
 from Src.Models.settings_model import SettingsModel
 from Src.Models.warehouse_model import WarehouseModel
 
@@ -140,7 +141,7 @@ def test_entities_project_subclasses_are_discovered():
     named_entities = _project_subclasses(NamedEntity)
 
     # Проверка
-    for model in (WarehouseModel, NomenclatureGroupModel, RangeModel, NomenclatureModel, OrganizationModel):
+    for model in (WarehouseModel, NomenclatureGroupModel, RangeModel, NomenclatureModel, OrganizationModel, RecipeModel):
         assert model in named_entities
     assert SettingsModel in base_entities
     assert SettingsModel not in named_entities

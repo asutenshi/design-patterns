@@ -17,3 +17,13 @@ class WarehouseModel(NamedEntity):
         :raises ArgumentsException: Если наименование не строка, пустое или состоит из пробелов.
         """
         super().__init__(name)
+
+    @staticmethod
+    def create_restaurant_warehouse() -> "WarehouseModel":
+        """Фабричный метод: создаёт склад ресторана."""
+        return WarehouseModel("Склад ресторана")
+
+    @staticmethod
+    def create_workshop_warehouse() -> "WarehouseModel":
+        """Фабричный метод: создаёт склад производственного цеха."""
+        return WarehouseModel("Склад производственного цеха")

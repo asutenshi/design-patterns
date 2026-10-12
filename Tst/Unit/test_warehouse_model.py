@@ -1,3 +1,4 @@
+import pytest
 from Src.Core.named_entity import NamedEntity
 from Src.Models.warehouse_model import WarehouseModel
 
@@ -41,3 +42,24 @@ def test_init_long_name_created():
 
     # Проверка
     assert warehouse.name == name
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("factory", "expected_name"),
+    [
+        (WarehouseModel.create_restaurant_warehouse, "Склад ресторана"),
+        (WarehouseModel.create_workshop_warehouse, "Склад производственного цеха"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else value,
+)
+def test_create_warehouse_returns_warehouse_with_expected_name(factory, expected_name):
+    """Фабрика создаёт склад с ожидаемым наименованием, каждый вызов — новый объект."""
+    # Действие
+    first = factory()
+    second = factory()
+
+    # Проверка
+    assert isinstance(first, WarehouseModel)
+    assert first.name == expected_name
+    assert first is not second
