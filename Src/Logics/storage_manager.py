@@ -1,7 +1,10 @@
 import uuid
+from collections.abc import Iterable
 from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
+from Src.Core.common_validator import CommonValidator
+from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
@@ -20,6 +23,7 @@ class StorageManager(AbstractManager):
     Коллекции единиц, групп, номенклатуры и складов не содержат дубликатов по наименованию
     (без учёта регистра). Коллекция технологических карт содержит не более одной карты
     на номенклатуру-результат; карту полуфабриката находит ``find_recipe()``.
+    Сущность по типу и коду находит ``find()``.
     При первом запуске (флаг ``is_first_start`` в настройках) ``load()`` наполняет
     коллекции начальными данными. Иначе коллекции остаются пустыми: загружать
     данные пока неоткуда, чтение из БД появится вместе с SQLite.
@@ -110,9 +114,9 @@ class StorageManager(AbstractManager):
 
         Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а карты —
         на те же объекты номенклатуры: каждый объект создаётся один раз и добавляется в коллекцию.
-        Карты регистрируются от полуфабрикатов к блюду: так проверка циклов видит вложенные карты.
+        Карты создаются от полуфабрикатов к блюду: борщ собирает полуфабрикаты снимками их карт.
 
-        :raises ArgumentsException: Если начальные данные содержат дубликаты или цикл между картами.
+        :raises ArgumentsException: Если начальные данные содержат дубликаты.
         """
         kilogram = RangeModel.create_kilogram()
         liter = RangeModel.create_liter()
@@ -145,7 +149,7 @@ class StorageManager(AbstractManager):
         beet_fry = RecipeModel.create_beet_fry(catalog)
         borscht = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
         for recipe in (bouillon, boiled_beef, beet_fry, borscht):
-            self._add_recipe(recipe)
+            self._recipes.add(recipe)
 
     def _create_nomenclatures(self) -> list[NomenclatureModel]:
         """Создаёт начальную номенклатуру на основе уже заполненных единиц и групп.
@@ -202,41 +206,6 @@ class StorageManager(AbstractManager):
             NomenclatureModel.create_dish("Борщ с говядиной", "Борщ с говядиной, порция 500 г", dishes, piece, 500),
         ]
 
-    def _add_recipe(self, recipe: RecipeModel) -> None:
-        """Регистрирует технологическую карту в хранилище.
-
-        Проверка циклов глубокая: локально её делает сама карта (результат не входит в свой состав),
-        здесь обходятся карты вложенных полуфабрикатов. Карты вложенных полуфабрикатов
-        должны быть зарегистрированы заранее, иначе их состав не виден.
-
-        :param recipe: Регистрируемая карта.
-        :raises ArgumentsException: Если на результат уже есть карта или карта замыкает цикл включений.
-        """
-        if self._creates_cycle(recipe):
-            raise ArgumentsException("recipe", f"Карта «{recipe.name}» образует цикл включений")
-        self._recipes.add(recipe)
-
-    def _creates_cycle(self, recipe: RecipeModel) -> bool:
-        """Проверяет, входит ли результат карты в состав её вложенных карт (прямо или через цепочку).
-
-        :param recipe: Проверяемая карта, ещё не добавленная в хранилище.
-        :return: True, если результат карты достижим из её ингредиентов через карты полуфабрикатов.
-        """
-        visited: set[uuid.UUID] = set()
-        pending = [ingredient.nomenclature for ingredient in recipe.ingredients]
-        while pending:
-            nomenclature = pending.pop()
-            if nomenclature is recipe.result:
-                return True
-            if nomenclature.id in visited:
-                continue
-
-            visited.add(nomenclature.id)
-            nested = self.find_recipe(nomenclature)
-            if nested is not None:
-                pending.extend(ingredient.nomenclature for ingredient in nested.ingredients)
-        return False
-
     def find_recipe(self, nomenclature: NomenclatureModel) -> RecipeModel | None:
         """Возвращает технологическую карту, результатом которой является номенклатура.
 
@@ -244,6 +213,44 @@ class StorageManager(AbstractManager):
         :return: Карта или None, если карты нет (например, у сырья).
         """
         return next((recipe for recipe in self._recipes if recipe.result is nomenclature), None)
+
+    def find_recipe_by_name(self, name: str) -> RecipeModel | None:
+        """Возвращает технологическую карту по наименованию без учёта регистра и пробелов по краям.
+
+        Уникальность наименований карт хранилище не гарантирует (уникален только результат),
+        поэтому при совпадении нескольких возвращается первая добавленная.
+
+        :param name: Наименование карты.
+        :return: Карта или None, если карты с таким наименованием нет.
+        :raises ArgumentsException: Если наименование не строка.
+        """
+        name = CommonValidator.validate_instance(name, str, "name", "Ожидается строка")
+        key = name.strip().casefold()
+        return next((recipe for recipe in self._recipes if recipe.name_key() == key), None)
+
+    def find(self, entity_type: EntityType, entity_id: uuid.UUID) -> NamedEntity | None:
+        """Возвращает сущность указанного типа по коду.
+
+        Ищет перебором: ключи коллекций — наименования или результат карты, а не код.
+
+        :param entity_type: Тип сущности, определяет коллекцию поиска.
+        :param entity_id: Код (идентификатор) сущности.
+        :return: Сущность или None, если сущности с таким кодом нет.
+        :raises ArgumentsException: Если тип не EntityType, код не UUID
+            или для типа нет коллекции.
+        """
+        entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
+        entity_id = CommonValidator.validate_instance(entity_id, uuid.UUID, "entity_id", "Ожидается UUID")
+        collections: dict[EntityType, Iterable[NamedEntity]] = {
+            EntityType.NOMENCLATURE: self._nomenclatures,
+            EntityType.RANGE: self._ranges,
+            EntityType.RECIPE: self._recipes,
+        }
+        collection = collections.get(entity_type)
+        if collection is None:
+            raise ArgumentsException("entity_type", f"Поиск сущностей типа {entity_type.value} не поддерживается")
+
+        return next((entity for entity in collection if entity.id == entity_id), None)
 
     @property
     def ranges(self) -> list[RangeModel]:

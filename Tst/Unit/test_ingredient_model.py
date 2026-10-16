@@ -5,7 +5,6 @@ from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
-from Src.Models.recipe_model import RecipeModel
 
 
 def make_nomenclature(
@@ -278,111 +277,283 @@ def test_nomenclature_key_different_nomenclatures_keys_differ():
     assert first.nomenclature_key() != second.nomenclature_key()
 
 
-def test_init_with_recipe_sets_field():
-    """Ингредиент сохраняет переданную технологическую карту."""
-    # Подготовка
-    nomenclature = make_nomenclature(type=NomenclatureType.SEMI_FINISHED)
-    recipe = RecipeModel("Карта", nomenclature, 100, 10, ["Шаг"])
-
-    # Действие
-    ingredient = IngredientModel(nomenclature, 50, recipe=recipe)
-
-    # Проверка
-    assert ingredient.recipe is recipe
-
-
-def test_init_without_recipe_recipe_is_none():
-    """Без переданной карты ингредиент не ссылается на карту: вес считается из номенклатуры."""
+def test_init_ingredient_does_not_reference_recipe():
+    """Ингредиент о технологических картах не знает: полуфабрикат собирает RecipeModel.as_ingredient."""
     # Действие
     ingredient = make_ingredient()
 
     # Проверка
-    assert ingredient.recipe is None
+    assert not hasattr(ingredient, "recipe")
 
 
-def test_recipe_setter_not_allowed_raises():
-    """Карту ингредиента нельзя заменить: иначе в обход RecipeModel.add_ingredient можно замкнуть цикл."""
+def test_init_recipe_argument_passed_raises():
+    """Конструктор не принимает карту: старая запись IngredientModel(..., recipe=...) больше не поддерживается."""
     # Подготовка
-    nomenclature = make_nomenclature(type=NomenclatureType.SEMI_FINISHED)
-    recipe = RecipeModel("Карта", nomenclature, 100, 10, ["Шаг"])
-    ingredient = make_ingredient(nomenclature=nomenclature)
+    nomenclature = make_nomenclature()
+
+    # Действие и проверка
+    with pytest.raises(TypeError):
+        IngredientModel(nomenclature, 50, recipe=None)  # pyright: ignore[reportCallIssue]
+
+
+def make_named(name: str, type: NomenclatureType = NomenclatureType.RAW_MATERIAL) -> NomenclatureModel:
+    """Создаёт номенклатуру с заданными наименованием и типом, вес базовой единицы 1 г."""
+    return NomenclatureModel(
+        name, f"{name} (полное наименование)", NomenclatureGroupModel("Группа"), RangeModel("грамм", 1), type, 1
+    )
+
+
+def make_bouillon(quantity: float = 250, loss_ratio: float = 0) -> IngredientModel:
+    """Создаёт составной ингредиент «Бульон»: кости 400 г с потерями 0,5 и соль 10 г без потерь."""
+    return IngredientModel(
+        make_named("Бульон", NomenclatureType.SEMI_FINISHED),
+        quantity,
+        loss_ratio,
+        [IngredientModel(make_named("Кости"), 400, 0.5), IngredientModel(make_named("Соль"), 10)],
+    )
+
+
+def test_init_base_omitted_is_empty():
+    """Без основания ингредиент — сырьё: основание пустое."""
+    # Действие
+    ingredient = make_ingredient()
+
+    # Проверка
+    assert ingredient.base == ()
+
+
+def test_init_base_passed_copied_in_order():
+    """Основание сохраняется в исходном порядке, но копиями: правка исходных объектов узел не меняет."""
+    # Подготовка
+    bones = IngredientModel(make_named("Кости"), 400)
+    salt = IngredientModel(make_named("Соль"), 10)
+    bouillon = IngredientModel(make_named("Бульон", NomenclatureType.SEMI_FINISHED), 250, base=[bones, salt])
+
+    # Действие
+    bones.quantity = 1000
+
+    # Проверка
+    assert [item.nomenclature for item in bouillon.base] == [bones.nomenclature, salt.nomenclature]
+    assert all(item is not source for item, source in zip(bouillon.base, (bones, salt), strict=True))
+    assert bouillon.gross_weight == pytest.approx(410)
+
+
+def test_base_returned_items_changed_ingredient_unchanged():
+    """Основание отдаётся копиями: правка полученного элемента не меняет вес узла."""
+    # Подготовка
+    bouillon = make_bouillon()
+
+    # Действие
+    bouillon.base[0].quantity = 1000
+
+    # Проверка
+    assert bouillon.gross_weight == pytest.approx(410)
+
+
+def test_base_setter_not_allowed_raises():
+    """Основание задаётся только в конструкторе."""
+    # Подготовка
+    bouillon = make_bouillon()
 
     # Действие и проверка
     with pytest.raises(AttributeError):
-        ingredient.recipe = recipe  # pyright: ignore[reportAttributeAccessIssue]
-    assert ingredient.recipe is None
+        bouillon.base = ()  # pyright: ignore[reportAttributeAccessIssue]
 
 
-def test_init_with_invalid_recipe_type_raises():
-    """Объект, не реализующий протокол карты, вызывает ArgumentsException."""
+# Подготовка
+@pytest.mark.parametrize("element", [None, "Кости", make_nomenclature()])
+def test_init_base_not_ingredient_raises(element):
+    """Элемент основания, не являющийся ингредиентом, вызывает ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        IngredientModel(make_named("Бульон", NomenclatureType.SEMI_FINISHED), 250, base=[element])
+
+
+def test_init_base_duplicate_nomenclature_raises():
+    """Номенклатура в основании уникальна, как и в составе карты."""
     # Подготовка
-    nomenclature = make_nomenclature()
+    bones = make_named("Кости")
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        IngredientModel(nomenclature, 50, recipe="не карта")  # pyright: ignore[reportArgumentType]
+        IngredientModel(
+            make_named("Бульон", NomenclatureType.SEMI_FINISHED),
+            250,
+            base=[IngredientModel(bones, 100), IngredientModel(bones, 200)],
+        )
 
 
-def test_init_with_mismatched_recipe_result_raises():
-    """Если результат карты не совпадает с номенклатурой ингредиента, бросается ArgumentsException."""
+def test_init_base_contains_own_nomenclature_raises():
+    """Полуфабрикат не может состоять из самого себя, даже на втором уровне основания."""
     # Подготовка
-    nomenclature = make_nomenclature()
-    other_nomenclature = NomenclatureModel(
-        "Другая",
-        "Другая полная",
-        NomenclatureGroupModel("Группа"),
-        RangeModel("грамм", 1),
-        NomenclatureType.SEMI_FINISHED,
-        1,
-    )
-    recipe = RecipeModel("Карта", other_nomenclature, 100, 10, ["Шаг"])
+    bouillon = make_named("Бульон", NomenclatureType.SEMI_FINISHED)
+    inner = IngredientModel(make_named("Основа", NomenclatureType.SEMI_FINISHED), 100, base=[IngredientModel(bouillon, 50)])
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        IngredientModel(nomenclature, 50, recipe=recipe)
+        IngredientModel(bouillon, 250, base=[inner])
 
 
-def test_gross_weight_with_recipe_calculated_recursively_proportionally():
-    """Вес брутто ингредиента с рецептом вычисляется пропорционально выходу карты: ratio * recipe.gross_weight."""
+def test_gross_weight_composite_sum_of_base():
+    """Брутто составного узла — сумма брутто основания; вес базовой единицы самого узла не учитывается."""
     # Подготовка
-    semi_result = NomenclatureModel(
-        "П/ф",
-        "П/ф",
-        NomenclatureGroupModel("Группа"),
-        RangeModel("грамм", 1),
-        NomenclatureType.SEMI_FINISHED,
-        1,
-    )
-    raw = make_nomenclature(grams_per_base_unit=1)
-    raw_ing = IngredientModel(raw, quantity=400)
-    recipe = RecipeModel("Карта п/ф", semi_result, 200, 30, ["Шаг"], [raw_ing])
-    ingredient = IngredientModel(semi_result, quantity=50, recipe=recipe)
+    bouillon = make_bouillon()
 
     # Действие
-    gross_weight = ingredient.gross_weight
+    gross_weight = bouillon.gross_weight
 
     # Проверка
-    assert gross_weight == pytest.approx(100)
+    assert gross_weight == pytest.approx(410)
 
 
-def test_net_weight_with_recipe_calculated_recursively_proportionally_with_loss():
-    """Вес нетто ингредиента с рецептом вычисляется по net_weight карты, пропорции и потерям строки."""
+def test_net_weight_composite_sum_of_base_with_own_loss():
+    """Нетто составного узла — сумма нетто основания за вычетом потерь узла: (200 + 10) * 0.9."""
     # Подготовка
-    semi_result = NomenclatureModel(
-        "П/ф",
-        "П/ф",
-        NomenclatureGroupModel("Группа"),
-        RangeModel("грамм", 1),
-        NomenclatureType.SEMI_FINISHED,
-        1,
-    )
-    raw = make_nomenclature(grams_per_base_unit=1)
-    raw_ing = IngredientModel(raw, quantity=400, loss_ratio=0.5)
-    recipe = RecipeModel("Карта п/ф", semi_result, 200, 30, ["Шаг"], [raw_ing])
-    ingredient = IngredientModel(semi_result, quantity=100, loss_ratio=0.1, recipe=recipe)
+    bouillon = make_bouillon(loss_ratio=0.1)
 
     # Действие
-    net_weight = ingredient.net_weight
+    net_weight = bouillon.net_weight
 
     # Проверка
-    assert net_weight == pytest.approx(90)
+    assert net_weight == pytest.approx(189)
+
+
+def test_weights_two_level_base_calculated_recursively():
+    """Основание само может быть составным: веса считаются рекурсивно на каждом уровне."""
+    # Подготовка
+    soup = IngredientModel(
+        make_named("Суп", NomenclatureType.DISH),
+        1,
+        0.2,
+        [make_bouillon(loss_ratio=0.1), IngredientModel(make_named("Картофель"), 100, 0.5)],
+    )
+
+    # Действие и проверка
+    assert soup.gross_weight == pytest.approx(510)
+    assert soup.net_weight == pytest.approx((189 + 50) * 0.8)
+
+
+def test_quantity_setter_composite_scales_base():
+    """Смена количества составного узла пропорционально масштабирует основание."""
+    # Подготовка
+    bouillon = make_bouillon(250)
+
+    # Действие
+    bouillon.quantity = 500
+
+    # Проверка
+    assert bouillon.quantity == 500
+    assert [item.quantity for item in bouillon.base] == [pytest.approx(800), pytest.approx(20)]
+    assert bouillon.gross_weight == pytest.approx(820)
+
+
+def test_quantity_setter_invalid_value_composite_unchanged():
+    """При ошибке проверки количество и основание составного узла не меняются."""
+    # Подготовка
+    bouillon = make_bouillon(250)
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        bouillon.quantity = 0
+    assert bouillon.quantity == 250
+    assert bouillon.gross_weight == pytest.approx(410)
+
+
+def test_loss_ratio_setter_composite_changes_net_only():
+    """Потери составного узла влияют только на нетто, основание не меняется."""
+    # Подготовка
+    bouillon = make_bouillon()
+
+    # Действие
+    bouillon.loss_ratio = 0.5
+
+    # Проверка
+    assert bouillon.gross_weight == pytest.approx(410)
+    assert bouillon.net_weight == pytest.approx(105)
+
+
+def test_scaled_leaf_new_object_with_scaled_quantity():
+    """Копия сырья получает умноженное количество, ту же номенклатуру и потери; исходник не меняется."""
+    # Подготовка
+    ingredient = make_ingredient(quantity=80, loss_ratio=0.25)
+
+    # Действие
+    copy = ingredient.scaled(0.5)
+
+    # Проверка
+    assert copy is not ingredient
+    assert copy.nomenclature is ingredient.nomenclature
+    assert copy.quantity == pytest.approx(40)
+    assert copy.loss_ratio == 0.25
+    assert ingredient.quantity == 80
+
+
+def test_scaled_composite_base_scaled_recursively():
+    """Основание составного узла масштабируется на всех уровнях."""
+    # Подготовка
+    soup = IngredientModel(make_named("Суп", NomenclatureType.DISH), 1, base=[make_bouillon(250)])
+
+    # Действие
+    copy = soup.scaled(2)
+
+    # Проверка
+    bouillon = copy.base[0]
+    assert copy.quantity == 2
+    assert bouillon.quantity == pytest.approx(500)
+    assert [item.quantity for item in bouillon.base] == [pytest.approx(800), pytest.approx(20)]
+    assert copy.gross_weight == pytest.approx(820)
+    assert soup.gross_weight == pytest.approx(410)
+
+
+def test_scaled_copy_changed_source_unchanged():
+    """Копия независима: смена её количества не меняет исходный узел."""
+    # Подготовка
+    bouillon = make_bouillon()
+    copy = bouillon.scaled(1)
+
+    # Действие
+    copy.quantity = 500
+
+    # Проверка
+    assert bouillon.quantity == 250
+    assert bouillon.gross_weight == pytest.approx(410)
+
+
+# Подготовка
+@pytest.mark.parametrize("factor", [0, -1, float("nan"), float("inf"), True, None, "2"])
+def test_scaled_invalid_factor_raises(factor):
+    """Коэффициент масштабирования должен быть конечным числом больше нуля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        make_bouillon().scaled(factor)
+
+
+def test_contains_same_nomenclature_returns_true():
+    """Узел содержит собственную номенклатуру."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+    ingredient = make_ingredient(nomenclature=nomenclature)
+
+    # Действие и проверка
+    assert ingredient.contains(nomenclature) is True
+
+
+def test_contains_other_nomenclature_returns_false():
+    """Узел не содержит другую номенклатуру, даже если наименования совпадают."""
+    # Подготовка
+    ingredient = make_ingredient(nomenclature=make_nomenclature())
+
+    # Действие и проверка
+    assert ingredient.contains(make_nomenclature()) is False
+
+
+def test_contains_nomenclature_deep_in_base_returns_true():
+    """Номенклатура находится в основании на любой глубине."""
+    # Подготовка
+    bouillon = make_bouillon()
+    bones = bouillon.base[0].nomenclature
+    soup = IngredientModel(make_named("Суп", NomenclatureType.DISH), 1, base=[bouillon])
+
+    # Действие и проверка
+    assert soup.contains(bones) is True
+    assert soup.contains(bouillon.nomenclature) is True
