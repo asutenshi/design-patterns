@@ -8,7 +8,6 @@ from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
-from Src.Models.nested_recipe_model import NestedRecipeModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.recipe_model import RecipeModel
 
@@ -296,8 +295,8 @@ def test_load_first_start_recipe_results_are_stored_nomenclature(first_start_sto
             assert any(item.nomenclature is stored for stored in nomenclatures)
 
 
-def test_load_first_start_every_semi_finished_item_is_nested_stored_recipe(first_start_storage: StorageManager):
-    """Каждый полуфабрикат в составе карты — вложенная карта, и это та же карта, что лежит в хранилище."""
+def test_load_first_start_every_semi_finished_item_is_snapshot_of_stored_recipe(first_start_storage: StorageManager):
+    """Каждый полуфабрикат в составе карты собран снимком карты из хранилища: вес совпадает по доле выхода."""
     # Подготовка
     semi_items = [
         item
@@ -309,8 +308,10 @@ def test_load_first_start_every_semi_finished_item_is_nested_stored_recipe(first
     # Действие и проверка
     assert len(semi_items) > 0
     for item in semi_items:
-        assert isinstance(item, NestedRecipeModel)
-        assert item.recipe is first_start_storage.find_recipe(item.nomenclature)
+        recipe = first_start_storage.find_recipe(item.nomenclature)
+        assert recipe is not None
+        assert item.base
+        assert item.gross_weight == pytest.approx(recipe.gross_weight_for(item.quantity))
 
 
 def test_load_first_start_recipe_results_have_allowed_types(first_start_storage: StorageManager):

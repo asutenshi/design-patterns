@@ -2,7 +2,6 @@ import pytest
 from Src.Core.exception import ArgumentsException
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Models.ingredient_model import IngredientModel
-from Src.Models.nested_recipe_model import NestedRecipeModel
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
@@ -536,20 +535,202 @@ def test_weights_for_invalid_output_raises(method_name, value):
         method(value)
 
 
-def test_add_item_cycle_in_nested_recipe_raises():
-    """Добавление вложенной карты, в составе которой есть текущая карта, бросает ArgumentsException."""
+def make_bouillon_recipe(output_quantity: float = 200) -> RecipeModel:
+    """Создаёт карту бульона: кости 400 г с потерями 0,5 дают брутто 400 и нетто 200."""
+    return RecipeModel(
+        "Бульон",
+        make_nomenclature("Бульон", NomenclatureType.SEMI_FINISHED),
+        output_quantity,
+        60,
+        ["Шаг"],
+        [IngredientModel(make_nomenclature("Кости"), 400, 0.5)],
+    )
+
+
+def test_as_ingredient_valid_params_fields_set():
+    """Строка из карты: номенклатура — результат карты, количество и потери — переданные."""
     # Подготовка
-    soup = make_nomenclature("Суп", NomenclatureType.DISH)
-    broth = make_nomenclature("Бульон", NomenclatureType.SEMI_FINISHED)
-    soup_recipe = RecipeModel("Суп", soup, 500, 30, ["Шаг"])
-    broth_recipe = RecipeModel("Бульон", broth, 1000, 60, ["Шаг"])
+    recipe = make_bouillon_recipe()
 
-    # Добавляем суп во вложенную карту бульона
-    broth_recipe.add_item(NestedRecipeModel(soup_recipe, 200))
+    # Действие
+    ingredient = recipe.as_ingredient(50, 0.1)
 
-    # Действие и проверка: теперь попытка добавить бульон в суп замыкает цикл
+    # Проверка
+    assert ingredient.nomenclature is recipe.result
+    assert ingredient.quantity == 50
+    assert ingredient.loss_ratio == 0.1
+
+
+def test_as_ingredient_loss_ratio_omitted_defaults_to_zero():
+    """Без доли потерь она равна нулю."""
+    # Действие
+    ingredient = make_bouillon_recipe().as_ingredient(50)
+
+    # Проверка
+    assert ingredient.loss_ratio == 0
+
+
+def test_as_ingredient_base_scaled_by_output():
+    """Основание — состав карты, умноженный на долю выхода: кости 400 * 50 / 200."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+
+    # Действие
+    ingredient = recipe.as_ingredient(50)
+
+    # Проверка
+    assert [item.nomenclature for item in ingredient.base] == [item.nomenclature for item in recipe.items]
+    assert ingredient.base[0].quantity == pytest.approx(100)
+    assert recipe.items[0].quantity == 400
+
+
+def test_as_ingredient_weights_proportional_to_output_with_loss():
+    """Брутто — брутто карты по доле выхода, нетто — ещё и за вычетом потерь строки: 200 * 100 / 200 * 0.9."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+
+    # Действие
+    ingredient = recipe.as_ingredient(100, 0.1)
+
+    # Проверка
+    assert ingredient.gross_weight == pytest.approx(recipe.gross_weight_for(100))
+    assert ingredient.gross_weight == pytest.approx(200)
+    assert ingredient.net_weight == pytest.approx(90)
+
+
+def test_as_ingredient_two_level_nesting_scaled_on_each_level():
+    """Полуфабрикат из полуфабриката: масштаб применяется на каждом уровне."""
+    # Подготовка
+    soup = RecipeModel(
+        "Суп",
+        make_nomenclature("Суп", NomenclatureType.DISH),
+        1000,
+        30,
+        ["Шаг"],
+        [make_bouillon_recipe().as_ingredient(400, 0.1), make_ingredient("Картофель", 200, 0.5)],
+    )
+
+    # Действие
+    ingredient = soup.as_ingredient(500)
+
+    # Проверка
+    bouillon = ingredient.base[0]
+    assert bouillon.quantity == pytest.approx(200)
+    assert bouillon.base[0].quantity == pytest.approx(400)
+    assert ingredient.gross_weight == pytest.approx(500)
+    # Нетто супа: бульон (800 * 0.5) * 0.9 = 360 и картофель 200 * 0.5 = 100, выход 500 из 1000
+    assert ingredient.net_weight == pytest.approx((360 + 100) / 2)
+
+
+def test_as_ingredient_recipe_changed_snapshot_unchanged():
+    """Строка — снимок: правка карты не меняет уже собранную строку, её нужно собрать заново."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+    ingredient = recipe.as_ingredient(200)
+
+    # Действие
+    recipe.add_item(make_ingredient("Соль", 40))
+    recipe.output_quantity = 400
+
+    # Проверка
+    assert ingredient.gross_weight == pytest.approx(400)
+    assert recipe.as_ingredient(200).gross_weight == pytest.approx(220)
+
+
+def test_as_ingredient_several_snapshots_independent():
+    """Одна карта даёт независимые строки для разных карт: у каждой своё количество и основание."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+    first = recipe.as_ingredient(50)
+    second = recipe.as_ingredient(100, 0.5)
+
+    # Действие
+    first.quantity = 200
+
+    # Проверка
+    assert first.gross_weight == pytest.approx(400)
+    assert second.gross_weight == pytest.approx(200)
+    assert second.net_weight == pytest.approx(50)
+
+
+def test_as_ingredient_empty_recipe_gives_leaf():
+    """Из карты без состава получается строка без основания: её вес считается как у сырья."""
+    # Подготовка
+    recipe = make_recipe(result=make_nomenclature("Соус", NomenclatureType.SEMI_FINISHED, grams_per_base_unit=2))
+
+    # Действие
+    ingredient = recipe.as_ingredient(50)
+
+    # Проверка
+    assert ingredient.base == ()
+    assert ingredient.gross_weight == pytest.approx(100)
+
+
+# Подготовка
+@pytest.mark.parametrize(("quantity", "loss_ratio"), [(0, 0), (-1, 0), ("10", 0), (None, 0), (True, 0), (50, 1), (50, -0.1)])
+def test_as_ingredient_invalid_params_raises(quantity, loss_ratio):
+    """Количество должно быть больше нуля, доля потерь — в промежутке [0, 1)."""
+    # Действие и проверка
     with pytest.raises(ArgumentsException):
-        soup_recipe.add_item(NestedRecipeModel(broth_recipe, 300))
+        make_bouillon_recipe().as_ingredient(quantity, loss_ratio)
+
+
+def test_add_item_snapshot_of_itself_raises():
+    """Карта не может включить снимок самой себя или другой карты с тем же результатом."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+    same_result = RecipeModel("Бульон (вариант)", recipe.result, 500, 30, ["Шаг"], [make_ingredient("Вода", 500)])
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        recipe.add_item(recipe.as_ingredient(100))
+    with pytest.raises(ArgumentsException):
+        recipe.add_item(same_result.as_ingredient(100))
+    assert len(recipe.items) == 1
+
+
+def test_add_item_result_in_base_raises_and_keeps_composition():
+    """Результат карты в основании добавляемой строки (цикл через другую карту) бросает ArgumentsException."""
+    # Подготовка
+    soup = RecipeModel("Суп", make_nomenclature("Суп", NomenclatureType.DISH), 500, 30, ["Шаг"])
+    bouillon = make_bouillon_recipe()
+    bouillon.add_item(soup.as_ingredient(1))
+    soup_items_before = soup.items
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        soup.add_item(bouillon.as_ingredient(300))
+    assert soup.items == soup_items_before
+
+
+def test_add_item_same_semi_finished_twice_raises():
+    """Полуфабрикат входит в состав один раз: ключ уникальности — номенклатура результата."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+    soup = RecipeModel(
+        "Суп", make_nomenclature("Суп", NomenclatureType.DISH), 500, 30, ["Шаг"], [recipe.as_ingredient(50)]
+    )
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        soup.add_item(recipe.as_ingredient(100))
+    assert len(soup.items) == 1
+
+
+def test_remove_item_semi_finished_by_result_removed():
+    """Полуфабрикат удаляется по номенклатуре результата его карты, как и сырьё."""
+    # Подготовка
+    recipe = make_bouillon_recipe()
+    soup = RecipeModel(
+        "Суп", make_nomenclature("Суп", NomenclatureType.DISH), 500, 30, ["Шаг"], [recipe.as_ingredient(50)]
+    )
+
+    # Действие
+    soup.remove_item(recipe.result)
+
+    # Проверка
+    assert soup.items == []
+    assert soup.gross_weight == 0
 
 
 # Номенклатура, отличающаяся от «сырья весом 1 г на базовую единицу»: тип и вес базовой единицы
@@ -689,7 +870,7 @@ def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition(
 
 
 def test_create_borscht_without_recipes_builds_them_from_catalog():
-    """Не переданные карты полуфабрикатов создаются из справочника и входят в состав как вложенные карты."""
+    """Не переданные карты полуфабрикатов создаются из справочника и входят в состав снимками с основанием."""
     # Подготовка
     catalog = make_catalog(*ALL_NAMES)
 
@@ -697,14 +878,14 @@ def test_create_borscht_without_recipes_builds_them_from_catalog():
     recipe = RecipeModel.create_borscht(catalog)
 
     # Проверка
-    nested = {i.nomenclature.name: i.recipe for i in recipe.items if isinstance(i, NestedRecipeModel)}
-    assert set(nested) == {"Бульон костный говяжий", "Говядина отварная", "Зажарка свекольная"}
-    for name, nested_recipe in nested.items():
-        assert nested_recipe.result is catalog.get(name)
+    composite = {i.nomenclature.name: i for i in recipe.items if i.base}
+    assert set(composite) == {"Бульон костный говяжий", "Говядина отварная", "Зажарка свекольная"}
+    for name, item in composite.items():
+        assert item.nomenclature is catalog.get(name)
 
 
-def test_create_borscht_passed_recipes_are_used_as_is():
-    """Переданные карты полуфабрикатов попадают в состав борща без копирования."""
+def test_create_borscht_passed_recipes_used_for_snapshots():
+    """Строки полуфабрикатов собраны из переданных карт: состав и вес совпадают с картой по доле выхода."""
     # Подготовка
     catalog = make_catalog(*ALL_NAMES)
     bouillon = RecipeModel.create_beef_bouillon(catalog)
@@ -715,10 +896,11 @@ def test_create_borscht_passed_recipes_are_used_as_is():
     recipe = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
 
     # Проверка
-    by_name = {i.nomenclature.name: i.recipe for i in recipe.items if isinstance(i, NestedRecipeModel)}
-    assert by_name["Бульон костный говяжий"] is bouillon
-    assert by_name["Говядина отварная"] is boiled_beef
-    assert by_name["Зажарка свекольная"] is beet_fry
+    by_result = {i.nomenclature: i for i in recipe.items}
+    for source in (bouillon, boiled_beef, beet_fry):
+        item = by_result[source.result]
+        assert [b.nomenclature for b in item.base] == [i.nomenclature for i in source.items]
+        assert item.gross_weight == pytest.approx(source.gross_weight_for(item.quantity))
 
 
 def test_create_borscht_full_catalog_weights_include_packaging():

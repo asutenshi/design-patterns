@@ -2,9 +2,7 @@ import pytest
 from Src.Core.exception import ArgumentsException
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.storage_manager import StorageManager
-from Src.Models.abstract_recipe_item import AbstractRecipeItem
 from Src.Models.ingredient_model import IngredientModel
-from Src.Models.nested_recipe_model import NestedRecipeModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
@@ -38,14 +36,9 @@ def make_nomenclature(name: str, type: NomenclatureType = NomenclatureType.RAW_M
     )
 
 
-def make_recipe(result: NomenclatureModel, output_quantity: float, items: list[AbstractRecipeItem]) -> RecipeModel:
+def make_recipe(result: NomenclatureModel, output_quantity: float, items: list[IngredientModel]) -> RecipeModel:
     """Создаёт карту с заданным результатом, выходом и составом."""
     return RecipeModel(result.name, result, output_quantity, 30, ["Шаг"], items)
-
-
-def nested(recipe: RecipeModel, quantity: float, loss_ratio: float = 0) -> NestedRecipeModel:
-    """Создаёт строку состава с вложенной картой."""
-    return NestedRecipeModel(recipe, quantity, loss_ratio)
 
 
 def recipes_by_name(storage: StorageManager) -> dict[str, RecipeModel]:
@@ -95,19 +88,28 @@ def test_weights_borscht_sum_of_rows_equals_recipe_weights(first_start_storage: 
     assert borscht.net_weight == pytest.approx(net)
 
 
-def test_weights_nested_recipe_changed_borscht_recalculated(first_start_storage: StorageManager):
-    """Правка вложенной карты сразу меняет вес борща: соль 12 г убирается из бульона (выход 2000, строка 250 г)."""
+def test_weights_semi_finished_recipe_changed_assembled_borscht_unchanged(first_start_storage: StorageManager):
+    """Правка карты бульона не меняет уже собранный борщ: строка бульона — снимок.
+
+    Пересборка строки (в будущем её выполнит наблюдатель) учитывает правку: соль 12 г убирается из бульона
+    с выходом 2000, строка 250 г с потерями 0,1.
+    """
     # Подготовка
     recipes = recipes_by_name(first_start_storage)
     salt = next(item for item in first_start_storage.nomenclatures if item.name == "Соль")
+    bouillon = recipes["Бульон костный говяжий"]
     borscht = recipes["Борщ с говядиной"]
     gross_before = borscht.gross_weight
     net_before = borscht.net_weight
 
     # Действие
-    recipes["Бульон костный говяжий"].remove_item(salt)
+    bouillon.remove_item(salt)
+    gross_stale = borscht.gross_weight
+    borscht.remove_item(bouillon.result)
+    borscht.add_item(bouillon.as_ingredient(250, 0.1))
 
     # Проверка
+    assert gross_stale == pytest.approx(gross_before)
     # 12 г соли без потерь, доля бульона в борще 250 / 2000 и потери строки 0,1
     assert borscht.gross_weight == pytest.approx(gross_before - 12 * 0.125)
     assert borscht.net_weight == pytest.approx(net_before - 12 * 0.125 * 0.9)
@@ -128,12 +130,12 @@ def test_weights_three_level_nesting_scaled_by_quantity_and_loss():
         make_nomenclature("Бульон", NomenclatureType.SEMI_FINISHED),
         2000,
         [
-            nested(baked_bones, 800, 0.9),
+            baked_bones.as_ingredient(800, 0.9),
             IngredientModel(make_nomenclature("Лук"), 100, 0.9),
             IngredientModel(make_nomenclature("Соль"), 12),
         ],
     )
-    row = nested(bouillon, 250, 0.1)
+    row = bouillon.as_ingredient(250, 0.1)
 
     # Действие и проверка
     assert baked_bones.gross_weight == pytest.approx(1520)
@@ -145,15 +147,16 @@ def test_weights_three_level_nesting_scaled_by_quantity_and_loss():
 
 
 def test_add_item_cycle_through_chain_of_recipes_raises():
-    """Карта A включает B, B включает C: добавление A в состав C замыкает цикл и бросает ArgumentsException."""
+    """A включает снимок B, B — снимок C: снимок A в составе C замкнул бы цикл и бросает ArgumentsException.
+
+    Карты собираются снизу вверх, поэтому снимки свежие и видят всю цепочку.
+    """
     # Подготовка
-    a = make_recipe(make_nomenclature("A", NomenclatureType.DISH), 1, [])
-    b = make_recipe(make_nomenclature("B", NomenclatureType.SEMI_FINISHED), 1, [])
     c = make_recipe(make_nomenclature("C", NomenclatureType.SEMI_FINISHED), 1, [])
-    a.add_item(nested(b, 1))
-    b.add_item(nested(c, 1))
+    b = make_recipe(make_nomenclature("B", NomenclatureType.SEMI_FINISHED), 1, [c.as_ingredient(1)])
+    a = make_recipe(make_nomenclature("A", NomenclatureType.DISH), 1, [b.as_ingredient(1)])
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        c.add_item(nested(a, 1))
+        c.add_item(a.as_ingredient(1))
     assert c.items == []
