@@ -27,13 +27,14 @@ def test_init_empty_text_is_allowed():
 
 
 def test_is_binary_returns_false_and_media_type_is_plain_text():
-    """Текстовый результат отдаётся текстом с типом text/plain в UTF-8."""
+    """Текстовый результат отдаётся текстом с типом text/plain в UTF-8 и расширением txt."""
     # Подготовка
     result = TxtReportResult("текст")
 
     # Действие и проверка
     assert result.is_binary is False
     assert result.media_type == "text/plain; charset=utf-8"
+    assert result.file_extension == "txt"
 
 
 # Подготовка

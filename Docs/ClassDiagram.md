@@ -123,6 +123,7 @@ classDiagram
         +boss_name: str
         +account_name: str
         +is_first_start: bool
+        +response_format: ResponseFormat
     }
 
     class OrganizationModel {
@@ -140,6 +141,10 @@ classDiagram
         JSC
         PJSC
         SOLE_PROPRIETOR
+    }
+
+    class ResponseFormat {
+        <<enumeration>>
     }
 
     BaseEntity <|-- NamedEntity
@@ -164,6 +169,7 @@ classDiagram
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
+    SettingsModel --> ResponseFormat : response_format
 ```
 
 ## Рецепты
@@ -433,10 +439,14 @@ classDiagram
         +boss_name: str
         +account_name: str
         +is_first_start: bool
+        +response_format: ResponseFormat
     }
 
     class OrganizationModel
     class OwnershipForm {
+        <<enumeration>>
+    }
+    class ResponseFormat {
         <<enumeration>>
     }
     class ArgumentsException
@@ -451,6 +461,7 @@ classDiagram
     Common ..> OperationException : бросает
     SettingsManager ..> OrganizationModel : создаёт в convert()
     SettingsManager ..> OwnershipForm : значение из файла
+    SettingsManager ..> ResponseFormat : значение из файла
     SettingsManager ..> ArgumentsException : перехватывает
     SettingsManager ..> OperationException : бросает
 ```
@@ -559,13 +570,18 @@ classDiagram
 только с абстракциями `AbstractReport` и `AbstractReportResult` (паттерн «Абстрактная фабрика»).
 Абстракции лежат в `Src/Core/`, отчёты и фабрика — в `Src/Logics/`, результаты — в `Src/Dtos/`.
 
+Фабрика хранит настройки (`SettingsModel`): `create(response_format)` создаёт отчёт явно указанного формата,
+`create_default()` — формата из `SettingsModel.response_format`. Новый формат подключается строкой в `_reports`.
+
 Общие для всех форматов правила обхода заданы в `AbstractReport`: поля — публичные свойства (`Common.get_fields`),
-вложенная сущность с наименованием выводится ссылкой (наименование и код), остальные объекты раскрываются
-по дереву «Компоновщика» (`RecipeModel.items`, `IngredientModel.base`). Так не зацикливается `RangeModel.base`
-у базовой единицы.
+вложенная сущность с наименованием выводится ссылкой (наименование и код), списки — поэлементно,
+остальные объекты раскрываются по дереву «Компоновщика» (`RecipeModel.items`, `IngredientModel.base`).
+Так не зацикливается `RangeModel.base` у базовой единицы, а все форматы выводят один и тот же состав данных.
 
 Результат — объект-значение: без идентификатора, неизменяем, равенство по типу и содержимому.
-`is_binary` подсказывает API, отдавать ли результат файлом на скачивание или текстом.
+Все форматы текстовые, поэтому хранение текста и кодирование в байты вынесены в `AbstractTextReportResult`.
+`is_binary` подсказывает API, отдавать ли результат файлом на скачивание (Markdown, CSV) или текстом
+(TXT, XML, HTML), `file_extension` — расширение имени файла. CSV кодируется с меткой UTF-8 для Excel.
 
 ```mermaid
 classDiagram
@@ -574,11 +590,15 @@ classDiagram
     class AbstractReportFactory {
         <<abstract>>
         +create(response_format)* AbstractReport
+        +create_default()* AbstractReport
     }
 
     class ReportFactory {
         -_reports$: dict~ResponseFormat, type~
+        -_settings: SettingsModel
+        +settings: SettingsModel
         +create(response_format) AbstractReport
+        +create_default() AbstractReport
     }
 
     class AbstractReport {
@@ -588,11 +608,29 @@ classDiagram
         #_fields(source)$ list~tuple~
         #_is_scalar(value)$ bool
         #_is_reference(value)$ bool
+        #_is_collection(value)$ bool
+        #_format_reference(entity)$ str
         #_format_scalar(value)$ str
     }
 
     class TxtReport {
         +build(source) TxtReportResult
+    }
+
+    class MarkdownReport {
+        +build(source) MarkdownReportResult
+    }
+
+    class CsvReport {
+        +build(source) CsvReportResult
+    }
+
+    class XmlReport {
+        +build(source) XmlReportResult
+    }
+
+    class HtmlReport {
+        +build(source) HtmlReportResult
     }
 
     class AbstractReportResult {
@@ -601,21 +639,51 @@ classDiagram
         +binary*: bytes
         +is_binary*: bool
         +media_type*: str
+        +file_extension*: str
         +__eq__(value) bool
         +__hash__() int
     }
 
-    class TxtReportResult {
+    class AbstractTextReportResult {
+        <<abstract>>
+        #_ENCODING$: str
         -_text: str
         +text: str
         +binary: bytes
-        +is_binary: bool
-        +media_type: str
+    }
+
+    class TxtReportResult {
+        +is_binary = False
+    }
+
+    class MarkdownReportResult {
+        +is_binary = True
+    }
+
+    class CsvReportResult {
+        #_ENCODING$ = utf-8-sig
+        +is_binary = True
+    }
+
+    class XmlReportResult {
+        +is_binary = False
+    }
+
+    class HtmlReportResult {
+        +is_binary = False
     }
 
     class ResponseFormat {
         <<enumeration>>
         TXT
+        MARKDOWN
+        CSV
+        XML
+        HTML
+    }
+
+    class SettingsModel {
+        +response_format: ResponseFormat
     }
 
     class NamedEntity
@@ -624,12 +692,26 @@ classDiagram
 
     AbstractReportFactory <|-- ReportFactory
     AbstractReport <|-- TxtReport
-    AbstractReportResult <|-- TxtReportResult
+    AbstractReport <|-- MarkdownReport
+    AbstractReport <|-- CsvReport
+    AbstractReport <|-- XmlReport
+    AbstractReport <|-- HtmlReport
+    AbstractReportResult <|-- AbstractTextReportResult
+    AbstractTextReportResult <|-- TxtReportResult
+    AbstractTextReportResult <|-- MarkdownReportResult
+    AbstractTextReportResult <|-- CsvReportResult
+    AbstractTextReportResult <|-- XmlReportResult
+    AbstractTextReportResult <|-- HtmlReportResult
     AbstractReportFactory ..> AbstractReport : создаёт
+    ReportFactory --> SettingsModel : settings
+    SettingsModel --> ResponseFormat : response_format
     ReportFactory ..> ResponseFormat : ключ сопоставления
-    ReportFactory ..> TxtReport : создаёт
     AbstractReport ..> AbstractReportResult : возвращает
     TxtReport ..> TxtReportResult : возвращает
+    MarkdownReport ..> MarkdownReportResult : возвращает
+    CsvReport ..> CsvReportResult : возвращает
+    XmlReport ..> XmlReportResult : возвращает
+    HtmlReport ..> HtmlReportResult : возвращает
     AbstractReport ..> NamedEntity : строит по сущности
     AbstractReport ..> Common : get_fields
     ReportFactory ..> ArgumentsException : бросает для чужого или нереализованного формата

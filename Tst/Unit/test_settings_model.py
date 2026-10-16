@@ -1,6 +1,7 @@
 import pytest
 from Src.Core.exception import ArgumentsException
 from Src.Core.ownership_form import OwnershipForm
+from Src.Core.response_format import ResponseFormat
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
@@ -66,3 +67,33 @@ def test_is_first_start_setter_not_bool_raises(value: object):
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         settings.is_first_start = value  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_init_response_format_omitted_defaults_to_txt():
+    """Если формат отчётов не передан, он равен TXT."""
+    # Действие
+    settings = SettingsModel(_organization(), "Иванов И. И.", "Петрова А. А.")
+
+    # Проверка
+    assert settings.response_format is ResponseFormat.TXT
+
+
+def test_init_response_format_is_stored():
+    """Переданный формат отчётов сохраняется в свойстве."""
+    # Действие
+    settings = SettingsModel(_organization(), "Иванов И. И.", "Петрова А. А.", response_format=ResponseFormat.CSV)
+
+    # Проверка
+    assert settings.response_format is ResponseFormat.CSV
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["csv", None, 1])
+def test_response_format_setter_not_response_format_raises(value: object):
+    """Значение, не являющееся ResponseFormat (в том числе его строковое значение), отклоняется."""
+    # Подготовка
+    settings = SettingsModel(_organization(), "Иванов И. И.", "Петрова А. А.")
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        settings.response_format = value  # pyright: ignore[reportAttributeAccessIssue]

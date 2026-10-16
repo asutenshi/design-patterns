@@ -1,6 +1,8 @@
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from enum import Enum
+from typing import TypeGuard
 
 from Src.Core.abstract_report_result import AbstractReportResult
 from Src.Core.common import Common
@@ -20,7 +22,9 @@ class AbstractReport(ABC):
       (у базовой единицы ``RangeModel.base`` — она сама);
     - остальные вложенные объекты раскрываются по дереву «Компоновщика»: состав карты
       (``RecipeModel.items``) и основание ингредиента (``IngredientModel.base``);
-    - простые значения (строки, числа, перечисления, коды) приводятся к строке ``_format_scalar()``.
+    - список или кортеж (``_is_collection()``) выводится поэлементно по тем же правилам;
+    - простые значения (строки, числа, перечисления, коды) приводятся к строке ``_format_scalar()``,
+      ссылка в текстовом виде — ``_format_reference()``.
     """
 
     # Число знаков после запятой для дробных чисел: веса считаются в граммах
@@ -61,6 +65,24 @@ class AbstractReport(ABC):
         :return: True для сущности с наименованием.
         """
         return isinstance(value, NamedEntity)
+
+    @staticmethod
+    def _is_collection(value: object) -> TypeGuard[Sequence[object]]:
+        """Проверяет, что значение — список элементов, который выводится поэлементно.
+
+        :param value: Значение поля или элемент списка.
+        :return: True для списка и кортежа.
+        """
+        return isinstance(value, (list, tuple))
+
+    @staticmethod
+    def _format_reference(entity: NamedEntity) -> str:
+        """Возвращает текст ссылки на сущность.
+
+        :param entity: Сущность, на которую ссылается поле.
+        :return: Строка ``наименование [код]``.
+        """
+        return f"{entity.name} [{entity.id}]"
 
     @staticmethod
     def _format_scalar(value: object) -> str:

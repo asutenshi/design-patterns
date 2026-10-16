@@ -11,7 +11,7 @@ class AbstractReportResult(ABC):
     запись (дата, параметры, ответственный), а результат войдёт в неё полем.
 
     Содержимое доступно и текстом, и байтами. ``is_binary`` подсказывает, как его отдавать:
-    файлом на скачивание или текстом.
+    файлом на скачивание или текстом; имя файла дополняется расширением ``file_extension``.
     """
 
     @property
@@ -33,6 +33,11 @@ class AbstractReportResult(ABC):
     @abstractmethod
     def media_type(self) -> str:
         """Возвращает MIME-тип содержимого, например ``text/plain; charset=utf-8``."""
+
+    @property
+    @abstractmethod
+    def file_extension(self) -> str:
+        """Возвращает расширение файла с содержимым без точки, например ``txt``."""
 
     @override
     def __eq__(self, value: object, /) -> bool:

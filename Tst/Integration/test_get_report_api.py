@@ -36,7 +36,7 @@ def test_get_report_existing_recipe_returns_txt_report(client: TestClient, first
 # Подготовка
 @pytest.mark.parametrize("params", [{"recipe_name": "Борщ с говядиной"}, {"recipe_name": "  борщ С ГОВЯДИНОЙ "}])
 def test_get_report_format_omitted_or_name_in_other_case_returns_report(client: TestClient, params: dict[str, str]):
-    """Без response_format используется TXT, наименование ищется без учёта регистра и пробелов по краям."""
+    """Без response_format берётся формат из настроек (здесь TXT), наименование ищется без учёта регистра и пробелов."""
     # Действие
     response = client.get("/api/get_report", params=params)
 
@@ -83,3 +83,20 @@ def test_lifespan_not_loaded_managers_loads_them(load_settings: Callable[[bool],
     # Проверка
     assert storage.is_loaded
     assert storage.recipes
+
+
+def test_get_report_format_omitted_csv_settings_returns_csv_file(load_settings: Callable[..., None]):
+    """Без response_format отчёт строится в формате из настроек: CSV отдаётся файлом на скачивание."""
+    # Подготовка
+    load_settings(True, "csv")
+    storage = StorageManager()
+    storage.load()
+
+    # Действие
+    with TestClient(app) as client:
+        response = client.get("/api/get_report", params={"recipe_name": "Борщ с говядиной"})
+
+    # Проверка
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert response.headers["content-disposition"].startswith('attachment; filename="recipe-')

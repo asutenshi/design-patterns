@@ -7,6 +7,7 @@ from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
+from Src.Core.response_format import ResponseFormat
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
@@ -69,6 +70,7 @@ class SettingsManager(AbstractFileManager):
             "boss_name": "Иванов Иван Иванович",
             "account_name": "Петрова Анна Александровна",
             "is_first_start": True,
+            "response_format": ResponseFormat.TXT.value,
         }
 
     @override
@@ -152,16 +154,21 @@ class SettingsManager(AbstractFileManager):
         Модель присваивается только целиком: при ошибке прежние настройки не затираются
         наполовину собранными.
 
+        Необязательные ``is_first_start`` и ``response_format`` при отсутствии берутся
+        из значений модели по умолчанию.
+
         :raises OperationException: Если нет обязательного ключа, значение имеет
-            неверный тип или не проходит проверку модели.
+            неверный тип, неизвестно перечислению или не проходит проверку модели.
         """
         try:
             values = self._values(OrganizationModel, self._data["organization"])
             values["ownership_form"] = OwnershipForm(values["ownership_form"])
             organization = OrganizationModel(**values)
 
-            values = self._values(SettingsModel, self._data, optional=("is_first_start",))
+            values = self._values(SettingsModel, self._data, optional=("is_first_start", "response_format"))
             values["organization"] = organization
+            if "response_format" in values:
+                values["response_format"] = ResponseFormat(values["response_format"])
             self._settings = SettingsModel(**values)
         except KeyError as ex:
             raise OperationException(f"В настройках нет обязательного поля {ex}") from ex

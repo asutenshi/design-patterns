@@ -8,5 +8,6 @@
     },
     "boss_name": "Иванов Иван Иванович",
     "account_name": "Петрова Анна Александровна",
-    "is_first_start": true
+    "is_first_start": true,
+    "response_format": "txt"
 }

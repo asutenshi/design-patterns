@@ -30,10 +30,13 @@ def reset_manager_instances() -> Iterator[None]:
 
 
 @pytest.fixture
-def load_settings(tmp_path: Path) -> Callable[[bool], None]:
-    """Возвращает функцию, которая загружает в SettingsManager настройки с заданным флагом первого запуска."""
+def load_settings(tmp_path: Path) -> Callable[..., None]:
+    """Возвращает функцию, которая загружает в SettingsManager настройки с заданным флагом первого запуска.
 
-    def load(is_first_start: bool) -> None:
+    Вторым аргументом функции можно передать значение response_format, по умолчанию его нет в файле.
+    """
+
+    def load(is_first_start: bool, response_format: str | None = None) -> None:
         data = {
             "organization": {
                 "name": "Ромашка",
@@ -46,6 +49,8 @@ def load_settings(tmp_path: Path) -> Callable[[bool], None]:
             "account_name": "Петрова Анна Александровна",
             "is_first_start": is_first_start,
         }
+        if response_format is not None:
+            data["response_format"] = response_format
         path = tmp_path / "settings.json"
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         SettingsManager().load(str(path))
@@ -54,7 +59,7 @@ def load_settings(tmp_path: Path) -> Callable[[bool], None]:
 
 
 @pytest.fixture
-def first_start_storage(load_settings: Callable[[bool], None]) -> StorageManager:
+def first_start_storage(load_settings: Callable[..., None]) -> StorageManager:
     """Хранилище, загруженное при первом запуске."""
     load_settings(True)
     storage = StorageManager()

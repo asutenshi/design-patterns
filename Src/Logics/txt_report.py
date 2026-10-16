@@ -1,5 +1,4 @@
-from collections.abc import Iterable
-from typing import cast, override
+from typing import override
 
 from Src.Core.abstract_report import AbstractReport
 from Src.Core.common_validator import CommonValidator
@@ -64,8 +63,8 @@ class TxtReport(AbstractReport):
             return [f"{indent}{field}: {self._value_text(value)}"]
 
         lines = [f"{indent}{field}:"]
-        if isinstance(value, (list, tuple)):
-            for element in cast(Iterable[object], value):
+        if self._is_collection(value):
+            for element in value:
                 lines.extend(self._element_lines(element, level + 1))
         else:
             lines.extend(self._object_lines(value, level + 1))
@@ -96,5 +95,5 @@ class TxtReport(AbstractReport):
         :return: Значение строкой, для сущности — ``наименование [код]``.
         """
         if isinstance(value, NamedEntity):
-            return f"{value.name} [{value.id}]"
+            return self._format_reference(value)
         return self._format_scalar(value)

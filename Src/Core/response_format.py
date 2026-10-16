@@ -9,3 +9,11 @@ class ResponseFormat(Enum):
 
     # Простой текст
     TXT = "txt"
+    # Разметка Markdown
+    MARKDOWN = "markdown"
+    # Таблица CSV
+    CSV = "csv"
+    # Документ XML
+    XML = "xml"
+    # Страница HTML
+    HTML = "html"
