@@ -8,6 +8,7 @@ from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nested_recipe_model import NestedRecipeModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.recipe_model import RecipeModel
 
@@ -50,39 +51,6 @@ EXPECTED_NOMENCLATURES = [
 ]
 EXPECTED_WAREHOUSES = ["Склад ресторана", "Склад производственного цеха"]
 EXPECTED_RECIPES = ["Бульон костный говяжий", "Говядина отварная", "Зажарка свекольная", "Борщ с говядиной"]
-
-
-@pytest.fixture
-def load_settings(tmp_path: Path) -> Callable[[bool], None]:
-    """Возвращает функцию, которая загружает в SettingsManager настройки с заданным флагом первого запуска."""
-
-    def load(is_first_start: bool) -> None:
-        data = {
-            "organization": {
-                "name": "Ромашка",
-                "inn": "1234567894",
-                "bic": "123456789",
-                "account": "12345678901234567890",
-                "ownership_form": "ООО",
-            },
-            "boss_name": "Иванов Иван Иванович",
-            "account_name": "Петрова Анна Александровна",
-            "is_first_start": is_first_start,
-        }
-        path = tmp_path / "settings.json"
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        SettingsManager().load(str(path))
-
-    return load
-
-
-@pytest.fixture
-def first_start_storage(load_settings: Callable[[bool], None]) -> StorageManager:
-    """Хранилище, загруженное при первом запуске."""
-    load_settings(True)
-    storage = StorageManager()
-    storage.load()
-    return storage
 
 
 # ---------------------------------------------------------------------------
@@ -302,18 +270,8 @@ def test_load_first_start_ids_are_unique_across_all_collections(first_start_stor
 # ---------------------------------------------------------------------------
 
 
-def make_cycle_nomenclatures(storage: StorageManager, count: int) -> list[NomenclatureModel]:
-    """Создаёт полуфабрикаты с группой и единицей из хранилища, которых нет в начальных данных."""
-    group = storage.nomenclature_groups[0]
-    unit = storage.ranges[0]
-    return [
-        NomenclatureModel.create_semi_finished(f"Цикл {index}", f"Цикл {index} (полное)", group, unit, 1)
-        for index in range(count)
-    ]
-
-
 def make_inclusion_recipe(result: NomenclatureModel, ingredient: NomenclatureModel) -> RecipeModel:
-    """Создаёт карту результата, в состав которой входит одна номенклатура."""
+    """Создаёт карту результата, в состав которой входит один ингредиент."""
     return RecipeModel(result.name, result, 1, 1, ["Смешать"], [IngredientModel(ingredient, 1)])
 
 
@@ -327,33 +285,32 @@ def test_load_first_start_creates_recipes(first_start_storage: StorageManager):
 
 
 def test_load_first_start_recipe_results_are_stored_nomenclature(first_start_storage: StorageManager):
-    """Результат и ингредиенты карты — те же объекты, что лежат в коллекции номенклатуры, а не копии."""
+    """Результат и элементы состава карты — те же объекты номенклатуры, что лежат в коллекции, а не копии."""
     # Подготовка
     nomenclatures = first_start_storage.nomenclatures
 
     # Действие и проверка
     for recipe in first_start_storage.recipes:
-        assert any(recipe.result is item for item in nomenclatures)
-        for ingredient in recipe.ingredients:
-            assert any(ingredient.nomenclature is item for item in nomenclatures)
+        assert any(recipe.result is stored for stored in nomenclatures)
+        for item in recipe.items:
+            assert any(item.nomenclature is stored for stored in nomenclatures)
 
 
-def test_load_first_start_every_semi_finished_ingredient_has_recipe(first_start_storage: StorageManager):
-    """У каждого полуфабриката в составе любой карты есть собственная карта и ингредиент на неё ссылается."""
+def test_load_first_start_every_semi_finished_item_is_nested_stored_recipe(first_start_storage: StorageManager):
+    """Каждый полуфабрикат в составе карты — вложенная карта, и это та же карта, что лежит в хранилище."""
     # Подготовка
-    semi_ingredients = [
-        ingredient
+    semi_items = [
+        item
         for recipe in first_start_storage.recipes
-        for ingredient in recipe.ingredients
-        if ingredient.nomenclature.type is NomenclatureType.SEMI_FINISHED
+        for item in recipe.items
+        if item.nomenclature.type is NomenclatureType.SEMI_FINISHED
     ]
 
     # Действие и проверка
-    assert len(semi_ingredients) > 0
-    for ingredient in semi_ingredients:
-        recipe = first_start_storage.find_recipe(ingredient.nomenclature)
-        assert recipe is not None
-        assert ingredient.recipe is recipe
+    assert len(semi_items) > 0
+    for item in semi_items:
+        assert isinstance(item, NestedRecipeModel)
+        assert item.recipe is first_start_storage.find_recipe(item.nomenclature)
 
 
 def test_load_first_start_recipe_results_have_allowed_types(first_start_storage: StorageManager):
@@ -406,7 +363,7 @@ def test_recipes_returned_list_modification_does_not_change_storage(first_start_
     assert len(first_start_storage.recipes) == len(EXPECTED_RECIPES)
 
 
-def test_add_recipe_second_recipe_for_same_result_raises(first_start_storage: StorageManager):
+def test_recipes_second_recipe_for_same_result_raises(first_start_storage: StorageManager):
     """На одну номенклатуру-результат допускается одна карта."""
     # Подготовка
     existing = first_start_storage.recipes[0]
@@ -414,40 +371,8 @@ def test_add_recipe_second_recipe_for_same_result_raises(first_start_storage: St
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        first_start_storage._add_recipe(duplicate)  # pyright: ignore[reportPrivateUsage]
+        first_start_storage._recipes.add(duplicate)  # pyright: ignore[reportPrivateUsage]
     assert len(first_start_storage.recipes) == len(EXPECTED_RECIPES)
-
-
-# Подготовка
-@pytest.mark.parametrize("chain_length", [2, 3])
-def test_add_recipe_cycle_through_several_recipes_raises(first_start_storage: StorageManager, chain_length: int):
-    """Цикл через несколько карт отвергается при регистрации замыкающей карты, и она не добавляется."""
-    # Подготовка
-    items = make_cycle_nomenclatures(first_start_storage, chain_length)
-    recipes = [make_inclusion_recipe(items[i], items[(i + 1) % chain_length]) for i in range(chain_length)]
-    for recipe in recipes[:-1]:
-        first_start_storage._add_recipe(recipe)  # pyright: ignore[reportPrivateUsage]
-    count_before = len(first_start_storage.recipes)
-
-    # Действие и проверка
-    with pytest.raises(ArgumentsException):
-        first_start_storage._add_recipe(recipes[-1])  # pyright: ignore[reportPrivateUsage]
-    assert len(first_start_storage.recipes) == count_before
-    assert first_start_storage.find_recipe(items[-1]) is None
-
-
-def test_add_recipe_chain_without_cycle_allowed(first_start_storage: StorageManager):
-    """Цепочка включений A включает B, B включает C без возврата допускается."""
-    # Подготовка
-    first, second, third = make_cycle_nomenclatures(first_start_storage, 3)
-
-    # Действие
-    first_start_storage._add_recipe(make_inclusion_recipe(second, third))  # pyright: ignore[reportPrivateUsage]
-    first_start_storage._add_recipe(make_inclusion_recipe(first, second))  # pyright: ignore[reportPrivateUsage]
-
-    # Проверка
-    assert first_start_storage.find_recipe(first) is not None
-    assert first_start_storage.find_recipe(second) is not None
 
 
 # ---------------------------------------------------------------------------

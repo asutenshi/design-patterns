@@ -1,4 +1,3 @@
-import uuid
 from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
@@ -112,7 +111,7 @@ class StorageManager(AbstractManager):
         на те же объекты номенклатуры: каждый объект создаётся один раз и добавляется в коллекцию.
         Карты регистрируются от полуфабрикатов к блюду: так проверка циклов видит вложенные карты.
 
-        :raises ArgumentsException: Если начальные данные содержат дубликаты или цикл между картами.
+        :raises ArgumentsException: Если начальные данные содержат дубликаты.
         """
         kilogram = RangeModel.create_kilogram()
         liter = RangeModel.create_liter()
@@ -145,7 +144,7 @@ class StorageManager(AbstractManager):
         beet_fry = RecipeModel.create_beet_fry(catalog)
         borscht = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
         for recipe in (bouillon, boiled_beef, beet_fry, borscht):
-            self._add_recipe(recipe)
+            self._recipes.add(recipe)
 
     def _create_nomenclatures(self) -> list[NomenclatureModel]:
         """Создаёт начальную номенклатуру на основе уже заполненных единиц и групп.
@@ -201,41 +200,6 @@ class StorageManager(AbstractManager):
             # Порция борща — 500 г
             NomenclatureModel.create_dish("Борщ с говядиной", "Борщ с говядиной, порция 500 г", dishes, piece, 500),
         ]
-
-    def _add_recipe(self, recipe: RecipeModel) -> None:
-        """Регистрирует технологическую карту в хранилище.
-
-        Проверка циклов глубокая: локально её делает сама карта (результат не входит в свой состав),
-        здесь обходятся карты вложенных полуфабрикатов. Карты вложенных полуфабрикатов
-        должны быть зарегистрированы заранее, иначе их состав не виден.
-
-        :param recipe: Регистрируемая карта.
-        :raises ArgumentsException: Если на результат уже есть карта или карта замыкает цикл включений.
-        """
-        if self._creates_cycle(recipe):
-            raise ArgumentsException("recipe", f"Карта «{recipe.name}» образует цикл включений")
-        self._recipes.add(recipe)
-
-    def _creates_cycle(self, recipe: RecipeModel) -> bool:
-        """Проверяет, входит ли результат карты в состав её вложенных карт (прямо или через цепочку).
-
-        :param recipe: Проверяемая карта, ещё не добавленная в хранилище.
-        :return: True, если результат карты достижим из её ингредиентов через карты полуфабрикатов.
-        """
-        visited: set[uuid.UUID] = set()
-        pending = [ingredient.nomenclature for ingredient in recipe.ingredients]
-        while pending:
-            nomenclature = pending.pop()
-            if nomenclature is recipe.result:
-                return True
-            if nomenclature.id in visited:
-                continue
-
-            visited.add(nomenclature.id)
-            nested = self.find_recipe(nomenclature)
-            if nested is not None:
-                pending.extend(ingredient.nomenclature for ingredient in nested.ingredients)
-        return False
 
     def find_recipe(self, nomenclature: NomenclatureModel) -> RecipeModel | None:
         """Возвращает технологическую карту, результатом которой является номенклатура.

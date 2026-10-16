@@ -2,6 +2,7 @@ import pytest
 from Src.Core.exception import ArgumentsException
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nested_recipe_model import NestedRecipeModel
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
@@ -64,24 +65,24 @@ def test_init_valid_params_fields_set():
     assert recipe.output_quantity == 700
     assert recipe.cooking_time_minutes == 30
     assert recipe.steps == ["Нарезать овощи", "Обжарить"]
-    assert recipe.ingredients == []
+    assert recipe.items == []
     assert recipe.id is not None
 
 
-def test_init_ingredients_passed_added_in_order():
+def test_init_items_passed_added_in_order():
     """Переданные в конструктор ингредиенты входят в состав в порядке передачи."""
     # Подготовка
     beet = make_ingredient("Свёкла")
     carrot = make_ingredient("Морковь")
 
     # Действие
-    recipe = make_recipe(ingredients=[beet, carrot])
+    recipe = make_recipe(items=[beet, carrot])
 
     # Проверка
-    assert recipe.ingredients == [beet, carrot]
+    assert recipe.items == [beet, carrot]
 
 
-def test_init_duplicate_nomenclature_in_ingredients_raises():
+def test_init_duplicate_nomenclature_in_items_raises():
     """Две строки с одной номенклатурой в переданном составе вызывают ArgumentsException."""
     # Подготовка
     nomenclature = make_nomenclature("Свёкла")
@@ -89,7 +90,7 @@ def test_init_duplicate_nomenclature_in_ingredients_raises():
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        make_recipe(ingredients=ingredients)
+        make_recipe(items=ingredients)
 
 
 # Подготовка
@@ -194,16 +195,16 @@ def test_steps_returned_list_changed_recipe_unchanged():
     assert recipe.steps == ["Нарезать овощи", "Обжарить"]
 
 
-def test_ingredients_returned_list_changed_recipe_unchanged():
+def test_items_returned_list_changed_recipe_unchanged():
     """Изменение возвращённого списка ингредиентов не меняет состав карты."""
     # Подготовка
-    recipe = make_recipe(ingredients=[make_ingredient("Свёкла")])
+    recipe = make_recipe(items=[make_ingredient("Свёкла")])
 
     # Действие
-    recipe.ingredients.clear()
+    recipe.items.clear()
 
     # Проверка
-    assert len(recipe.ingredients) == 1
+    assert len(recipe.items) == 1
 
 
 def test_setters_valid_values_updated():
@@ -259,46 +260,46 @@ def test_result_setter_not_allowed_raises():
         recipe.result = make_result()  # pyright: ignore[reportAttributeAccessIssue]
 
 
-def test_add_ingredient_new_nomenclature_added():
+def test_add_item_new_nomenclature_added():
     """Ингредиент с новой номенклатурой добавляется в состав в конец."""
     # Подготовка
-    recipe = make_recipe(ingredients=[make_ingredient("Свёкла")])
+    recipe = make_recipe(items=[make_ingredient("Свёкла")])
     carrot = make_ingredient("Морковь")
 
     # Действие
-    recipe.add_ingredient(carrot)
+    recipe.add_item(carrot)
 
     # Проверка
-    assert recipe.ingredients[-1] is carrot
-    assert len(recipe.ingredients) == 2
+    assert recipe.items[-1] is carrot
+    assert len(recipe.items) == 2
 
 
-def test_add_ingredient_same_nomenclature_raises_and_keeps_composition():
+def test_add_item_same_nomenclature_raises_and_keeps_composition():
     """Ингредиент с уже имеющейся номенклатурой отклоняется, состав не меняется."""
     # Подготовка
     nomenclature = make_nomenclature("Свёкла")
     first = IngredientModel(nomenclature, 100)
-    recipe = make_recipe(ingredients=[first])
+    recipe = make_recipe(items=[first])
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        recipe.add_ingredient(IngredientModel(nomenclature, 50))
-    assert recipe.ingredients == [first]
+        recipe.add_item(IngredientModel(nomenclature, 50))
+    assert recipe.items == [first]
 
 
 # Подготовка
 @pytest.mark.parametrize("ingredient", [None, "Свёкла", make_nomenclature("Свёкла")])
-def test_add_ingredient_not_ingredient_raises(ingredient):
+def test_add_item_not_ingredient_raises(ingredient):
     """Значение, не являющееся ингредиентом, вызывает ArgumentsException."""
     # Подготовка
     recipe = make_recipe()
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        recipe.add_ingredient(ingredient)
+        recipe.add_item(ingredient)
 
 
-def test_add_ingredient_result_of_recipe_raises():
+def test_add_item_result_of_recipe_raises():
     """Результат карты нельзя добавить ингредиентом этой же карты."""
     # Подготовка
     result = make_result()
@@ -306,71 +307,71 @@ def test_add_ingredient_result_of_recipe_raises():
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        recipe.add_ingredient(IngredientModel(result, 100))
-    assert recipe.ingredients == []
+        recipe.add_item(IngredientModel(result, 100))
+    assert recipe.items == []
 
 
-def test_init_result_among_ingredients_raises():
+def test_init_result_among_items_raises():
     """Результат карты среди переданных в конструктор ингредиентов вызывает ArgumentsException."""
     # Подготовка
     result = make_result()
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        make_recipe(result=result, ingredients=[IngredientModel(result, 100)])
+        make_recipe(result=result, items=[IngredientModel(result, 100)])
 
 
-def test_remove_ingredient_existing_nomenclature_removed_and_order_kept():
+def test_remove_item_existing_nomenclature_removed_and_order_kept():
     """Удаление по номенклатуре убирает ингредиент, порядок остальных сохраняется."""
     # Подготовка
     beet = make_ingredient("Свёкла")
     carrot = make_ingredient("Морковь")
     onion = make_ingredient("Лук")
-    recipe = make_recipe(ingredients=[beet, carrot, onion])
+    recipe = make_recipe(items=[beet, carrot, onion])
 
     # Действие
-    recipe.remove_ingredient(carrot.nomenclature)
+    recipe.remove_item(carrot.nomenclature)
 
     # Проверка
-    assert recipe.ingredients == [beet, onion]
+    assert recipe.items == [beet, onion]
 
 
-def test_remove_ingredient_missing_nomenclature_raises_and_keeps_composition():
+def test_remove_item_missing_nomenclature_raises_and_keeps_composition():
     """Удаление номенклатуры, которой нет в составе, вызывает ArgumentsException."""
     # Подготовка
     beet = make_ingredient("Свёкла")
-    recipe = make_recipe(ingredients=[beet])
+    recipe = make_recipe(items=[beet])
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        recipe.remove_ingredient(make_nomenclature("Морковь"))
-    assert recipe.ingredients == [beet]
+        recipe.remove_item(make_nomenclature("Морковь"))
+    assert recipe.items == [beet]
 
 
 # Подготовка
 @pytest.mark.parametrize("nomenclature", [None, "Свёкла", NomenclatureGroupModel("Овощи")])
-def test_remove_ingredient_not_nomenclature_raises(nomenclature):
+def test_remove_item_not_nomenclature_raises(nomenclature):
     """Значение, не являющееся номенклатурой, вызывает ArgumentsException."""
     # Подготовка
-    recipe = make_recipe(ingredients=[make_ingredient("Свёкла")])
+    recipe = make_recipe(items=[make_ingredient("Свёкла")])
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        recipe.remove_ingredient(nomenclature)
+        recipe.remove_item(nomenclature)
 
 
-def test_remove_ingredient_then_add_same_nomenclature_allowed():
+def test_remove_item_then_add_same_nomenclature_allowed():
     """После удаления номенклатуру можно добавить снова с другим количеством."""
     # Подготовка
     nomenclature = make_nomenclature("Свёкла")
-    recipe = make_recipe(ingredients=[IngredientModel(nomenclature, 100)])
-    recipe.remove_ingredient(nomenclature)
+    recipe = make_recipe(items=[IngredientModel(nomenclature, 100)])
+    recipe.remove_item(nomenclature)
 
     # Действие
-    recipe.add_ingredient(IngredientModel(nomenclature, 250))
+    recipe.add_item(IngredientModel(nomenclature, 250))
 
     # Проверка
-    assert [item.quantity for item in recipe.ingredients] == [250]
+    assert [item.quantity for item in recipe.items] == [250]
 
 
 def test_weights_empty_recipe_are_zero():
@@ -383,11 +384,11 @@ def test_weights_empty_recipe_are_zero():
     assert recipe.net_weight == 0
 
 
-def test_weights_several_ingredients_summed():
+def test_weights_several_items_summed():
     """Брутто и нетто карты — суммы брутто и нетто её ингредиентов."""
     # Подготовка
     recipe = make_recipe(
-        ingredients=[
+        items=[
             make_ingredient("Свёкла", 400, 0.2),  # брутто 400, нетто 320
             make_ingredient("Масло", 40, 0.1, grams_per_base_unit=0.92),  # брутто 36,8, нетто 33,12
             make_ingredient("Соль", 5),  # брутто 5, нетто 5
@@ -406,10 +407,10 @@ def test_weights_several_ingredients_summed():
 def test_weights_ingredient_added_recalculated():
     """После добавления ингредиента брутто и нетто увеличиваются на его веса."""
     # Подготовка
-    recipe = make_recipe(ingredients=[make_ingredient("Свёкла", 400, 0.2)])
+    recipe = make_recipe(items=[make_ingredient("Свёкла", 400, 0.2)])
 
     # Действие
-    recipe.add_ingredient(make_ingredient("Морковь", 100, 0.5))
+    recipe.add_item(make_ingredient("Морковь", 100, 0.5))
 
     # Проверка
     assert recipe.gross_weight == pytest.approx(500)
@@ -421,10 +422,10 @@ def test_weights_ingredient_removed_recalculated():
     # Подготовка
     beet = make_ingredient("Свёкла", 400, 0.2)
     carrot = make_ingredient("Морковь", 100, 0.5)
-    recipe = make_recipe(ingredients=[beet, carrot])
+    recipe = make_recipe(items=[beet, carrot])
 
     # Действие
-    recipe.remove_ingredient(carrot.nomenclature)
+    recipe.remove_item(carrot.nomenclature)
 
     # Проверка
     assert recipe.gross_weight == pytest.approx(400)
@@ -435,10 +436,10 @@ def test_weights_last_ingredient_removed_are_zero():
     """После исключения последнего ингредиента веса брутто и нетто равны нулю."""
     # Подготовка
     beet = make_ingredient("Свёкла", 400, 0.2)
-    recipe = make_recipe(ingredients=[beet])
+    recipe = make_recipe(items=[beet])
 
     # Действие
-    recipe.remove_ingredient(beet.nomenclature)
+    recipe.remove_item(beet.nomenclature)
 
     # Проверка
     assert recipe.gross_weight == 0
@@ -449,7 +450,7 @@ def test_weights_ingredient_changed_in_recipe_recalculated():
     """Изменение количества и потерь у ингредиента, уже лежащего в карте, меняет веса карты."""
     # Подготовка
     beet = make_ingredient("Свёкла", 400, 0.2)
-    recipe = make_recipe(ingredients=[beet])
+    recipe = make_recipe(items=[beet])
 
     # Действие
     beet.quantity = 500
@@ -464,7 +465,7 @@ def test_weights_packaging_counted_in_gross_and_net():
     """Упаковка — такой же ингредиент: её вес входит и в брутто, и в нетто (потери упаковки — 0)."""
     # Подготовка
     container = IngredientModel(make_nomenclature("Контейнер", NomenclatureType.PACKAGING, 20), 1)
-    recipe = make_recipe(result=make_result(NomenclatureType.DISH), ingredients=[container])
+    recipe = make_recipe(result=make_result(NomenclatureType.DISH), items=[container])
 
     # Действие и проверка
     assert recipe.gross_weight == pytest.approx(20)
@@ -499,7 +500,7 @@ def test_gross_weight_for_scales_proportionally():
     """Масштабирование брутто: для выхода 200 г при базовом 400 г вес уменьшается вдвое."""
     # Подготовка
     raw = make_ingredient("Мясо", quantity=400)
-    recipe = make_recipe(output_quantity=400, ingredients=[raw])
+    recipe = make_recipe(output_quantity=400, items=[raw])
 
     # Действие
     scaled = recipe.gross_weight_for(200)
@@ -512,7 +513,7 @@ def test_net_weight_for_scales_proportionally():
     """Масштабирование нетто: для выхода 600 г при базовом 400 г вес увеличивается в 1,5 раза."""
     # Подготовка
     raw = make_ingredient("Мясо", quantity=400, loss_ratio=0.25)
-    recipe = make_recipe(output_quantity=400, ingredients=[raw])
+    recipe = make_recipe(output_quantity=400, items=[raw])
 
     # Действие
     scaled = recipe.net_weight_for(600)
@@ -535,8 +536,8 @@ def test_weights_for_invalid_output_raises(method_name, value):
         method(value)
 
 
-def test_add_ingredient_cycle_in_nested_recipe_raises():
-    """Добавление ингредиента, чья вложенная карта ссылается на текущую карту, бросает ArgumentsException."""
+def test_add_item_cycle_in_nested_recipe_raises():
+    """Добавление вложенной карты, в составе которой есть текущая карта, бросает ArgumentsException."""
     # Подготовка
     soup = make_nomenclature("Суп", NomenclatureType.DISH)
     broth = make_nomenclature("Бульон", NomenclatureType.SEMI_FINISHED)
@@ -544,11 +545,11 @@ def test_add_ingredient_cycle_in_nested_recipe_raises():
     broth_recipe = RecipeModel("Бульон", broth, 1000, 60, ["Шаг"])
 
     # Добавляем суп во вложенную карту бульона
-    broth_recipe.add_ingredient(IngredientModel(soup, 200, recipe=soup_recipe))
+    broth_recipe.add_item(NestedRecipeModel(soup_recipe, 200))
 
     # Действие и проверка: теперь попытка добавить бульон в суп замыкает цикл
     with pytest.raises(ArgumentsException):
-        soup_recipe.add_ingredient(IngredientModel(broth, 300, recipe=broth_recipe))
+        soup_recipe.add_item(NestedRecipeModel(broth_recipe, 300))
 
 
 # Номенклатура, отличающаяся от «сырья весом 1 г на базовую единицу»: тип и вес базовой единицы
@@ -621,8 +622,8 @@ def test_create_beef_bouillon_full_catalog_fields_and_weights():
     assert recipe.output_quantity == 2000
     assert recipe.cooking_time_minutes == 240
     assert len(recipe.steps) == 6
-    assert [i.nomenclature.name for i in recipe.ingredients] == list(BOUILLON_NAMES[1:])
-    assert [i.quantity for i in recipe.ingredients] == [1500, 100, 80, 1, 3, 12]
+    assert [i.nomenclature.name for i in recipe.items] == list(BOUILLON_NAMES[1:])
+    assert [i.quantity for i in recipe.items] == [1500, 100, 80, 1, 3, 12]
     assert recipe.gross_weight == pytest.approx(1695.5)
     assert recipe.net_weight == pytest.approx(180.35)
 
@@ -641,7 +642,7 @@ def test_create_boiled_beef_full_catalog_fields_and_weights():
     assert recipe.output_quantity == 500
     assert recipe.cooking_time_minutes == 120
     assert len(recipe.steps) == 4
-    assert [i.nomenclature.name for i in recipe.ingredients] == list(BOILED_BEEF_NAMES[1:])
+    assert [i.nomenclature.name for i in recipe.items] == list(BOILED_BEEF_NAMES[1:])
     assert recipe.gross_weight == pytest.approx(808.5)
     assert recipe.net_weight == pytest.approx(500.05)
 
@@ -660,7 +661,7 @@ def test_create_beet_fry_full_catalog_fields_and_weights():
     assert recipe.output_quantity == 700
     assert recipe.cooking_time_minutes == 30
     assert len(recipe.steps) == 5
-    assert [i.nomenclature.name for i in recipe.ingredients] == list(BEET_FRY_NAMES[1:])
+    assert [i.nomenclature.name for i in recipe.items] == list(BEET_FRY_NAMES[1:])
     assert recipe.gross_weight == pytest.approx(751.8)
     assert recipe.net_weight == pytest.approx(700.12)
 
@@ -674,7 +675,7 @@ def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition(
     recipe = RecipeModel.create_borscht(catalog)
 
     # Проверка
-    nomenclatures = [i.nomenclature for i in recipe.ingredients]
+    nomenclatures = [i.nomenclature for i in recipe.items]
     assert recipe.name == "Борщ с говядиной"
     assert recipe.result is catalog.get("Борщ с говядиной")
     assert recipe.output_quantity == 1
@@ -688,7 +689,7 @@ def test_create_borscht_full_catalog_semi_finished_and_packaging_in_composition(
 
 
 def test_create_borscht_without_recipes_builds_them_from_catalog():
-    """Не переданные карты полуфабрикатов создаются из справочника, и ингредиенты ссылаются на них."""
+    """Не переданные карты полуфабрикатов создаются из справочника и входят в состав как вложенные карты."""
     # Подготовка
     catalog = make_catalog(*ALL_NAMES)
 
@@ -696,10 +697,9 @@ def test_create_borscht_without_recipes_builds_them_from_catalog():
     recipe = RecipeModel.create_borscht(catalog)
 
     # Проверка
-    nested = {i.nomenclature.name: i.recipe for i in recipe.ingredients if i.nomenclature.type.name == "SEMI_FINISHED"}
+    nested = {i.nomenclature.name: i.recipe for i in recipe.items if isinstance(i, NestedRecipeModel)}
     assert set(nested) == {"Бульон костный говяжий", "Говядина отварная", "Зажарка свекольная"}
     for name, nested_recipe in nested.items():
-        assert nested_recipe is not None
         assert nested_recipe.result is catalog.get(name)
 
 
@@ -715,7 +715,7 @@ def test_create_borscht_passed_recipes_are_used_as_is():
     recipe = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
 
     # Проверка
-    by_name = {i.nomenclature.name: i.recipe for i in recipe.ingredients}
+    by_name = {i.nomenclature.name: i.recipe for i in recipe.items if isinstance(i, NestedRecipeModel)}
     assert by_name["Бульон костный говяжий"] is bouillon
     assert by_name["Говядина отварная"] is boiled_beef
     assert by_name["Зажарка свекольная"] is beet_fry
@@ -732,7 +732,7 @@ def test_create_borscht_full_catalog_weights_include_packaging():
     # Проверка
     assert recipe.gross_weight == pytest.approx(577.1375)
     assert recipe.net_weight == pytest.approx(314.306475)
-    recipe.remove_ingredient(catalog.get("Контейнер для супа 500 мл"))
+    recipe.remove_item(catalog.get("Контейнер для супа 500 мл"))
     assert recipe.gross_weight == pytest.approx(557.1375)
     assert recipe.net_weight == pytest.approx(294.306475)
     assert recipe.output_quantity * recipe.result.grams_per_base_unit == 500

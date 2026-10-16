@@ -60,17 +60,34 @@ classDiagram
         PACKAGING
     }
 
-    class IngredientModel {
+    class AbstractRecipeItem {
+        <<abstract>>
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
-        +recipe: RecipeProtocol | None
         +gross_weight: float
         +net_weight: float
+        +depends_on(nomenclature) bool
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются рекурсивно (паттерн Компоновщик), если задан recipe. recipe, как и nomenclature, только для чтения: цикл проверяется при добавлении в карту"
+    note for AbstractRecipeItem "Элемент состава карты, без id (паттерн Компоновщик). Количество и потери общие, nomenclature только для чтения. Веса вычисляются при каждом обращении. depends_on нужен карте для защиты от циклов"
+
+    class IngredientModel {
+        +gross_weight: float
+        +net_weight: float
+    }
+
+    note for IngredientModel "Лист состава: сырьё или упаковка. Вес из количества и grams_per_base_unit. О картах не знает"
+
+    class NestedRecipeModel {
+        +recipe: RecipeModel
+        +nomenclature: NomenclatureModel
+        +gross_weight: float
+        +net_weight: float
+    }
+
+    note for NestedRecipeModel "Вложенная карта в составе: карта + количество + потери. Ссылка живая и общая, recipe только для чтения. Веса рекурсивно пропорционально выходу вложенной карты. Номенклатура — результат карты"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -84,13 +101,13 @@ classDiagram
         +output_quantity: int | float
         +cooking_time_minutes: int | float
         +steps: list~str~
-        +ingredients: list~IngredientModel~
+        +items: list~AbstractRecipeItem~
         +gross_weight: float
         +net_weight: float
         +gross_weight_for(output_quantity) float
         +net_weight_for(output_quantity) float
-        +add_ingredient(ingredient) None
-        +remove_ingredient(nomenclature) None
+        +add_item(item) None
+        +remove_item(nomenclature) None
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -98,7 +115,7 @@ classDiagram
         +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются рекурсивно с учётом вложенных карт. gross_weight_for и net_weight_for масштабируют веса под заданный выход. Фабрики карт принимают NomenclatureCatalog. create_borscht сам создаёт не переданные карты полуфабрикатов, ошибки не скрывает"
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Элементы состава уникальны по номенклатуре. Веса брутто и нетто — сумма по элементам, рекурсия получается сама. Циклы отвергает add_item. gross_weight_for и net_weight_for масштабируют веса под заданный выход. Фабрики карт принимают NomenclatureCatalog. create_borscht сам создаёт не переданные карты полуфабрикатов, ошибки не скрывает"
 
     class NomenclatureGroupModel {
         +create_meat()$ NomenclatureGroupModel
@@ -151,10 +168,12 @@ classDiagram
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
     NomenclatureModel --> NomenclatureType : type
-    IngredientModel --> NomenclatureModel : nomenclature
-    IngredientModel --> RecipeModel : recipe
+    AbstractRecipeItem --> NomenclatureModel : nomenclature
+    AbstractRecipeItem <|-- IngredientModel
+    AbstractRecipeItem <|-- NestedRecipeModel
+    NestedRecipeModel --> RecipeModel : recipe
     RecipeModel --> NomenclatureModel : result
-    RecipeModel "1" *-- "*" IngredientModel : ingredients
+    RecipeModel "1" *-- "*" AbstractRecipeItem : items
     NomenclatureCatalog o-- NomenclatureModel : items
     RecipeModel ..> NomenclatureCatalog : фабрики карт
     RangeModel --> RangeModel : base
@@ -168,12 +187,18 @@ classDiagram
 Те же классы показаны на общей диаграмме выше, здесь оставлено только относящееся к рецептам.
 
 - Карта (`RecipeModel`) получает одну номенклатуру-результат: полуфабрикат или блюдо.
-- Состав — строки `IngredientModel` без собственного `id`: внутри карты строку определяет номенклатура.
-  Ингредиент хранит количество в базовой единице номенклатуры и долю потерь.
+- Состав — элементы `AbstractRecipeItem` без собственного `id`: внутри карты элемент определяет номенклатура.
+  Элемент хранит количество в базовой единице номенклатуры и долю потерь. Видов два:
+  `IngredientModel` — плоская строка (сырьё, упаковка), `NestedRecipeModel` — вложенная карта полуфабриката или блюда.
 - Вес ингредиента: брутто = `quantity * grams_per_base_unit`, нетто = брутто * (1 − `loss_ratio`).
-  Вес карты — сумма по ингредиентам, вычисляется при каждом обращении.
-- Полуфабрикат входит в состав как обычная номенклатура, его карту находит `StorageManager.find_recipe()`
-  по результату. Упаковка — обычный ингредиент.
+- Вес вложенной карты: брутто = `recipe.gross_weight * quantity / recipe.output_quantity`,
+  нетто = `recipe.net_weight * quantity / recipe.output_quantity * (1 − loss_ratio)`.
+  Вес карты — сумма по элементам, вычисляется при каждом обращении, поэтому правка вложенной карты сразу видна выше.
+- Ингредиент о картах не знает: связь «карта + количество + потери» — отдельный класс `NestedRecipeModel`.
+  Ссылка на вложенную карту живая и общая (без копий). Упаковка — обычный ингредиент.
+- Защита от циклов целиком в `RecipeModel.add_item` через `AbstractRecipeItem.depends_on`: результат карты не входит
+  в её состав ни напрямую, ни через цепочку вложенных карт. `StorageManager.find_recipe()` остаётся для документов
+  «Приготовление».
 - Фабрики `create_*` собирают карты из `Recipes.md` по справочнику `NomenclatureCatalog` (поиск номенклатуры по наименованию).
 
 ```mermaid
@@ -194,17 +219,34 @@ classDiagram
         +grams_per_base_unit: int | float
     }
 
-    class IngredientModel {
+    class AbstractRecipeItem {
+        <<abstract>>
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
-        +recipe: RecipeProtocol | None
         +gross_weight: float
         +net_weight: float
+        +depends_on(nomenclature) bool
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава карты, без id. loss_ratio от 0 включительно до 1 не включая. recipe (только для чтения) задаёт карту для рекурсивного расчёта весов. Упаковка — обычный ингредиент без потерь"
+    note for AbstractRecipeItem "Элемент состава карты, без id. loss_ratio от 0 включительно до 1 не включая. depends_on нужен карте для защиты от циклов"
+
+    class IngredientModel {
+        +gross_weight: float
+        +net_weight: float
+    }
+
+    note for IngredientModel "Лист состава: сырьё или упаковка. Вес из количества и grams_per_base_unit. О картах не знает"
+
+    class NestedRecipeModel {
+        +recipe: RecipeModel
+        +nomenclature: NomenclatureModel
+        +gross_weight: float
+        +net_weight: float
+    }
+
+    note for NestedRecipeModel "Вложенная карта в составе: карта + количество + потери. Ссылка живая и общая, recipe только для чтения. Веса рекурсивно пропорционально выходу вложенной карты. Номенклатура — результат карты"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -218,13 +260,13 @@ classDiagram
         +output_quantity: int | float
         +cooking_time_minutes: int | float
         +steps: list~str~
-        +ingredients: list~IngredientModel~
+        +items: list~AbstractRecipeItem~
         +gross_weight: float
         +net_weight: float
         +gross_weight_for(output_quantity) float
         +net_weight_for(output_quantity) float
-        +add_ingredient(ingredient) None
-        +remove_ingredient(nomenclature) None
+        +add_item(item) None
+        +remove_item(nomenclature) None
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -232,43 +274,45 @@ classDiagram
         +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто и нетто рассчитываются рекурсивно. gross_weight_for и net_weight_for масштабируют веса под заданный объём. Результат не может быть ингредиентом своей карты"
+    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто и нетто — сумма по элементам. gross_weight_for и net_weight_for масштабируют веса под заданный объём. Результат не может входить в состав своей карты, в том числе через вложенные карты"
 
     class UniqueCollection~T~ {
         +add(item) None
         +remove(key) None
     }
 
-    note for UniqueCollection "Функцию ключа даёт сама модель: IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата), NamedEntity.name_key (наименование)"
+    note for UniqueCollection "Функцию ключа даёт сама модель: AbstractRecipeItem.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата), NamedEntity.name_key (наименование)"
 
     class StorageManager {
         +recipes: list~RecipeModel~
         +find_recipe(nomenclature) RecipeModel | None
-        -_add_recipe(recipe) None
-        -_creates_cycle(recipe) bool
+        +find_recipe_by_name(name) RecipeModel | None
     }
 
-    note for StorageManager "Одна карта на номенклатуру-результат. При регистрации обходит карты вложенных полуфабрикатов и отвергает цикл (A включает B, B включает A)"
+    note for StorageManager "Одна карта на номенклатуру-результат. Циклы включений отвергает сама карта при добавлении элемента, хранилище их не проверяет"
 
     class ArgumentsException
 
     NomenclatureModel --> NomenclatureType : type
-    IngredientModel --> NomenclatureModel : nomenclature
-    IngredientModel --> RecipeModel : recipe
+    AbstractRecipeItem --> NomenclatureModel : nomenclature
+    AbstractRecipeItem <|-- IngredientModel
+    AbstractRecipeItem <|-- NestedRecipeModel
+    NestedRecipeModel --> RecipeModel : recipe
     RecipeModel --> NomenclatureModel : result
-    RecipeModel "1" *-- "*" IngredientModel : ingredients
+    RecipeModel "1" *-- "*" AbstractRecipeItem : items
     NomenclatureCatalog o-- NomenclatureModel : items
     RecipeModel ..> NomenclatureCatalog : фабрики карт
-    RecipeModel *-- UniqueCollection : ingredients
+    RecipeModel *-- UniqueCollection : items
     StorageManager *-- UniqueCollection : recipes
     StorageManager --> RecipeModel : recipes
-    RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе
-    StorageManager ..> ArgumentsException : цикл включений, вторая карта на результат
+    RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе, цикл включений
+    StorageManager ..> ArgumentsException : вторая карта на результат
 ```
 
 Пример составной карты: «Борщ с говядиной» (блюдо) включает полуфабрикаты «Бульон костный говяжий»,
-«Говядина отварная», «Зажарка свекольная» и упаковку «Контейнер для супа 500 мл». Каждый полуфабрикат
-собирается по своей карте только из сырья, поэтому циклов в начальных данных нет.
+«Говядина отварная», «Зажарка свекольная» и упаковку «Контейнер для супа 500 мл». Каждый полуфабрикат входит
+как `NestedRecipeModel` с количеством и потерями строки и собирается по своей карте только из сырья,
+поэтому циклов в начальных данных нет.
 
 ## Проверки и ошибки
 
@@ -320,7 +364,9 @@ classDiagram
 
     class RangeModel
     class NomenclatureModel
+    class AbstractRecipeItem
     class IngredientModel
+    class NestedRecipeModel
     class NomenclatureCatalog
     class RecipeModel
     class OrganizationModel
@@ -336,11 +382,13 @@ classDiagram
     NamedEntity ..> CommonValidator : name
     RangeModel ..> CommonValidator : factor, base
     NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
-    IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio
+    AbstractRecipeItem ..> CommonValidator : quantity, loss_ratio
+    IngredientModel ..> CommonValidator : nomenclature
+    NestedRecipeModel ..> CommonValidator : recipe
     NomenclatureCatalog ..> CommonValidator : nomenclatures
     NomenclatureCatalog ..> ArgumentsException : повтор наименования, нет позиции
-    RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, ingredient, nomenclature
-    RecipeModel ..> ArgumentsException : тип результата, шаги, результат как ингредиент
+    RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, item, nomenclature
+    RecipeModel ..> ArgumentsException : тип результата, шаги, результат в составе, цикл включений
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
     OrganizationModel ..> InnValidator : inn
     SettingsModel ..> CommonValidator : organization, boss_name, account_name, is_first_start
@@ -444,8 +492,9 @@ classDiagram
 `load()` наполняет их начальными данными через фабричные методы моделей: 5 единиц измерения, 7 групп,
 24 номенклатуры, 2 склада и 4 технологические карты из `Recipes.md`.
 Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а карты — на те же объекты номенклатуры, а не на копии.
-Карта регистрируется с проверкой циклов: обходятся карты вложенных полуфабрикатов (глубокая защита, локальную делает `RecipeModel`).
+Циклы включений хранилище не проверяет: их отвергает сама карта при добавлении элемента (`RecipeModel.add_item`).
 Карту полуфабриката находит `find_recipe()` по номенклатуре-результату, на одну позицию допускается одна карта.
+По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
@@ -477,12 +526,11 @@ classDiagram
         +__new__() Self
         +load(settings_manager) None
         +find_recipe(nomenclature) RecipeModel | None
+        +find_recipe_by_name(name) RecipeModel | None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
         -_create_nomenclatures() list~NomenclatureModel~
-        -_add_recipe(recipe) None
-        -_creates_cycle(recipe) bool
     }
 
     note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции. Ключ коллекции карт — id результата"
@@ -494,7 +542,7 @@ classDiagram
         +remove(key) None
     }
 
-    note for UniqueCollection "Ключ уникальности задаёт функция, которую даёт модель: NamedEntity.name_key (наименование без учёта регистра), IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата). add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
+    note for UniqueCollection "Ключ уникальности задаёт функция, которую даёт модель: NamedEntity.name_key (наименование без учёта регистра), AbstractRecipeItem.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата). add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
 
     class SettingsManager {
         +settings: SettingsModel
