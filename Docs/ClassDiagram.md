@@ -259,6 +259,7 @@ classDiagram
         +recipes: list~RecipeModel~
         +find_recipe(nomenclature) RecipeModel | None
         +find_recipe_by_name(name) RecipeModel | None
+        +find(entity_type, entity_id) NamedEntity | None
     }
 
     note for StorageManager "Одна карта на номенклатуру-результат. Включение снимка самой себя отвергает карта при добавлении строки, хранилище его не проверяет"
@@ -463,6 +464,7 @@ classDiagram
 Циклы включений хранилище не проверяет: снимок самой себя отвергает карта при добавлении строки (`RecipeModel.add_item`).
 Карту полуфабриката находит `find_recipe()` по номенклатуре-результату, на одну позицию допускается одна карта.
 По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
+Сущность по типу (`EntityType`: номенклатура, единица измерения, карта) и коду ищет `find()` перебором коллекции этого типа.
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
@@ -495,6 +497,7 @@ classDiagram
         +load(settings_manager) None
         +find_recipe(nomenclature) RecipeModel | None
         +find_recipe_by_name(name) RecipeModel | None
+        +find(entity_type, entity_id) NamedEntity | None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
@@ -547,4 +550,87 @@ classDiagram
     RangeModel --> RangeModel : base
     UniqueCollection ..> ArgumentsException : бросает при дубликате и удалении отсутствующего ключа
     StorageManager ..> OperationException : бросает
+```
+
+## Отчёты
+
+Отчёт формирует по сущности результат в одном из форматов (`ResponseFormat`). У каждого формата свой класс отчёта
+со своей реализацией `build()` и свой класс результата. Клиент получает отчёт от фабрики по формату и работает
+только с абстракциями `AbstractReport` и `AbstractReportResult` (паттерн «Абстрактная фабрика»).
+Абстракции лежат в `Src/Core/`, отчёты и фабрика — в `Src/Logics/`, результаты — в `Src/Dtos/`.
+
+Общие для всех форматов правила обхода заданы в `AbstractReport`: поля — публичные свойства (`Common.get_fields`),
+вложенная сущность с наименованием выводится ссылкой (наименование и код), остальные объекты раскрываются
+по дереву «Компоновщика» (`RecipeModel.items`, `IngredientModel.base`). Так не зацикливается `RangeModel.base`
+у базовой единицы.
+
+Результат — объект-значение: без идентификатора, неизменяем, равенство по типу и содержимому.
+`is_binary` подсказывает API, отдавать ли результат файлом на скачивание или текстом.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class AbstractReportFactory {
+        <<abstract>>
+        +create(response_format)* AbstractReport
+    }
+
+    class ReportFactory {
+        -_reports$: dict~ResponseFormat, type~
+        +create(response_format) AbstractReport
+    }
+
+    class AbstractReport {
+        <<abstract>>
+        #_FLOAT_PRECISION: int
+        +build(source)* AbstractReportResult
+        #_fields(source)$ list~tuple~
+        #_is_scalar(value)$ bool
+        #_is_reference(value)$ bool
+        #_format_scalar(value)$ str
+    }
+
+    class TxtReport {
+        +build(source) TxtReportResult
+    }
+
+    class AbstractReportResult {
+        <<abstract>>
+        +text*: str
+        +binary*: bytes
+        +is_binary*: bool
+        +media_type*: str
+        +__eq__(value) bool
+        +__hash__() int
+    }
+
+    class TxtReportResult {
+        -_text: str
+        +text: str
+        +binary: bytes
+        +is_binary: bool
+        +media_type: str
+    }
+
+    class ResponseFormat {
+        <<enumeration>>
+        TXT
+    }
+
+    class NamedEntity
+    class Common
+    class ArgumentsException
+
+    AbstractReportFactory <|-- ReportFactory
+    AbstractReport <|-- TxtReport
+    AbstractReportResult <|-- TxtReportResult
+    AbstractReportFactory ..> AbstractReport : создаёт
+    ReportFactory ..> ResponseFormat : ключ сопоставления
+    ReportFactory ..> TxtReport : создаёт
+    AbstractReport ..> AbstractReportResult : возвращает
+    TxtReport ..> TxtReportResult : возвращает
+    AbstractReport ..> NamedEntity : строит по сущности
+    AbstractReport ..> Common : get_fields
+    ReportFactory ..> ArgumentsException : бросает для чужого или нереализованного формата
 ```

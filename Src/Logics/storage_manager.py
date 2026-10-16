@@ -1,6 +1,10 @@
+import uuid
+from collections.abc import Iterable
 from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
+from Src.Core.common_validator import CommonValidator
+from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
@@ -19,6 +23,7 @@ class StorageManager(AbstractManager):
     Коллекции единиц, групп, номенклатуры и складов не содержат дубликатов по наименованию
     (без учёта регистра). Коллекция технологических карт содержит не более одной карты
     на номенклатуру-результат; карту полуфабриката находит ``find_recipe()``.
+    Сущность по типу и коду находит ``find()``.
     При первом запуске (флаг ``is_first_start`` в настройках) ``load()`` наполняет
     коллекции начальными данными. Иначе коллекции остаются пустыми: загружать
     данные пока неоткуда, чтение из БД появится вместе с SQLite.
@@ -208,6 +213,44 @@ class StorageManager(AbstractManager):
         :return: Карта или None, если карты нет (например, у сырья).
         """
         return next((recipe for recipe in self._recipes if recipe.result is nomenclature), None)
+
+    def find_recipe_by_name(self, name: str) -> RecipeModel | None:
+        """Возвращает технологическую карту по наименованию без учёта регистра и пробелов по краям.
+
+        Уникальность наименований карт хранилище не гарантирует (уникален только результат),
+        поэтому при совпадении нескольких возвращается первая добавленная.
+
+        :param name: Наименование карты.
+        :return: Карта или None, если карты с таким наименованием нет.
+        :raises ArgumentsException: Если наименование не строка.
+        """
+        name = CommonValidator.validate_instance(name, str, "name", "Ожидается строка")
+        key = name.strip().casefold()
+        return next((recipe for recipe in self._recipes if recipe.name_key() == key), None)
+
+    def find(self, entity_type: EntityType, entity_id: uuid.UUID) -> NamedEntity | None:
+        """Возвращает сущность указанного типа по коду.
+
+        Ищет перебором: ключи коллекций — наименования или результат карты, а не код.
+
+        :param entity_type: Тип сущности, определяет коллекцию поиска.
+        :param entity_id: Код (идентификатор) сущности.
+        :return: Сущность или None, если сущности с таким кодом нет.
+        :raises ArgumentsException: Если тип не EntityType, код не UUID
+            или для типа нет коллекции.
+        """
+        entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
+        entity_id = CommonValidator.validate_instance(entity_id, uuid.UUID, "entity_id", "Ожидается UUID")
+        collections: dict[EntityType, Iterable[NamedEntity]] = {
+            EntityType.NOMENCLATURE: self._nomenclatures,
+            EntityType.RANGE: self._ranges,
+            EntityType.RECIPE: self._recipes,
+        }
+        collection = collections.get(entity_type)
+        if collection is None:
+            raise ArgumentsException("entity_type", f"Поиск сущностей типа {entity_type.value} не поддерживается")
+
+        return next((entity for entity in collection if entity.id == entity_id), None)
 
     @property
     def ranges(self) -> list[RangeModel]:

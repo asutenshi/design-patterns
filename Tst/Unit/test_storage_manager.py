@@ -1,8 +1,10 @@
 import json
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.settings_manager import SettingsManager
@@ -350,6 +352,87 @@ def test_find_recipe_raw_material_returns_none(first_start_storage: StorageManag
 
     # Действие и проверка
     assert first_start_storage.find_recipe(nomenclatures["Картофель"]) is None
+
+
+# Подготовка
+@pytest.mark.parametrize("name", ["Борщ с говядиной", "борщ С ГОВЯДИНОЙ", "  Борщ с говядиной  "])
+def test_find_recipe_by_name_existing_name_returns_recipe(first_start_storage: StorageManager, name: str):
+    """Карта находится по наименованию без учёта регистра и пробелов по краям."""
+    # Действие
+    recipe = first_start_storage.find_recipe_by_name(name)
+
+    # Проверка
+    assert recipe is not None
+    assert recipe.name == "Борщ с говядиной"
+
+
+def test_find_recipe_by_name_unknown_name_returns_none(first_start_storage: StorageManager):
+    """Для наименования, которого нет среди карт, возвращается None."""
+    # Действие и проверка
+    assert first_start_storage.find_recipe_by_name("Несуществующая карта") is None
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("entity_type", "collection"),
+    [
+        (EntityType.NOMENCLATURE, "nomenclatures"),
+        (EntityType.RANGE, "ranges"),
+        (EntityType.RECIPE, "recipes"),
+    ],
+)
+def test_find_existing_id_returns_entity_from_collection(
+    first_start_storage: StorageManager, entity_type: EntityType, collection: str
+):
+    """Каждая сущность коллекции находится по своему типу и коду, и это тот же объект, что в хранилище."""
+    # Подготовка
+    entities = getattr(first_start_storage, collection)
+
+    # Действие
+    found = [first_start_storage.find(entity_type, entity.id) for entity in entities]
+
+    # Проверка
+    assert len(found) == len(entities) > 0
+    assert all(result is entity for result, entity in zip(found, entities, strict=True))
+
+
+def test_find_id_of_other_type_returns_none(first_start_storage: StorageManager):
+    """Код номенклатуры не находит карту: поиск идёт только в коллекции указанного типа."""
+    # Подготовка
+    recipe = first_start_storage.recipes[0]
+
+    # Действие
+    found = first_start_storage.find(EntityType.RECIPE, recipe.result.id)
+
+    # Проверка
+    assert found is None
+
+
+def test_find_unknown_id_returns_none(first_start_storage: StorageManager):
+    """Для кода, которого нет в хранилище, возвращается None."""
+    # Действие и проверка
+    assert first_start_storage.find(EntityType.NOMENCLATURE, uuid.uuid4()) is None
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("entity_type", "entity_id"),
+    [("nomenclature", uuid.uuid4()), (EntityType.NOMENCLATURE, str(uuid.uuid4())), (EntityType.RANGE, None)],
+)
+def test_find_invalid_arguments_raises_arguments_exception(
+    first_start_storage: StorageManager, entity_type: object, entity_id: object
+):
+    """Тип не из EntityType и код не UUID отвергаются."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        _ = first_start_storage.find(entity_type, entity_id)  # pyright: ignore[reportArgumentType]
+
+
+def test_find_recipe_by_name_not_string_raises_arguments_exception(first_start_storage: StorageManager):
+    """Наименование, не являющееся строкой, отвергается."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        _ = first_start_storage.find_recipe_by_name(None)  # pyright: ignore[reportArgumentType]
 
 
 def test_recipes_returned_list_modification_does_not_change_storage(first_start_storage: StorageManager):
