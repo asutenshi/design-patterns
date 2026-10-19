@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-from Src.Dtos.xml_report_result import XmlReportResult
+from Src.Dtos.report_result import ReportResult
 from Src.Logics.storage_manager import StorageManager
 from Src.Logics.xml_report import XmlReport
 from Src.Models.range_model import RangeModel
@@ -30,7 +30,7 @@ def test_build_derived_range_returns_element_per_field(first_start_storage: Stor
     result = XmlReport().build(kilogram)
 
     # Проверка
-    assert isinstance(result, XmlReportResult)
+    assert isinstance(result, ReportResult)
     assert result.text.startswith('<?xml version="1.0" encoding="UTF-8"?>\n')
     root = ET.fromstring(result.binary)
     assert root.tag == "RangeModel"

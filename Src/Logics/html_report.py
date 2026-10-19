@@ -4,7 +4,7 @@ from typing import override
 from Src.Core.abstract_report import AbstractReport
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
-from Src.Dtos.html_report_result import HtmlReportResult
+from Src.Dtos.report_result import ReportResult
 
 
 class HtmlReport(AbstractReport):
@@ -38,8 +38,26 @@ class HtmlReport(AbstractReport):
     # Отступ одного уровня вложенности
     _INDENT: str = "  "
 
+    @property
     @override
-    def build(self, source: NamedEntity) -> HtmlReportResult:
+    def is_binary(self) -> bool:
+        """Возвращает False: отчёт отдаётся текстом."""
+        return False
+
+    @property
+    @override
+    def media_type(self) -> str:
+        """Возвращает MIME-тип HTML в кодировке UTF-8."""
+        return "text/html; charset=utf-8"
+
+    @property
+    @override
+    def file_extension(self) -> str:
+        """Возвращает расширение файла HTML."""
+        return "html"
+
+    @override
+    def build(self, source: NamedEntity) -> ReportResult:
         """Формирует отчёт HTML по сущности.
 
         :param source: Сущность, по которой строится отчёт: сама она раскрывается целиком.
@@ -57,7 +75,7 @@ class HtmlReport(AbstractReport):
         body.append(self._table(source))
 
         ET.indent(page, space=self._INDENT)
-        return HtmlReportResult(f"{self._DOCTYPE}\n{ET.tostring(page, encoding='unicode', method='html')}\n")
+        return self._result(f"{self._DOCTYPE}\n{ET.tostring(page, encoding='unicode', method='html')}\n")
 
     def _table(self, source: object) -> ET.Element:
         """Возвращает таблицу полей раскрываемого объекта.

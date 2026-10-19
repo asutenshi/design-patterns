@@ -566,9 +566,10 @@ classDiagram
 ## Отчёты
 
 Отчёт формирует по сущности результат в одном из форматов (`ResponseFormat`). У каждого формата свой класс отчёта
-со своей реализацией `build()` и свой класс результата. Клиент получает отчёт от фабрики по формату и работает
-только с абстракциями `AbstractReport` и `AbstractReportResult` (паттерн «Абстрактная фабрика»).
-Абстракции лежат в `Src/Core/`, отчёты и фабрика — в `Src/Logics/`, результаты — в `Src/Dtos/`.
+со своей реализацией `build()` и своими признаками выдачи (`is_binary`, `media_type`, `file_extension`).
+Клиент получает отчёт от фабрики по формату и работает только с абстракцией `AbstractReport`
+(паттерн «Абстрактная фабрика»). Абстракции лежат в `Src/Core/`, отчёты и фабрика — в `Src/Logics/`,
+результат `ReportResult` — в `Src/Dtos/`.
 
 Фабрика хранит настройки (`SettingsModel`): `create(response_format)` создаёт отчёт явно указанного формата,
 `create_default()` — формата из `SettingsModel.response_format`. Новый формат подключается строкой в `_reports`.
@@ -578,10 +579,12 @@ classDiagram
 остальные объекты раскрываются по дереву «Компоновщика» (`RecipeModel.items`, `IngredientModel.base`).
 Так не зацикливается `RangeModel.base` у базовой единицы, а все форматы выводят один и тот же состав данных.
 
-Результат — объект-значение: без идентификатора, неизменяем, равенство по типу и содержимому.
-Все форматы текстовые, поэтому хранение текста и кодирование в байты вынесены в `AbstractTextReportResult`.
-`is_binary` подсказывает API, отдавать ли результат файлом на скачивание (Markdown, CSV) или текстом
-(TXT, XML, HTML), `file_extension` — расширение имени файла. CSV кодируется с меткой UTF-8 для Excel.
+Результат — объект-значение: без идентификатора, неизменяем, равенство по содержимому и способу выдачи.
+Он один на все форматы: формат знает про себя отчёт и передаёт результату MIME-тип, расширение и признак
+файла (`AbstractReport._result()`). `is_binary` подсказывает API, отдавать ли результат файлом на скачивание
+(Markdown, CSV) или текстом (TXT, XML, HTML). Сам результат собирает HTTP-ответ (`to_response()`), поэтому
+`fastapi` нужен только в `Src/Dtos/` и `Src/main.py`, а не в ядре. CSV кодируется с меткой UTF-8 для Excel
+(`CsvReport._ENCODING`). Компромисс: `AbstractReport` из `Src/Core/` импортирует `ReportResult` из `Src/Dtos/`.
 
 ```mermaid
 classDiagram
@@ -604,7 +607,12 @@ classDiagram
     class AbstractReport {
         <<abstract>>
         #_FLOAT_PRECISION: int
-        +build(source)* AbstractReportResult
+        #_ENCODING$: str
+        +is_binary*: bool
+        +media_type*: str
+        +file_extension*: str
+        +build(source)* ReportResult
+        #_result(text) ReportResult
         #_fields(source)$ list~tuple~
         #_is_scalar(value)$ bool
         #_is_reference(value)$ bool
@@ -614,63 +622,52 @@ classDiagram
     }
 
     class TxtReport {
-        +build(source) TxtReportResult
+        +is_binary = False
+        +media_type = text/plain
+        +file_extension = txt
+        +build(source) ReportResult
     }
 
     class MarkdownReport {
-        +build(source) MarkdownReportResult
+        +is_binary = True
+        +media_type = text/markdown
+        +file_extension = md
+        +build(source) ReportResult
     }
 
     class CsvReport {
-        +build(source) CsvReportResult
+        #_ENCODING$ = utf-8-sig
+        +is_binary = True
+        +media_type = text/csv
+        +file_extension = csv
+        +build(source) ReportResult
     }
 
     class XmlReport {
-        +build(source) XmlReportResult
+        +is_binary = False
+        +media_type = application/xml
+        +file_extension = xml
+        +build(source) ReportResult
     }
 
     class HtmlReport {
-        +build(source) HtmlReportResult
+        +is_binary = False
+        +media_type = text/html
+        +file_extension = html
+        +build(source) ReportResult
     }
 
-    class AbstractReportResult {
-        <<abstract>>
-        +text*: str
-        +binary*: bytes
-        +is_binary*: bool
-        +media_type*: str
-        +file_extension*: str
-        +__eq__(value) bool
-        +__hash__() int
-    }
-
-    class AbstractTextReportResult {
-        <<abstract>>
-        #_ENCODING$: str
+    class ReportResult {
         -_text: str
+        -_encoding: str
         +text: str
         +binary: bytes
-    }
-
-    class TxtReportResult {
-        +is_binary = False
-    }
-
-    class MarkdownReportResult {
-        +is_binary = True
-    }
-
-    class CsvReportResult {
-        #_ENCODING$ = utf-8-sig
-        +is_binary = True
-    }
-
-    class XmlReportResult {
-        +is_binary = False
-    }
-
-    class HtmlReportResult {
-        +is_binary = False
+        +is_binary: bool
+        +media_type: str
+        +file_extension: str
+        +to_response(file_stem) Response
+        +__eq__(value) bool
+        +__hash__() int
     }
 
     class ResponseFormat {
@@ -696,22 +693,11 @@ classDiagram
     AbstractReport <|-- CsvReport
     AbstractReport <|-- XmlReport
     AbstractReport <|-- HtmlReport
-    AbstractReportResult <|-- AbstractTextReportResult
-    AbstractTextReportResult <|-- TxtReportResult
-    AbstractTextReportResult <|-- MarkdownReportResult
-    AbstractTextReportResult <|-- CsvReportResult
-    AbstractTextReportResult <|-- XmlReportResult
-    AbstractTextReportResult <|-- HtmlReportResult
     AbstractReportFactory ..> AbstractReport : создаёт
     ReportFactory --> SettingsModel : settings
     SettingsModel --> ResponseFormat : response_format
     ReportFactory ..> ResponseFormat : ключ сопоставления
-    AbstractReport ..> AbstractReportResult : возвращает
-    TxtReport ..> TxtReportResult : возвращает
-    MarkdownReport ..> MarkdownReportResult : возвращает
-    CsvReport ..> CsvReportResult : возвращает
-    XmlReport ..> XmlReportResult : возвращает
-    HtmlReport ..> HtmlReportResult : возвращает
+    AbstractReport ..> ReportResult : возвращает
     AbstractReport ..> NamedEntity : строит по сущности
     AbstractReport ..> Common : get_fields
     ReportFactory ..> ArgumentsException : бросает для чужого или нереализованного формата

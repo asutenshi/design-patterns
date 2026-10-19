@@ -3,7 +3,7 @@ from typing import override
 from Src.Core.abstract_report import AbstractReport
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
-from Src.Dtos.txt_report_result import TxtReportResult
+from Src.Dtos.report_result import ReportResult
 
 
 class TxtReport(AbstractReport):
@@ -27,8 +27,26 @@ class TxtReport(AbstractReport):
     # Начало элемента списка
     _BULLET: str = "- "
 
+    @property
     @override
-    def build(self, source: NamedEntity) -> TxtReportResult:
+    def is_binary(self) -> bool:
+        """Возвращает False: отчёт отдаётся текстом."""
+        return False
+
+    @property
+    @override
+    def media_type(self) -> str:
+        """Возвращает MIME-тип простой текст в кодировке UTF-8."""
+        return "text/plain; charset=utf-8"
+
+    @property
+    @override
+    def file_extension(self) -> str:
+        """Возвращает расширение файла простой текст."""
+        return "txt"
+
+    @override
+    def build(self, source: NamedEntity) -> ReportResult:
         """Формирует текстовый отчёт по сущности.
 
         :param source: Сущность, по которой строится отчёт: сама она раскрывается целиком.
@@ -36,7 +54,7 @@ class TxtReport(AbstractReport):
         :raises ArgumentsException: Если source не является сущностью с наименованием.
         """
         source = CommonValidator.validate_instance(source, NamedEntity, "source", "Ожидается сущность с наименованием")
-        return TxtReportResult("\n".join(self._object_lines(source, 0)))
+        return self._result("\n".join(self._object_lines(source, 0)))
 
     def _object_lines(self, source: object, level: int) -> list[str]:
         """Возвращает строки всех полей раскрываемого объекта.

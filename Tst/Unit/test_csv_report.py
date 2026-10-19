@@ -1,7 +1,7 @@
 import csv
 import io
 
-from Src.Dtos.csv_report_result import CsvReportResult
+from Src.Dtos.report_result import ReportResult
 from Src.Logics.csv_report import CsvReport
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.range_model import RangeModel
@@ -29,7 +29,7 @@ def test_build_derived_range_returns_header_and_row_per_field(first_start_storag
     result = CsvReport().build(kilogram)
 
     # Проверка
-    assert isinstance(result, CsvReportResult)
+    assert isinstance(result, ReportResult)
     assert parse(result.text) == [
         ["field", "value"],
         ["id", str(kilogram.id)],

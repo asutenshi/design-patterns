@@ -4,7 +4,7 @@ from typing import override
 from Src.Core.abstract_report import AbstractReport
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
-from Src.Dtos.xml_report_result import XmlReportResult
+from Src.Dtos.report_result import ReportResult
 
 
 class XmlReport(AbstractReport):
@@ -33,8 +33,26 @@ class XmlReport(AbstractReport):
     # Отступ одного уровня вложенности
     _INDENT: str = "  "
 
+    @property
     @override
-    def build(self, source: NamedEntity) -> XmlReportResult:
+    def is_binary(self) -> bool:
+        """Возвращает False: отчёт отдаётся текстом."""
+        return False
+
+    @property
+    @override
+    def media_type(self) -> str:
+        """Возвращает MIME-тип XML в кодировке UTF-8."""
+        return "application/xml; charset=utf-8"
+
+    @property
+    @override
+    def file_extension(self) -> str:
+        """Возвращает расширение файла XML."""
+        return "xml"
+
+    @override
+    def build(self, source: NamedEntity) -> ReportResult:
         """Формирует отчёт XML по сущности.
 
         :param source: Сущность, по которой строится отчёт: сама она раскрывается целиком.
@@ -45,7 +63,7 @@ class XmlReport(AbstractReport):
         root = ET.Element(type(source).__name__)
         self._fill_object(root, source)
         ET.indent(root, space=self._INDENT)
-        return XmlReportResult(f"{self._DECLARATION}\n{ET.tostring(root, encoding='unicode')}\n")
+        return self._result(f"{self._DECLARATION}\n{ET.tostring(root, encoding='unicode')}\n")
 
     def _fill_object(self, element: ET.Element, source: object) -> None:
         """Добавляет в элемент дочерние элементы всех полей объекта.

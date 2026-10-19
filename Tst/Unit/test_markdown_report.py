@@ -1,4 +1,4 @@
-from Src.Dtos.markdown_report_result import MarkdownReportResult
+from Src.Dtos.report_result import ReportResult
 from Src.Logics.markdown_report import MarkdownReport
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.range_model import RangeModel
@@ -21,7 +21,7 @@ def test_build_derived_range_returns_heading_and_field_list(first_start_storage:
     result = MarkdownReport().build(kilogram)
 
     # Проверка
-    assert isinstance(result, MarkdownReportResult)
+    assert isinstance(result, ReportResult)
     assert result.text == "\n".join(
         [
             "# килограмм",

@@ -2,18 +2,19 @@ import uuid
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from enum import Enum
-from typing import TypeGuard
+from typing import ClassVar, TypeGuard
 
-from Src.Core.abstract_report_result import AbstractReportResult
 from Src.Core.common import Common
 from Src.Core.named_entity import NamedEntity
+from Src.Dtos.report_result import ReportResult
 
 
 class AbstractReport(ABC):
     """Абстрактный отчёт: формирует результат по сущности в своём формате.
 
-    У каждого формата свой наследник со своей реализацией ``build()`` и своим результатом.
-    Общие для всех форматов правила обхода сущности заданы здесь, чтобы форматы выводили
+    У каждого формата свой наследник со своей реализацией ``build()``. Наследник же знает,
+    как отдавать свой результат: файлом или текстом (``is_binary``), с каким MIME-типом
+    (``media_type``) и расширением (``file_extension``). Общие для всех форматов правила обхода сущности заданы здесь, чтобы форматы выводили
     одни и те же данные:
 
     - поля объекта — его публичные свойства (``Common.get_fields``), в порядке объявления;
@@ -29,15 +30,42 @@ class AbstractReport(ABC):
 
     # Число знаков после запятой для дробных чисел: веса считаются в граммах
     _FLOAT_PRECISION: int = 3
+    # Кодировка, в которой текст отчёта отдаётся байтами
+    _ENCODING: ClassVar[str] = "utf-8"
+
+    @property
+    @abstractmethod
+    def is_binary(self) -> bool:
+        """Возвращает True, если отчёт отдаётся файлом на скачивание, а не текстом."""
+
+    @property
+    @abstractmethod
+    def media_type(self) -> str:
+        """Возвращает MIME-тип отчёта, например ``text/plain; charset=utf-8``."""
+
+    @property
+    @abstractmethod
+    def file_extension(self) -> str:
+        """Возвращает расширение файла с отчётом без точки, например ``txt``."""
 
     @abstractmethod
-    def build(self, source: NamedEntity) -> AbstractReportResult:
+    def build(self, source: NamedEntity) -> ReportResult:
         """Формирует отчёт по сущности.
 
         :param source: Сущность, по которой строится отчёт: сама она раскрывается целиком.
         :return: Результат в формате отчёта.
         :raises ArgumentsException: Если source не является сущностью с наименованием.
         """
+
+    def _result(self, text: str) -> ReportResult:
+        """Оформляет текст отчёта результатом со способом выдачи формата.
+
+        :param text: Содержимое отчёта.
+        :return: Результат с признаками выдачи этого отчёта.
+        """
+        return ReportResult(
+            text, self.media_type, self.file_extension, is_binary=self.is_binary, encoding=self._ENCODING
+        )
 
     @staticmethod
     def _fields(source: object) -> list[tuple[str, object]]:

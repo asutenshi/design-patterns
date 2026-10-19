@@ -1,7 +1,7 @@
 from html.parser import HTMLParser
 from typing import override
 
-from Src.Dtos.html_report_result import HtmlReportResult
+from Src.Dtos.report_result import ReportResult
 from Src.Logics.html_report import HtmlReport
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.range_model import RangeModel
@@ -52,7 +52,7 @@ def test_build_derived_range_returns_page_with_table_row_per_field(first_start_s
     result = HtmlReport().build(kilogram)
 
     # Проверка
-    assert isinstance(result, HtmlReportResult)
+    assert isinstance(result, ReportResult)
     assert result.text.startswith("<!DOCTYPE html>\n<html lang=\"ru\">")
     assert [pair for pair in collect(result.text) if pair[0] != "style"] == [
         ("title", "килограмм"),

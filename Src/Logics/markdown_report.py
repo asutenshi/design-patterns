@@ -3,7 +3,7 @@ from typing import override
 from Src.Core.abstract_report import AbstractReport
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
-from Src.Dtos.markdown_report_result import MarkdownReportResult
+from Src.Dtos.report_result import ReportResult
 
 
 class MarkdownReport(AbstractReport):
@@ -30,8 +30,26 @@ class MarkdownReport(AbstractReport):
     # Символы, которые Markdown может принять за разметку
     _SPECIAL_CHARS: str = "\\`*_[]<>#"
 
+    @property
     @override
-    def build(self, source: NamedEntity) -> MarkdownReportResult:
+    def is_binary(self) -> bool:
+        """Возвращает True: отчёт отдаётся файлом на скачивание."""
+        return True
+
+    @property
+    @override
+    def media_type(self) -> str:
+        """Возвращает MIME-тип Markdown в кодировке UTF-8."""
+        return "text/markdown; charset=utf-8"
+
+    @property
+    @override
+    def file_extension(self) -> str:
+        """Возвращает расширение файла Markdown."""
+        return "md"
+
+    @override
+    def build(self, source: NamedEntity) -> ReportResult:
         """Формирует отчёт Markdown по сущности.
 
         :param source: Сущность, по которой строится отчёт: сама она раскрывается целиком.
@@ -40,7 +58,7 @@ class MarkdownReport(AbstractReport):
         """
         source = CommonValidator.validate_instance(source, NamedEntity, "source", "Ожидается сущность с наименованием")
         lines = [f"# {self._escape(source.name)}", "", *self._object_lines(source)]
-        return MarkdownReportResult("\n".join(lines) + "\n")
+        return self._result("\n".join(lines) + "\n")
 
     def _object_lines(self, source: object) -> list[str]:
         """Возвращает маркированный список полей раскрываемого объекта.

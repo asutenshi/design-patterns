@@ -1,6 +1,6 @@
 import pytest
 from Src.Core.exception import ArgumentsException
-from Src.Dtos.txt_report_result import TxtReportResult
+from Src.Dtos.report_result import ReportResult
 from Src.Logics.storage_manager import StorageManager
 from Src.Logics.txt_report import TxtReport
 from Src.Models.range_model import RangeModel
@@ -146,7 +146,7 @@ def test_build_same_source_twice_returns_equal_results(first_start_storage: Stor
     second = TxtReport().build(recipe)
 
     # Проверка
-    assert isinstance(first, TxtReportResult)
+    assert isinstance(first, ReportResult)
     assert first == second
     assert first is not second
 
