@@ -308,4 +308,4 @@ def test_get_fields_settings_model_returns_expected_fields():
     fields = Common.get_fields(SettingsModel)
 
     # Проверка
-    assert fields == ["id", "organization", "boss_name", "account_name", "is_first_start"]
+    assert fields == ["id", "organization", "boss_name", "account_name", "is_first_start", "response_format"]

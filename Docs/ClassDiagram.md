@@ -64,13 +64,15 @@ classDiagram
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
-        +recipe: RecipeProtocol | None
+        +base: tuple~IngredientModel~
         +gross_weight: float
         +net_weight: float
+        +scaled(factor) IngredientModel
+        +contains(nomenclature) bool
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава технологической карты: часть карты, без id. nomenclature только для чтения. Количество в базовой единице номенклатуры, веса вычисляются рекурсивно (паттерн Компоновщик), если задан recipe. recipe, как и nomenclature, только для чтения: цикл проверяется при добавлении в карту"
+    note for IngredientModel "Строка состава карты, без id (паттерн Компоновщик в одном классе). Пустое base — сырьё или упаковка, вес из количества и grams_per_base_unit. Непустое base — полуфабрикат: снимок карты под это количество, вес — сумма base. base задаётся в конструкторе и копируется, смена quantity масштабирует его. Веса вычисляются при каждом обращении. О картах не знает"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -84,13 +86,14 @@ classDiagram
         +output_quantity: int | float
         +cooking_time_minutes: int | float
         +steps: list~str~
-        +ingredients: list~IngredientModel~
+        +items: list~IngredientModel~
         +gross_weight: float
         +net_weight: float
         +gross_weight_for(output_quantity) float
         +net_weight_for(output_quantity) float
-        +add_ingredient(ingredient) None
-        +remove_ingredient(nomenclature) None
+        +add_item(item) None
+        +remove_item(nomenclature) None
+        +as_ingredient(quantity, loss_ratio) IngredientModel
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -98,7 +101,7 @@ classDiagram
         +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты уникальны по номенклатуре. Веса брутто и нетто вычисляются рекурсивно с учётом вложенных карт. gross_weight_for и net_weight_for масштабируют веса под заданный выход. Фабрики карт принимают NomenclatureCatalog. create_borscht сам создаёт не переданные карты полуфабрикатов, ошибки не скрывает"
+    note for RecipeModel "Результат (полуфабрикат или блюдо) только для чтения. Ингредиенты состава уникальны по номенклатуре. Веса брутто и нетто — сумма по ингредиентам, рекурсия получается сама. as_ingredient собирает снимок карты для состава другой карты. add_item отвергает строку, в дереве которой есть результат карты. gross_weight_for и net_weight_for масштабируют веса под заданный выход. Фабрики карт принимают NomenclatureCatalog. create_borscht сам создаёт не переданные карты полуфабрикатов, ошибки не скрывает"
 
     class NomenclatureGroupModel {
         +create_meat()$ NomenclatureGroupModel
@@ -120,6 +123,7 @@ classDiagram
         +boss_name: str
         +account_name: str
         +is_first_start: bool
+        +response_format: ResponseFormat
     }
 
     class OrganizationModel {
@@ -139,6 +143,10 @@ classDiagram
         SOLE_PROPRIETOR
     }
 
+    class ResponseFormat {
+        <<enumeration>>
+    }
+
     BaseEntity <|-- NamedEntity
     BaseEntity <|-- SettingsModel
     NamedEntity <|-- RangeModel
@@ -152,14 +160,16 @@ classDiagram
     NomenclatureModel --> RangeModel : range
     NomenclatureModel --> NomenclatureType : type
     IngredientModel --> NomenclatureModel : nomenclature
-    IngredientModel --> RecipeModel : recipe
+    IngredientModel "1" *-- "0..*" IngredientModel : base
     RecipeModel --> NomenclatureModel : result
-    RecipeModel "1" *-- "*" IngredientModel : ingredients
+    RecipeModel "1" *-- "*" IngredientModel : items
+    RecipeModel ..> IngredientModel : as_ingredient
     NomenclatureCatalog o-- NomenclatureModel : items
     RecipeModel ..> NomenclatureCatalog : фабрики карт
     RangeModel --> RangeModel : base
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
+    SettingsModel --> ResponseFormat : response_format
 ```
 
 ## Рецепты
@@ -168,12 +178,19 @@ classDiagram
 Те же классы показаны на общей диаграмме выше, здесь оставлено только относящееся к рецептам.
 
 - Карта (`RecipeModel`) получает одну номенклатуру-результат: полуфабрикат или блюдо.
-- Состав — строки `IngredientModel` без собственного `id`: внутри карты строку определяет номенклатура.
-  Ингредиент хранит количество в базовой единице номенклатуры и долю потерь.
-- Вес ингредиента: брутто = `quantity * grams_per_base_unit`, нетто = брутто * (1 − `loss_ratio`).
-  Вес карты — сумма по ингредиентам, вычисляется при каждом обращении.
-- Полуфабрикат входит в состав как обычная номенклатура, его карту находит `StorageManager.find_recipe()`
-  по результату. Упаковка — обычный ингредиент.
+- Состав — ингредиенты `IngredientModel` без собственного `id`: внутри карты строку определяет номенклатура.
+  Строка хранит количество в базовой единице номенклатуры, долю потерь и основание `base` — состав этого количества.
+  «Компоновщик» в одном классе: пустое `base` — сырьё или упаковка, непустое — полуфабрикат или блюдо со своей картой.
+- Вес сырья: брутто = `quantity * grams_per_base_unit`, нетто = брутто * (1 − `loss_ratio`).
+- Вес составной строки: брутто = сумма брутто `base`, нетто = сумма нетто `base` * (1 − `loss_ratio`).
+  Вес карты — сумма по строкам, вычисляется при каждом обращении.
+- Полуфабрикат входит в карту снимком: `recipe.as_ingredient(quantity, loss_ratio)` копирует состав карты,
+  масштабированный на `quantity / output_quantity`. Основание — производные данные, источник истины — карта
+  полуфабриката (`StorageManager.find_recipe()` по номенклатуре строки). Правка карты уже собранные строки не меняет,
+  каскадную пересборку в будущем возьмёт на себя наблюдатель. Ингредиент о картах не знает, цикла импортов нет.
+- Циклы по ссылкам невозможны: `base` задаётся в конструкторе и копируется. `RecipeModel.add_item` отвергает строку,
+  в дереве которой есть результат карты (`IngredientModel.contains`). Проверка надёжна, пока снимки свежие:
+  устаревший снимок может не увидеть цепочку, добавленную после его сборки.
 - Фабрики `create_*` собирают карты из `Recipes.md` по справочнику `NomenclatureCatalog` (поиск номенклатуры по наименованию).
 
 ```mermaid
@@ -198,13 +215,15 @@ classDiagram
         +nomenclature: NomenclatureModel
         +quantity: int | float
         +loss_ratio: int | float
-        +recipe: RecipeProtocol | None
+        +base: tuple~IngredientModel~
         +gross_weight: float
         +net_weight: float
+        +scaled(factor) IngredientModel
+        +contains(nomenclature) bool
         +nomenclature_key() UUID
     }
 
-    note for IngredientModel "Строка состава карты, без id. loss_ratio от 0 включительно до 1 не включая. recipe (только для чтения) задаёт карту для рекурсивного расчёта весов. Упаковка — обычный ингредиент без потерь"
+    note for IngredientModel "Строка состава, без id. loss_ratio от 0 включительно до 1 не включая. Пустое base — сырьё, непустое — снимок карты полуфабриката. contains нужен карте, чтобы не включить снимок самой себя"
 
     class NomenclatureCatalog {
         +get(name) NomenclatureModel
@@ -218,13 +237,14 @@ classDiagram
         +output_quantity: int | float
         +cooking_time_minutes: int | float
         +steps: list~str~
-        +ingredients: list~IngredientModel~
+        +items: list~IngredientModel~
         +gross_weight: float
         +net_weight: float
         +gross_weight_for(output_quantity) float
         +net_weight_for(output_quantity) float
-        +add_ingredient(ingredient) None
-        +remove_ingredient(nomenclature) None
+        +add_item(item) None
+        +remove_item(nomenclature) None
+        +as_ingredient(quantity, loss_ratio) IngredientModel
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -232,7 +252,7 @@ classDiagram
         +create_borscht(catalog, bouillon?, boiled_beef?, beet_fry?)$ RecipeModel
     }
 
-    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто и нетто рассчитываются рекурсивно. gross_weight_for и net_weight_for масштабируют веса под заданный объём. Результат не может быть ингредиентом своей карты"
+    note for RecipeModel "Результат — только SEMI_FINISHED или DISH, задаётся в конструкторе. Брутто и нетто — сумма по элементам. gross_weight_for и net_weight_for масштабируют веса под заданный объём. Результат не может входить в состав своей карты, в том числе в основание строки. as_ingredient масштабирует состав под количество строки"
 
     class UniqueCollection~T~ {
         +add(item) None
@@ -244,31 +264,33 @@ classDiagram
     class StorageManager {
         +recipes: list~RecipeModel~
         +find_recipe(nomenclature) RecipeModel | None
-        -_add_recipe(recipe) None
-        -_creates_cycle(recipe) bool
+        +find_recipe_by_name(name) RecipeModel | None
+        +find(entity_type, entity_id) NamedEntity | None
     }
 
-    note for StorageManager "Одна карта на номенклатуру-результат. При регистрации обходит карты вложенных полуфабрикатов и отвергает цикл (A включает B, B включает A)"
+    note for StorageManager "Одна карта на номенклатуру-результат. Включение снимка самой себя отвергает карта при добавлении строки, хранилище его не проверяет"
 
     class ArgumentsException
 
     NomenclatureModel --> NomenclatureType : type
     IngredientModel --> NomenclatureModel : nomenclature
-    IngredientModel --> RecipeModel : recipe
+    IngredientModel "1" *-- "0..*" IngredientModel : base
     RecipeModel --> NomenclatureModel : result
-    RecipeModel "1" *-- "*" IngredientModel : ingredients
+    RecipeModel "1" *-- "*" IngredientModel : items
+    RecipeModel ..> IngredientModel : as_ingredient
     NomenclatureCatalog o-- NomenclatureModel : items
     RecipeModel ..> NomenclatureCatalog : фабрики карт
-    RecipeModel *-- UniqueCollection : ingredients
+    RecipeModel *-- UniqueCollection : items
     StorageManager *-- UniqueCollection : recipes
     StorageManager --> RecipeModel : recipes
-    RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе
-    StorageManager ..> ArgumentsException : цикл включений, вторая карта на результат
+    RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе или в основании строки
+    StorageManager ..> ArgumentsException : вторая карта на результат
 ```
 
 Пример составной карты: «Борщ с говядиной» (блюдо) включает полуфабрикаты «Бульон костный говяжий»,
-«Говядина отварная», «Зажарка свекольная» и упаковку «Контейнер для супа 500 мл». Каждый полуфабрикат
-собирается по своей карте только из сырья, поэтому циклов в начальных данных нет.
+«Говядина отварная», «Зажарка свекольная» и упаковку «Контейнер для супа 500 мл». Каждый полуфабрикат входит
+снимком своей карты (`as_ingredient`) с количеством и потерями строки, а карты полуфабрикатов состоят только из сырья,
+поэтому циклов в начальных данных нет.
 
 ## Проверки и ошибки
 
@@ -336,11 +358,12 @@ classDiagram
     NamedEntity ..> CommonValidator : name
     RangeModel ..> CommonValidator : factor, base
     NomenclatureModel ..> CommonValidator : name, full_name, group, range, type, grams_per_base_unit
-    IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio
+    IngredientModel ..> CommonValidator : nomenclature, quantity, loss_ratio, base, factor
+    IngredientModel ..> ArgumentsException : повтор номенклатуры в основании, своя номенклатура в основании
     NomenclatureCatalog ..> CommonValidator : nomenclatures
     NomenclatureCatalog ..> ArgumentsException : повтор наименования, нет позиции
-    RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, ingredient, nomenclature
-    RecipeModel ..> ArgumentsException : тип результата, шаги, результат как ингредиент
+    RecipeModel ..> CommonValidator : result, output_quantity, cooking_time_minutes, steps, item, nomenclature, quantity
+    RecipeModel ..> ArgumentsException : тип результата, шаги, результат в составе или в основании строки
     OrganizationModel ..> CommonValidator : bic, account, ownership_form
     OrganizationModel ..> InnValidator : inn
     SettingsModel ..> CommonValidator : organization, boss_name, account_name, is_first_start
@@ -416,10 +439,14 @@ classDiagram
         +boss_name: str
         +account_name: str
         +is_first_start: bool
+        +response_format: ResponseFormat
     }
 
     class OrganizationModel
     class OwnershipForm {
+        <<enumeration>>
+    }
+    class ResponseFormat {
         <<enumeration>>
     }
     class ArgumentsException
@@ -434,6 +461,7 @@ classDiagram
     Common ..> OperationException : бросает
     SettingsManager ..> OrganizationModel : создаёт в convert()
     SettingsManager ..> OwnershipForm : значение из файла
+    SettingsManager ..> ResponseFormat : значение из файла
     SettingsManager ..> ArgumentsException : перехватывает
     SettingsManager ..> OperationException : бросает
 ```
@@ -444,8 +472,10 @@ classDiagram
 `load()` наполняет их начальными данными через фабричные методы моделей: 5 единиц измерения, 7 групп,
 24 номенклатуры, 2 склада и 4 технологические карты из `Recipes.md`.
 Номенклатура ссылается на те же объекты единиц и групп, что лежат в коллекциях, а карты — на те же объекты номенклатуры, а не на копии.
-Карта регистрируется с проверкой циклов: обходятся карты вложенных полуфабрикатов (глубокая защита, локальную делает `RecipeModel`).
+Циклы включений хранилище не проверяет: снимок самой себя отвергает карта при добавлении строки (`RecipeModel.add_item`).
 Карту полуфабриката находит `find_recipe()` по номенклатуре-результату, на одну позицию допускается одна карта.
+По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
+Сущность по типу (`EntityType`: номенклатура, единица измерения, карта) и коду ищет `find()` перебором коллекции этого типа.
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 С файлами `StorageManager` не работает, поэтому наследует `AbstractManager`, а не `AbstractFileManager`.
@@ -477,12 +507,12 @@ classDiagram
         +__new__() Self
         +load(settings_manager) None
         +find_recipe(nomenclature) RecipeModel | None
+        +find_recipe_by_name(name) RecipeModel | None
+        +find(entity_type, entity_id) NamedEntity | None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
         -_create_nomenclatures() list~NomenclatureModel~
-        -_add_recipe(recipe) None
-        -_creates_cycle(recipe) bool
     }
 
     note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции. Ключ коллекции карт — id результата"
@@ -531,4 +561,144 @@ classDiagram
     RangeModel --> RangeModel : base
     UniqueCollection ..> ArgumentsException : бросает при дубликате и удалении отсутствующего ключа
     StorageManager ..> OperationException : бросает
+```
+
+## Отчёты
+
+Отчёт формирует по сущности результат в одном из форматов (`ResponseFormat`). У каждого формата свой класс отчёта
+со своей реализацией `build()` и своими признаками выдачи (`is_binary`, `media_type`, `file_extension`).
+Клиент получает отчёт от фабрики по формату и работает только с абстракцией `AbstractReport`
+(паттерн «Абстрактная фабрика»). Абстракции лежат в `Src/Core/`, отчёты и фабрика — в `Src/Logics/`,
+результат `ReportResult` — в `Src/Dtos/`.
+
+Фабрика хранит настройки (`SettingsModel`): `create(response_format)` создаёт отчёт явно указанного формата,
+`create_default()` — формата из `SettingsModel.response_format`. Новый формат подключается строкой в `_reports`.
+
+Общие для всех форматов правила обхода заданы в `AbstractReport`: поля — публичные свойства (`Common.get_fields`),
+вложенная сущность с наименованием выводится ссылкой (наименование и код), списки — поэлементно,
+остальные объекты раскрываются по дереву «Компоновщика» (`RecipeModel.items`, `IngredientModel.base`).
+Так не зацикливается `RangeModel.base` у базовой единицы, а все форматы выводят один и тот же состав данных.
+
+Результат — объект-значение: без идентификатора, неизменяем, равенство по содержимому и способу выдачи.
+Он один на все форматы: формат знает про себя отчёт и передаёт результату MIME-тип, расширение и признак
+файла (`AbstractReport._result()`). `is_binary` подсказывает API, отдавать ли результат файлом на скачивание
+(Markdown, CSV) или текстом (TXT, XML, HTML). Сам результат собирает HTTP-ответ (`to_response()`), поэтому
+`fastapi` нужен только в `Src/Dtos/` и `Src/main.py`, а не в ядре. CSV кодируется с меткой UTF-8 для Excel
+(`CsvReport._ENCODING`). Компромисс: `AbstractReport` из `Src/Core/` импортирует `ReportResult` из `Src/Dtos/`.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class AbstractReportFactory {
+        <<abstract>>
+        +create(response_format)* AbstractReport
+        +create_default()* AbstractReport
+    }
+
+    class ReportFactory {
+        -_reports$: dict~ResponseFormat, type~
+        -_settings: SettingsModel
+        +settings: SettingsModel
+        +create(response_format) AbstractReport
+        +create_default() AbstractReport
+    }
+
+    class AbstractReport {
+        <<abstract>>
+        #_FLOAT_PRECISION: int
+        #_ENCODING$: str
+        +is_binary*: bool
+        +media_type*: str
+        +file_extension*: str
+        +build(source)* ReportResult
+        #_result(text) ReportResult
+        #_fields(source)$ list~tuple~
+        #_is_scalar(value)$ bool
+        #_is_reference(value)$ bool
+        #_is_collection(value)$ bool
+        #_format_reference(entity)$ str
+        #_format_scalar(value)$ str
+    }
+
+    class TxtReport {
+        +is_binary = False
+        +media_type = text/plain
+        +file_extension = txt
+        +build(source) ReportResult
+    }
+
+    class MarkdownReport {
+        +is_binary = True
+        +media_type = text/markdown
+        +file_extension = md
+        +build(source) ReportResult
+    }
+
+    class CsvReport {
+        #_ENCODING$ = utf-8-sig
+        +is_binary = True
+        +media_type = text/csv
+        +file_extension = csv
+        +build(source) ReportResult
+    }
+
+    class XmlReport {
+        +is_binary = False
+        +media_type = application/xml
+        +file_extension = xml
+        +build(source) ReportResult
+    }
+
+    class HtmlReport {
+        +is_binary = False
+        +media_type = text/html
+        +file_extension = html
+        +build(source) ReportResult
+    }
+
+    class ReportResult {
+        -_text: str
+        -_encoding: str
+        +text: str
+        +binary: bytes
+        +is_binary: bool
+        +media_type: str
+        +file_extension: str
+        +to_response(file_stem) Response
+        +__eq__(value) bool
+        +__hash__() int
+    }
+
+    class ResponseFormat {
+        <<enumeration>>
+        TXT
+        MARKDOWN
+        CSV
+        XML
+        HTML
+    }
+
+    class SettingsModel {
+        +response_format: ResponseFormat
+    }
+
+    class NamedEntity
+    class Common
+    class ArgumentsException
+
+    AbstractReportFactory <|-- ReportFactory
+    AbstractReport <|-- TxtReport
+    AbstractReport <|-- MarkdownReport
+    AbstractReport <|-- CsvReport
+    AbstractReport <|-- XmlReport
+    AbstractReport <|-- HtmlReport
+    AbstractReportFactory ..> AbstractReport : создаёт
+    ReportFactory --> SettingsModel : settings
+    SettingsModel --> ResponseFormat : response_format
+    ReportFactory ..> ResponseFormat : ключ сопоставления
+    AbstractReport ..> ReportResult : возвращает
+    AbstractReport ..> NamedEntity : строит по сущности
+    AbstractReport ..> Common : get_fields
+    ReportFactory ..> ArgumentsException : бросает для чужого или нереализованного формата
 ```

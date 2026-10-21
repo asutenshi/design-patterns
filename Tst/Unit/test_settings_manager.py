@@ -7,6 +7,7 @@ import pytest
 from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
+from Src.Core.response_format import ResponseFormat
 from Src.Logics.settings_manager import SettingsManager
 
 
@@ -67,6 +68,36 @@ def test_load_valid_file_converts_responsible_persons(tmp_path: Path, settings_d
     # Проверка
     assert manager.settings.boss_name == "Иванов Иван Иванович"
     assert manager.settings.account_name == "Петрова Анна Александровна"
+
+
+# Подготовка
+@pytest.mark.parametrize("response_format", list(ResponseFormat), ids=lambda item: item.value)
+def test_load_response_format_value_is_taken_from_file(
+    tmp_path: Path, settings_data: dict[str, Any], response_format: ResponseFormat
+):
+    """Формат отчётов задаётся в файле строковым значением и превращается в ResponseFormat."""
+    # Подготовка
+    manager = SettingsManager()
+    settings_data["response_format"] = response_format.value
+
+    # Действие
+    manager.load(_write_json(tmp_path, settings_data))
+
+    # Проверка
+    assert manager.settings.response_format is response_format
+
+
+def test_load_without_response_format_defaults_to_txt(tmp_path: Path, settings_data: dict[str, Any]):
+    """Если в файле нет формата отчётов, берётся TXT: старые файлы настроек продолжают читаться."""
+    # Подготовка
+    manager = SettingsManager()
+
+    # Действие
+    manager.load(_write_json(tmp_path, settings_data))
+
+    # Проверка
+    assert "response_format" not in settings_data
+    assert manager.settings.response_format is ResponseFormat.TXT
 
 
 # Подготовка
@@ -211,6 +242,7 @@ def _assert_default_settings(manager: SettingsManager) -> None:
     assert settings.boss_name == "Иванов Иван Иванович"
     assert settings.account_name == "Петрова Анна Александровна"
     assert settings.is_first_start is True
+    assert settings.response_format == ResponseFormat.TXT
 
 
 def test_load_missing_file_uses_default_settings(tmp_path: Path):
@@ -476,3 +508,17 @@ def test_load_is_first_start_not_bool_raises_operation_exception(tmp_path: Path,
     with pytest.raises(OperationException):
         manager.load(_write_json(tmp_path, settings_data))
 
+
+# Подготовка
+@pytest.mark.parametrize("response_format", ["pdf", "TXT", 1, None])
+def test_load_unknown_response_format_raises_operation_exception(
+    tmp_path: Path, settings_data: dict[str, Any], response_format: object
+):
+    """Неизвестный формат отчётов (в том числе в другом регистре или не строкой) бросает OperationException."""
+    # Подготовка
+    manager = SettingsManager()
+    settings_data["response_format"] = response_format
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        manager.load(_write_json(tmp_path, settings_data))

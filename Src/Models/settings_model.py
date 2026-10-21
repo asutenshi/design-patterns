@@ -1,10 +1,11 @@
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
+from Src.Core.response_format import ResponseFormat
 from Src.Models.organization_model import OrganizationModel
 
 
 class SettingsModel(BaseEntity):
-    """Настройки приложения: карточка организации, ответственные лица, флаг первого запуска."""
+    """Настройки приложения: карточка организации, ответственные лица, флаг первого запуска, формат отчётов."""
 
     # Карточка организации
     _organization: OrganizationModel
@@ -14,6 +15,8 @@ class SettingsModel(BaseEntity):
     _account_name: str
     # Флаг первого запуска
     _is_first_start: bool
+    # Формат отчётов по умолчанию
+    _response_format: ResponseFormat
 
     def __init__(
         self,
@@ -21,6 +24,7 @@ class SettingsModel(BaseEntity):
         boss_name: str,
         account_name: str,
         is_first_start: bool = True,
+        response_format: ResponseFormat = ResponseFormat.TXT,
     ) -> None:
         """Инициализирует настройки.
 
@@ -28,6 +32,7 @@ class SettingsModel(BaseEntity):
         :param boss_name: Наименование директора.
         :param account_name: Наименование главного бухгалтера.
         :param is_first_start: Флаг первого запуска.
+        :param response_format: Формат отчётов по умолчанию.
         :raises ArgumentsException: Если любой из параметров не соответствует формату.
         """
         super().__init__()
@@ -35,6 +40,7 @@ class SettingsModel(BaseEntity):
         self.boss_name = boss_name
         self.account_name = account_name
         self.is_first_start = is_first_start
+        self.response_format = response_format
 
     @property
     def organization(self) -> OrganizationModel:
@@ -95,4 +101,19 @@ class SettingsModel(BaseEntity):
         self._is_first_start = CommonValidator.validate_instance(
             value, bool, "is_first_start", "Ожидается булево значение"
         )
-   
+
+    @property
+    def response_format(self) -> ResponseFormat:
+        """Возвращает формат отчётов по умолчанию."""
+        return self._response_format
+
+    @response_format.setter
+    def response_format(self, value: ResponseFormat) -> None:
+        """Устанавливает формат отчётов по умолчанию.
+
+        :param value: Новый формат.
+        :raises ArgumentsException: Если значение не ResponseFormat.
+        """
+        self._response_format = CommonValidator.validate_instance(
+            value, ResponseFormat, "response_format", "Ожидается формат отчёта"
+        )

@@ -1,85 +1,63 @@
 import uuid
-from typing import Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import cast
 
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
+from Src.Core.unique_collection import UniqueCollection
 from Src.Models.nomenclature_model import NomenclatureModel
 
 
-@runtime_checkable
-class RecipeProtocol(Protocol):
-    """Протокол технологической карты для рекурсивного расчёта весов (паттерн «Компоновщик»)."""
-
-    @property
-    def id(self) -> uuid.UUID:
-        """Идентификатор карты."""
-        ...
-
-    @property
-    def result(self) -> NomenclatureModel:
-        """Номенклатура-результат карты."""
-        ...
-
-    @property
-    def output_quantity(self) -> int | float:
-        """Выход в базовой единице результата."""
-        ...
-
-    @property
-    def gross_weight(self) -> float:
-        """Вес брутто карты в граммах."""
-        ...
-
-    @property
-    def net_weight(self) -> float:
-        """Вес нетто карты в граммах."""
-        ...
-
-    @property
-    def ingredients(self) -> list["IngredientModel"]:
-        """Список ингредиентов карты."""
-        ...
-
-
 class IngredientModel:
-    """Модель строки состава технологической карты: номенклатура, количество и потери.
+    """Модель ингредиента: строка состава технологической карты с основанием (паттерн «Компоновщик»).
 
     Количество измеряется в базовой единице номенклатуры (``nomenclature.range.base``):
     если номенклатура учитывается в килограммах, то ``800`` означает 800 г.
-    Вес в граммах вычисляется из количества и ``nomenclature.grams_per_base_unit``.
+
+    Основание (``base``) — состав именно этого количества ингредиента. Пустое основание — сырьё
+    или упаковка: вес вычисляется из количества и ``nomenclature.grams_per_base_unit``. Непустое —
+    полуфабрикат или блюдо со своей картой (п. 2.5 ТЗ): вес — сумма весов основания, рекурсивно.
+    Так лист и составной узел — один класс, и карте не нужно различать виды строк.
 
     Проектные решения:
 
-    - Ингредиент принадлежит одной карте и не переиспользуется, поэтому он не наследует
-      BaseEntity: собственный id ему не нужен, внутри карты его определяет номенклатура.
+    - Основание — производные данные, источник истины — карта полуфабриката, которую можно найти
+      по номенклатуре ингредиента (``StorageManager.find_recipe``). Строку собирает
+      ``RecipeModel.as_ingredient``, масштабируя состав карты под количество строки. Правка карты
+      полуфабриката уже собранную строку не меняет: каскадную пересборку строк в картах,
+      куда полуфабрикат входит, в будущем возьмёт на себя наблюдатель (паттерн «Наблюдатель»).
+      В БД основание хранить не нужно, его пересобирают из карты при загрузке.
+    - Основание задаётся только в конструкторе и копируется, наружу отдаются копии. Узел включает
+      лишь узлы, созданные раньше него, поэтому циклы невозможны по построению.
+    - Номенклатура узла не может встречаться в его основании: полуфабрикат не состоит из самого себя.
+    - Смена количества составного узла пропорционально масштабирует основание: оно всегда
+      описывает текущее количество.
+    - Ингредиент не знает о технологических картах: фабрика строки лежит в ``RecipeModel``,
+      иначе модули карты и ингредиента импортировали бы друг друга.
     - ``nomenclature`` задаётся только в конструкторе и не имеет сеттера: она служит ключом
       уникальности в коллекции карты, и смена номенклатуры сделала бы ключ устаревшим.
-    - ``recipe`` — опциональная технологическая карта полуфабриката или блюда (паттерн «Компоновщик»).
-      Если она задана, веса рассчитываются рекурсивно через выход вложенной карты.
-      Задаётся только в конструкторе и не имеет сеттера: связь между картами создаётся лишь при добавлении
-      ингредиента в карту, где ``RecipeModel.add_ingredient`` проверяет циклы. Сеттер позволил бы замкнуть
-      цикл у уже добавленного ингредиента в обход проверки, и расчёт веса ушёл бы в бесконечную рекурсию.
-    - Веса не хранятся, а вычисляются при каждом обращении: изменение количества, потерь,
-      вложенной карты или веса базовой единицы сразу отражается в расчёте.
+    - Ингредиент принадлежит одной карте и не наследует BaseEntity: собственный id ему не нужен.
+    - Веса не хранятся, а вычисляются при каждом обращении: изменение количества или потерь
+      сразу отражается в расчёте.
     - Способ приготовления не хранится: на расчёт влияет только явно заданная доля потерь,
       а описание обработки лежит в шагах технологической карты.
     """
 
     # Номенклатура ингредиента
     _nomenclature: NomenclatureModel
-    # Количество в базовой единице номенклатуры (задаётся через сеттер, а не в __init__ напрямую)
-    _quantity: int | float  # pyright: ignore[reportUninitializedInstanceVariable]
-    # Доля потерь при приготовлении, от 0 включительно до 1 не включая (задаётся через сеттер)
-    _loss_ratio: int | float  # pyright: ignore[reportUninitializedInstanceVariable]
-    # Технологическая карта приготовления полуфабриката или блюда, если задана
-    _recipe: RecipeProtocol | None
+    # Количество в базовой единице номенклатуры
+    _quantity: int | float
+    # Доля потерь при приготовлении, от 0 включительно до 1 не включая
+    _loss_ratio: int | float
+    # Основание: состав этого количества ингредиента, пусто у сырья
+    _base: tuple["IngredientModel", ...]
 
     def __init__(
         self,
         nomenclature: NomenclatureModel,
         quantity: float,
         loss_ratio: float = 0,
-        recipe: RecipeProtocol | None = None,
+        base: Iterable["IngredientModel"] = (),
     ) -> None:
         """Инициализирует ингредиент.
 
@@ -87,23 +65,35 @@ class IngredientModel:
         :param quantity: Количество в базовой единице номенклатуры, число больше нуля.
         :param loss_ratio: Доля потерь при приготовлении, от 0 включительно до 1 не включая.
             По умолчанию 0: потерь нет.
-        :param recipe: Технологическая карта приготовления полуфабриката или блюда,
-            если номенклатура является результатом другой карты. По умолчанию None.
-        :raises ArgumentsException: Если любой из параметров не соответствует требованиям
-            или результат карты не совпадает с номенклатурой ингредиента.
+        :param base: Основание — состав указанного количества ингредиента. Элементы копируются.
+            По умолчанию пусто: сырьё или упаковка.
+        :raises ArgumentsException: Если любой из параметров не соответствует требованиям,
+            в основании повторяется номенклатура или встречается номенклатура самого ингредиента.
         """
         self._nomenclature = CommonValidator.validate_instance(
             nomenclature, NomenclatureModel, "nomenclature", "Ожидается номенклатура"
         )
-        self.quantity = quantity
-        self.loss_ratio = loss_ratio
-        if recipe is not None:
-            recipe = CommonValidator.validate_instance(
-                recipe, RecipeProtocol, "recipe", "Ожидается технологическая карта"
-            )
-            if recipe.result != self._nomenclature:
-                raise ArgumentsException("recipe", "Результат карты должен совпадать с номенклатурой ингредиента")
-        self._recipe = recipe
+        # Сеттеры здесь не вызываются: сеттер количества масштабирует основание, которого ещё нет
+        self._quantity = CommonValidator.validate_positive_number(quantity, "quantity")
+        self._loss_ratio = CommonValidator.validate_fraction(loss_ratio, "loss_ratio")
+        self._base = self._copy_base(base)
+
+    def _copy_base(self, base: Iterable["IngredientModel"]) -> tuple["IngredientModel", ...]:
+        """Проверяет основание и возвращает копии его элементов.
+
+        :param base: Основание ингредиента.
+        :return: Копии элементов основания в исходном порядке.
+        :raises ArgumentsException: Если основание содержит не ингредиент, повторяющуюся номенклатуру
+            или номенклатуру самого ингредиента.
+        """
+        unique = UniqueCollection(IngredientModel.nomenclature_key)
+        for element in cast(Iterable[object], base):
+            ingredient = CommonValidator.validate_instance(element, IngredientModel, "base", "Ожидается ингредиент")
+            if ingredient.contains(self._nomenclature):
+                raise ArgumentsException("base", "Номенклатура ингредиента не может входить в его основание")
+            unique.add(ingredient)
+
+        return tuple(ingredient.scaled(1) for ingredient in unique)
 
     @property
     def nomenclature(self) -> NomenclatureModel:
@@ -112,14 +102,6 @@ class IngredientModel:
         Только для чтения: задаётся в конструкторе.
         """
         return self._nomenclature
-
-    @property
-    def recipe(self) -> RecipeProtocol | None:
-        """Возвращает технологическую карту полуфабриката или блюда, если она задана.
-
-        Только для чтения: задаётся в конструкторе.
-        """
-        return self._recipe
 
     def nomenclature_key(self) -> uuid.UUID:
         """Возвращает ключ уникальности ингредиента в карте: идентификатор его номенклатуры.
@@ -137,11 +119,17 @@ class IngredientModel:
     def quantity(self, value: float) -> None:
         """Устанавливает количество в базовой единице номенклатуры.
 
+        Основание составного узла масштабируется пропорционально новому количеству.
+
         :param value: Новое количество, конечное число больше нуля.
         :raises ArgumentsException: Если значение не число (в том числе bool),
             не конечное или не больше нуля.
         """
-        self._quantity = CommonValidator.validate_positive_number(value, "quantity")
+        value = CommonValidator.validate_positive_number(value, "quantity")
+        if self._base:
+            factor = value / self._quantity
+            self._base = tuple(ingredient.scaled(factor) for ingredient in self._base)
+        self._quantity = value
 
     @property
     def loss_ratio(self) -> int | float:
@@ -159,27 +147,57 @@ class IngredientModel:
         self._loss_ratio = CommonValidator.validate_fraction(value, "loss_ratio")
 
     @property
+    def base(self) -> tuple["IngredientModel", ...]:
+        """Возвращает копию основания: изменить состав узла в обход количества нельзя.
+
+        Только для чтения: задаётся в конструкторе.
+        """
+        return tuple(ingredient.scaled(1) for ingredient in self._base)
+
+    @property
     def gross_weight(self) -> float:
         """Возвращает вес брутто в граммах: исходный вес до потерь при приготовлении.
 
-        Если к ингредиенту привязана технологическая карта, вес брутто вычисляется
-        рекурсивно по ней пропорционально количеству в строке (паттерн «Компоновщик»).
-        Иначе вычисляется из количества и веса базовой единицы номенклатуры.
+        У сырья — количество, умноженное на вес базовой единицы номенклатуры,
+        у составного узла — сумма брутто основания.
         """
-        if self._recipe is not None:
-            ratio = self._quantity / self._recipe.output_quantity
-            return self._recipe.gross_weight * ratio
-        return self._quantity * self._nomenclature.grams_per_base_unit
+        if not self._base:
+            return self._quantity * self._nomenclature.grams_per_base_unit
+        return sum((ingredient.gross_weight for ingredient in self._base), 0.0)
 
     @property
     def net_weight(self) -> float:
         """Возвращает вес нетто в граммах: вес после потерь при приготовлении.
 
-        Если к ингредиенту привязана технологическая карта, вес нетто вычисляется
-        рекурсивно по ней пропорционально количеству в строке с учётом потерь этой строки.
-        Иначе вычисляется из собственного веса брутто и доли потерь.
+        У сырья — вес брутто за вычетом доли потерь, у составного узла — сумма нетто основания
+        за вычетом доли потерь самого узла.
         """
-        if self._recipe is not None:
-            ratio = self._quantity / self._recipe.output_quantity
-            return self._recipe.net_weight * ratio * (1 - self._loss_ratio)
-        return self.gross_weight * (1 - self._loss_ratio)
+        if not self._base:
+            return self.gross_weight * (1 - self._loss_ratio)
+        return sum((ingredient.net_weight for ingredient in self._base), 0.0) * (1 - self._loss_ratio)
+
+    def scaled(self, factor: float) -> "IngredientModel":
+        """Возвращает копию ингредиента с количеством, умноженным на коэффициент.
+
+        Основание масштабируется рекурсивно, доля потерь не меняется. ``scaled(1)`` — глубокая копия.
+
+        :param factor: Коэффициент масштабирования, число больше нуля.
+        :return: Новый ингредиент.
+        :raises ArgumentsException: Если коэффициент не число (в том числе bool),
+            не конечное или не больше нуля.
+        """
+        factor = CommonValidator.validate_positive_number(factor, "factor")
+        copy = IngredientModel(self._nomenclature, self._quantity * factor, self._loss_ratio)
+        # Основание копируется напрямую: проверки уже пройдены, а конструктор скопировал бы его повторно
+        copy._base = tuple(ingredient.scaled(factor) for ingredient in self._base)
+        return copy
+
+    def contains(self, nomenclature: NomenclatureModel) -> bool:
+        """Проверяет, есть ли номенклатура в узле: как его номенклатура или в основании на любой глубине.
+
+        Нужна карте для защиты от включения снимка самой себя.
+
+        :param nomenclature: Искомая номенклатура.
+        :return: True, если номенклатура совпадает с номенклатурой узла или есть в его основании.
+        """
+        return self._nomenclature == nomenclature or any(ingredient.contains(nomenclature) for ingredient in self._base)

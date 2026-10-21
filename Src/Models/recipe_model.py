@@ -7,7 +7,7 @@ from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
 from Src.Core.nomenclature_type import NomenclatureType
 from Src.Core.unique_collection import UniqueCollection
-from Src.Models.ingredient_model import IngredientModel, RecipeProtocol
+from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_model import NomenclatureModel
 
@@ -16,18 +16,17 @@ class RecipeModel(NamedEntity):
     """Модель технологической карты (рецепта) полуфабриката или блюда (п. 2.1 ТЗ).
 
     Карта описывает, из чего и как получается одна номенклатурная позиция (``result``):
-    состав (ингредиенты), выход, время приготовления и шаги. Карта может быть составной
-    (п. 2.5 ТЗ): полуфабрикат входит в другую карту как обычный ингредиент-номенклатура,
-    а его собственную карту находят по результату (``result``), см. слой Logics.
+    состав, выход, время приготовления и шаги. Состав — ингредиенты (``IngredientModel``): сырьё и упаковка
+    с пустым основанием, а полуфабрикаты и блюда со своей картой (п. 2.5 ТЗ) — с основанием, собранным
+    из их карты методом ``as_ingredient``.
 
     Веса брутто и нетто вычисляются динамически при каждом обращении (паттерн «Компоновщик» / Composite):
-    если ингредиент ссылается на технологическую карту полуфабриката или блюда, его вес
-    рассчитывается рекурсивно через вложенную карту с учётом доли выхода (ratio = quantity / nested.output_quantity).
-    Если карта не привязана (сырьё, упаковка), вес рассчитывается из количества и веса базовой единицы.
+    карта суммирует веса ингредиентов, не различая сырьё и полуфабрикаты, а составной ингредиент
+    сам считает вес рекурсивно по основанию.
 
     Брутто, нетто и выход:
     - брутто — суммарный вес исходного сырья, необходимого для приготовления (с учётом сырья во вложенных картах);
-    - нетто — суммарный вес ингредиентов после всех стадий обработки и потерь;
+    - нетто — суммарный вес элементов после всех стадий обработки и потерь;
     - выход (output_quantity) — плановый объём или масса готового продукта по карте.
     Для масштабирования карты под произвольный выход (например, порция 200 г при базовой карте на 400 г)
     предусмотрены методы gross_weight_for и net_weight_for.
@@ -36,13 +35,17 @@ class RecipeModel(NamedEntity):
 
     - ``result`` задаётся только в конструкторе и не имеет сеттера: по нему в хранилище
       определяется единственная карта позиции и находится карта полуфабриката.
-    - Номенклатура ингредиента уникальна в рамках карты: ключ коллекции — её идентификатор.
-      Поэтому ингредиент добавляется и удаляется по номенклатуре.
-    - Защита от циклов здесь только локальная: результат не может быть ингредиентом собственной
-      карты. Цикл через несколько карт (A включает B, B включает A) обнаруживается в слое Logics,
-      где карты видны вместе.
-    - Карта без ингредиентов допустима, её вес равен нулю: иначе карту нельзя собирать по частям.
-    - Шаги и список ингредиентов возвращаются копиями, чтобы изменить карту в обход проверок было нельзя.
+    - Номенклатура элемента уникальна в рамках карты: ключ коллекции — её идентификатор.
+      Поэтому элемент добавляется и удаляется по номенклатуре.
+    - Карта полуфабриката входит в другую карту снимком (``as_ingredient``), а не живой ссылкой:
+      основание строки — производные данные, масштабированные под её количество. Правка карты
+      полуфабриката уже собранные строки не меняет; каскадную пересборку в будущем возьмёт на себя
+      наблюдатель (паттерн «Наблюдатель»). Цикл импортов не возникает: карта знает ингредиент, но не наоборот.
+    - Снимок неизменяем снаружи и включает только ранее созданные узлы, поэтому циклы по ссылкам
+      невозможны. Карта лишь проверяет, что её результат не встречается в дереве добавляемой строки
+      (``IngredientModel.contains``): иначе карта включила бы снимок самой себя.
+    - Карта без элементов допустима, её вес равен нулю: иначе карту нельзя собирать по частям.
+    - Шаги и список элементов возвращаются копиями, чтобы изменить карту в обход проверок было нельзя.
     """
 
     # Типы номенклатуры, которые могут быть результатом карты: готовятся по карте (DomainEntities.md)
@@ -58,8 +61,8 @@ class RecipeModel(NamedEntity):
     _cooking_time_minutes: int | float
     # Шаги приготовления
     _steps: list[str]
-    # Ингредиенты, уникальные по номенклатуре
-    _ingredients: UniqueCollection[IngredientModel]
+    # Элементы состава, уникальные по номенклатуре
+    _items: UniqueCollection[IngredientModel]
 
     def __init__(
         self,
@@ -68,7 +71,7 @@ class RecipeModel(NamedEntity):
         output_quantity: float,
         cooking_time_minutes: float,
         steps: list[str],
-        ingredients: Iterable[IngredientModel] = (),
+        items: Iterable[IngredientModel] = (),
     ) -> None:
         """Инициализирует технологическую карту.
 
@@ -78,9 +81,9 @@ class RecipeModel(NamedEntity):
             Вес выхода равен ``output_quantity * result.grams_per_base_unit``.
         :param cooking_time_minutes: Время приготовления в минутах, число больше нуля.
         :param steps: Шаги приготовления, непустой список непустых строк.
-        :param ingredients: Начальный состав карты, по умолчанию пустой.
+        :param items: Начальный состав карты (ингредиенты), по умолчанию пустой.
         :raises ArgumentsException: Если любой из параметров не соответствует требованиям,
-            в составе повторяется номенклатура или встречается результат карты.
+            в составе повторяется номенклатура или встречается результат карты (в том числе в основании).
         """
         super().__init__(name)
         result = CommonValidator.validate_instance(result, NomenclatureModel, "result", "Ожидается номенклатура")
@@ -90,9 +93,9 @@ class RecipeModel(NamedEntity):
         self.output_quantity = output_quantity
         self.cooking_time_minutes = cooking_time_minutes
         self.steps = steps
-        self._ingredients = UniqueCollection(IngredientModel.nomenclature_key)
-        for ingredient in ingredients:
-            self.add_ingredient(ingredient)
+        self._items = UniqueCollection(IngredientModel.nomenclature_key)
+        for item in items:
+            self.add_item(item)
 
     @property
     def result(self) -> NomenclatureModel:
@@ -162,19 +165,19 @@ class RecipeModel(NamedEntity):
         self._steps = [CommonValidator.validate_string(step, "steps") for step in steps]
 
     @property
-    def ingredients(self) -> list[IngredientModel]:
-        """Возвращает копию списка ингредиентов в порядке добавления."""
-        return list(self._ingredients)
+    def items(self) -> list[IngredientModel]:
+        """Возвращает копию списка ингредиентов состава в порядке добавления."""
+        return list(self._items)
 
     @property
     def gross_weight(self) -> float:
-        """Возвращает вес брутто карты в граммах: сумму брутто всех ингредиентов (с учётом вложенных карт)."""
-        return sum((ingredient.gross_weight for ingredient in self._ingredients), 0.0)
+        """Возвращает вес брутто карты в граммах: сумму брутто всех ингредиентов (с учётом оснований)."""
+        return sum((item.gross_weight for item in self._items), 0.0)
 
     @property
     def net_weight(self) -> float:
-        """Возвращает вес нетто карты в граммах: сумму нетто всех ингредиентов (с учётом вложенных карт)."""
-        return sum((ingredient.net_weight for ingredient in self._ingredients), 0.0)
+        """Возвращает вес нетто карты в граммах: сумму нетто всех ингредиентов (с учётом оснований)."""
+        return sum((item.net_weight for item in self._items), 0.0)
 
     def gross_weight_for(self, output_quantity: float) -> float:
         """Возвращает вес брутто карты в граммах, масштабированный под указанный выход.
@@ -206,47 +209,50 @@ class RecipeModel(NamedEntity):
         ratio = output_quantity / self._output_quantity
         return self.net_weight * ratio
 
-    def add_ingredient(self, ingredient: IngredientModel) -> None:
-        """Добавляет ингредиент в состав карты.
+    def add_item(self, item: IngredientModel) -> None:
+        """Добавляет ингредиент (сырьё или собранный полуфабрикат) в состав карты.
 
-        :param ingredient: Добавляемый ингредиент.
-        :raises ArgumentsException: Если значение не ингредиент, номенклатура ингредиента
-            совпадает с результатом карты, уже есть в составе или вложенная карта
-            образует цикл с текущей.
+        :param item: Добавляемый ингредиент.
+        :raises ArgumentsException: Если значение не ингредиент, его номенклатура совпадает
+            с результатом карты, уже есть в составе или результат карты встречается в его основании.
         """
-        ingredient = CommonValidator.validate_instance(
-            ingredient, IngredientModel, "ingredient", "Ожидается ингредиент"
-        )
-        if ingredient.nomenclature == self._result:
-            raise ArgumentsException("ingredient", "Результат карты не может быть ингредиентом этой же карты")
+        item = CommonValidator.validate_instance(item, IngredientModel, "item", "Ожидается ингредиент")
+        if item.nomenclature == self._result:
+            raise ArgumentsException("item", "Результат карты не может входить в состав этой же карты")
+        if item.contains(self._result):
+            raise ArgumentsException("item", "Результат карты не может входить в основание ингредиента")
 
-        if ingredient.recipe is not None:
-            visited: set[uuid.UUID] = set()
-            stack = [ingredient.recipe]
-            while stack:
-                curr = stack.pop()
-                if curr is self or curr.result == self._result:
-                    raise ArgumentsException("ingredient", "Вложенная карта образует цикл с текущей картой")
-                if curr.id in visited:
-                    continue
-                visited.add(curr.id)
-                for item in curr.ingredients:
-                    if item.recipe is not None:
-                        stack.append(item.recipe)
+        self._items.add(item)
 
-        self._ingredients.add(ingredient)
+    def remove_item(self, nomenclature: NomenclatureModel) -> None:
+        """Удаляет из состава карты элемент с указанной номенклатурой.
 
-    def remove_ingredient(self, nomenclature: NomenclatureModel) -> None:
-        """Удаляет из состава карты ингредиент с указанной номенклатурой.
-
-        :param nomenclature: Номенклатура удаляемого ингредиента.
+        :param nomenclature: Номенклатура удаляемого элемента.
         :raises ArgumentsException: Если значение не номенклатура или такой номенклатуры нет в составе.
         """
         nomenclature = CommonValidator.validate_instance(
             nomenclature, NomenclatureModel, "nomenclature", "Ожидается номенклатура"
         )
-        # Ключ ингредиента в карте — идентификатор его номенклатуры (см. IngredientModel.nomenclature_key)
-        self._ingredients.remove(nomenclature.id)
+        # Ключ элемента в карте — идентификатор его номенклатуры (см. IngredientModel.nomenclature_key)
+        self._items.remove(nomenclature.id)
+
+    def as_ingredient(self, quantity: float, loss_ratio: float = 0) -> IngredientModel:
+        """Собирает из карты ингредиент для состава другой карты (п. 2.5 ТЗ).
+
+        Номенклатура ингредиента — результат карты, основание — копия состава, масштабированная
+        под количество: ``quantity / output_quantity``. Снимок не следит за картой: после её правки
+        строку нужно собрать заново. Из карты без состава получается ингредиент без основания,
+        его вес считается как у сырья.
+
+        :param quantity: Количество в базовой единице результата карты, число больше нуля.
+        :param loss_ratio: Доля потерь при приготовлении в составе другой карты,
+            от 0 включительно до 1 не включая. По умолчанию 0: потерь нет.
+        :return: Новый ингредиент.
+        :raises ArgumentsException: Если количество или доля потерь не соответствуют требованиям.
+        """
+        quantity = CommonValidator.validate_positive_number(quantity, "quantity")
+        factor = quantity / self._output_quantity
+        return IngredientModel(self._result, quantity, loss_ratio, [item.scaled(factor) for item in self._items])
 
     @staticmethod
     def create_beef_bouillon(catalog: NomenclatureCatalog) -> "RecipeModel":
@@ -347,17 +353,17 @@ class RecipeModel(NamedEntity):
     @staticmethod
     def create_borscht(
         catalog: NomenclatureCatalog,
-        bouillon: "RecipeProtocol | None" = None,
-        boiled_beef: "RecipeProtocol | None" = None,
-        beet_fry: "RecipeProtocol | None" = None,
+        bouillon: "RecipeModel | None" = None,
+        boiled_beef: "RecipeModel | None" = None,
+        beet_fry: "RecipeModel | None" = None,
     ) -> "RecipeModel":
         """Фабричный метод: создаёт карту «Борщ с говядиной» (Recipes.md, карта 4).
 
         Состав включает три полуфабриката (бульон, отварная говядина, зажарка) и упаковку.
-        Каждый полуфабрикат входит в состав вместе со своей картой (паттерн «Компоновщик»),
+        Каждый полуфабрикат входит в состав снимком своей карты (``as_ingredient``, паттерн «Компоновщик»),
         поэтому брутто и нетто считаются рекурсивно. Карту, которую не передали, фабрика создаёт
-        из справочника; если это не получается, ошибка не скрывается. Чтобы борщ ссылался на карты,
-        лежащие в хранилище, а не на их копии, передавайте их явно.
+        из справочника; если это не получается, ошибка не скрывается. Чтобы борщ был собран из карт,
+        лежащих в хранилище, передавайте их явно.
 
         :param catalog: Справочник номенклатуры. Нужны результат карты, все её ингредиенты
             и всё, что нужно для создания не переданных карт полуфабрикатов.
@@ -388,9 +394,9 @@ class RecipeModel(NamedEntity):
                 + "сметану и укроп положить сверху.",
             ],
             [
-                IngredientModel(catalog.get("Бульон костный говяжий"), 250, 0.1, bouillon),
-                IngredientModel(catalog.get("Говядина отварная"), 60, 0.05, boiled_beef),
-                IngredientModel(catalog.get("Зажарка свекольная"), 70, 0.05, beet_fry),
+                bouillon.as_ingredient(250, 0.1),
+                boiled_beef.as_ingredient(60, 0.05),
+                beet_fry.as_ingredient(70, 0.05),
                 IngredientModel(catalog.get("Картофель"), 80, 0.15),
                 IngredientModel(catalog.get("Капуста белокочанная"), 70, 0.15),
                 IngredientModel(catalog.get("Сметана 20%"), 20),

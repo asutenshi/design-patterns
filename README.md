@@ -28,8 +28,9 @@
 - [ruff](https://docs.astral.sh/ruff/) — линтер и форматирование
 - [basedpyright](https://docs.basedpyright.com/) — проверка типов
 - [pytest](https://docs.pytest.org/) — тестирование
+- [FastAPI](https://fastapi.tiangolo.com/) и [uvicorn](https://www.uvicorn.org/) — REST API, Swagger UI на `/docs`
 
-По ТЗ в дальнейшем планируются: SQLite, Swagger, HTML/JavaScript.
+По ТЗ в дальнейшем планируются: SQLite, HTML/JavaScript.
 
 ## Быстрый старт
 
@@ -37,8 +38,21 @@
 git clone <url-репозитория>
 cd design-patterns
 uv sync
-uv run python Src/main.py
+uv run python -m Src.main
 ```
+
+API поднимается на `http://localhost:8080`, документация Swagger — `http://localhost:8080/docs`.
+Для разработки с перезапуском при изменениях: `uv run uvicorn Src.main:app --reload --port 8080`.
+
+Отчёты по сущностям (тип — `nomenclature`, `range` или `recipe`, код — UUID сущности):
+
+| Метод | Назначение |
+|-------|------------|
+| `GET /api/reports/{response_format}/{entity_type}/{entity_id}` | Отчёт в указанном формате: `txt`, `markdown`, `csv`, `xml`, `html` |
+| `GET /api/reports/{entity_type}/{entity_id}` | Отчёт в формате `response_format` из `settings.json` |
+| `GET /api/get_report?recipe_name=...` | Отчёт по технологической карте по наименованию |
+
+Markdown и CSV отдаются файлом на скачивание, остальные форматы — текстом.
 
 Проверка качества кода и запуск тестов:
 
@@ -57,7 +71,7 @@ uv run pytest
 | `Src/Logics/`| Бизнес-логика                                                     |
 | `Src/Models/`| Доменные модели                                                   |
 | `Src/Dtos/`  | DTO-модели для передачи данных                                    |
-| `Tst/`       | Тесты: `Unit/`, `Integration/`, `E2E/` (пока есть только `Unit/`) |
+| `Tst/`       | Тесты: `Unit/`, `Integration/`, `E2E/` (пока нет `E2E/`)          |
 | `Docs/`      | Документация: ТЗ, требования к коду, доменные сущности, диаграммы |
 
 Архитектура строится по принципам чистой архитектуры.
