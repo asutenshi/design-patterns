@@ -129,3 +129,22 @@ class CommonValidator:
             raise ArgumentsException(field, message)
 
         return value
+
+    @staticmethod
+    def validate_callable[T](value: T, field: str, message: str) -> T:
+        """Проверяет, что значение можно вызвать: функция, метод, класс или объект с ``__call__``.
+
+        Параметр value обобщённый намеренно: внутри метода его тип неизвестен, поэтому статический
+        анализатор не считает проверку лишней, а вызывающий код получает обратно тот же тип
+        с полной сигнатурой функции.
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :param message: Пояснение для текста ошибки.
+        :return: То же значение.
+        :raises ArgumentsException: Если значение нельзя вызвать.
+        """
+        if not callable(value):
+            raise ArgumentsException(field, message)
+
+        return value
