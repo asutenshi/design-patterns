@@ -11,16 +11,19 @@ from Src.Core.exception import ArgumentsException, OperationException
 from Src.Logics.basic_converter import BasicConverter
 from Src.Logics.collection_converter import CollectionConverter
 from Src.Logics.datetime_converter import DatetimeConverter
+from Src.Logics.dict_converter import DictConverter
 from Src.Logics.reference_converter import ReferenceConverter
+
+# Служебное наименование поля для значения верхнего уровня: у него своего поля нет
+_ROOT_FIELD = "value"
 
 
 class ConverterFactory:
-    """Фабрика конвертеров: превращает любой объект во вложенный словарь его полей.
+    """Фабрика конвертеров: превращает любой объект в данные, которые ``json.dumps`` записывает без настроек.
 
-    Клиент вызывает только ``convert(source)``. Для каждого поля объекта фабрика выбирает конвертер
-    по типу значения (``create()``) и объединяет полученные словари «наименование поля — данные».
-    Конвертеры ссылок и списков возвращают вложенные объекты обратно в фабрику, поэтому словарь
-    собирается рекурсивно на любую глубину. Результат сразу записывается ``json.dumps``.
+    Клиент вызывает только ``convert(source)``. Форма результата повторяет исходную структуру:
+    модель — словарь «наименование поля — данные поля», список моделей — список словарей,
+    словарь — словарь, простое значение — само значение, дата — строка ISO 8601.
 
     Проектные решения:
 
@@ -28,8 +31,14 @@ class ConverterFactory:
       ``isinstance`` по цепочке: ``bool`` находится через ``int``, ``datetime`` — через ``date``,
       любое перечисление — через ``Enum``, а всё прочее (модели) — через ``object``.
       Новый вид значений подключается строкой в ``_converters``.
+    - Конвертеры возвращают ``{поле: данные}``, а у значения верхнего уровня поля нет. Поэтому ``convert``
+      передаёт конвертеру служебное наименование ``_ROOT_FIELD`` и сразу снимает его с результата.
+    - Рекурсия идёт через функции, которые фабрика передаёт конвертерам: ``ReferenceConverter`` получает
+      ``_fields``, ``CollectionConverter`` и ``DictConverter`` — ``convert``. Конвертеры не зависят
+      от класса фабрики, а словарь собирается на любую глубину.
     - Поля объекта — его публичные свойства (``Common.get_fields``), как и в отчётах. Поэтому в словарь
       попадают и вычисляемые свойства (``is_base``, веса): отличить их от данных в общем случае нельзя.
+      Объект без публичных свойств (функция, множество) — ошибка: пустой словарь молча потерял бы данные.
     - Защита от циклов: фабрика помнит путь от корня до текущего объекта. Объект, который уже есть
       на пути (у базовой единицы ``RangeModel.base`` — она сама), записывается ссылкой ``{"id": ...}``.
       Проверяется только путь, поэтому общая модель (одна группа у разных позиций) раскрывается
@@ -37,18 +46,15 @@ class ConverterFactory:
     - Конвертеры не хранят состояния, поэтому фабрика создаёт их один раз и выдаёт по типу значения.
     """
 
-    # Сопоставление типа значения и конвертера
+    # Сопоставление типа значения и конвертера, под ``object`` — конвертер моделей и прочих типов
     _converters: dict[type, AbstractConverter]
-    # Конвертер моделей, им же обрабатываются типы без своего конвертера
-    _reference: ReferenceConverter
     # Объекты, которые раскрываются сейчас: путь от корня до текущего объекта
     _path: list[object]
 
     def __init__(self) -> None:
         """Инициализирует фабрику и её конвертеры."""
         basic = BasicConverter()
-        collection = CollectionConverter(self.create)
-        self._reference = ReferenceConverter(self.convert)
+        collection = CollectionConverter(self.convert)
         self._converters = {
             str: basic,
             int: basic,
@@ -59,7 +65,8 @@ class ConverterFactory:
             date: DatetimeConverter(),
             list: collection,
             tuple: collection,
-            object: self._reference,
+            dict: DictConverter(self.convert),
+            object: ReferenceConverter(self._fields),
         }
         self._path = []
 
@@ -76,26 +83,41 @@ class ConverterFactory:
             if converter is not None:
                 return converter
         # Сюда не дойти: object есть в MRO любого типа и в сопоставлении
-        return self._reference
+        return self._converters[object]
 
-    def convert(self, source: object) -> dict[str, object]:
-        """Превращает объект в словарь «наименование поля — данные поля», вложенные объекты — рекурсивно.
+    def convert(self, source: object) -> object:
+        """Превращает любой объект в данные для JSON, вложенные объекты — рекурсивно.
 
-        :param source: Объект с полями: модель, хранилище и т. п.
-        :return: Словарь полей в порядке объявления, сначала поля базовых классов.
-        :raises ArgumentsException: Если source — простое значение, дата или список: у них нет полей.
+        :param source: Объект любого типа: модель, хранилище, список, словарь, дата, простое значение.
+        :return: Для модели — словарь полей в порядке объявления, для списка — список, для словаря — словарь,
+            для даты — строка ISO 8601, для простого значения — оно само.
+        :raises ArgumentsException: Если в структуре есть объект без публичных свойств (функция, множество)
+            или словарь с нестроковым ключом.
         :raises OperationException: Если объект без идентификатора ссылается сам на себя.
         """
-        if self.create(source) is not self._reference:
-            raise ArgumentsException("source", "Ожидается объект с полями, а не простое значение, дата или список")
+        return self.create(source).convert(_ROOT_FIELD, source)[_ROOT_FIELD]
+
+    def _fields(self, source: object) -> dict[str, object]:
+        """Превращает объект в словарь «наименование поля — данные поля».
+
+        :param source: Объект с публичными свойствами: модель, хранилище и т. п.
+        :return: Словарь полей в порядке объявления, сначала поля базовых классов.
+        :raises ArgumentsException: Если у объекта нет публичных свойств или поле не удалось сконвертировать.
+        :raises OperationException: Если объект без идентификатора ссылается сам на себя.
+        """
+        fields = Common.get_fields(source)
+        if not fields:
+            raise ArgumentsException("source", f"Ожидается объект с публичными свойствами: {type(source).__name__}")
         if any(item is source for item in self._path):
             return self._cycle_reference(source)
 
         self._path.append(source)
         try:
             result: dict[str, object] = {}
-            for field in Common.get_fields(source):
+            for field in fields:
                 value = cast(object, getattr(source, field))
+                # Рекурсия: для вложенной модели ReferenceConverter снова вызовет self._fields,
+                # для списка и словаря их конвертеры вызовут self.convert для каждого элемента
                 result.update(self.create(value).convert(field, value))
             return result
         finally:
@@ -111,4 +133,4 @@ class ConverterFactory:
         if not isinstance(source, BaseEntity):
             raise OperationException(f"Циклическая ссылка на объект без идентификатора: {type(source).__name__}")
 
-        return self.create(source.id).convert("id", source.id)
+        return {"id": self.convert(source.id)}

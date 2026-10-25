@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import UTC, date, datetime
+from typing import cast
 
 import pytest
 from Src.Core.abstract_converter import AbstractConverter
@@ -10,6 +11,7 @@ from Src.Logics.basic_converter import BasicConverter
 from Src.Logics.collection_converter import CollectionConverter
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.datetime_converter import DatetimeConverter
+from Src.Logics.dict_converter import DictConverter
 from Src.Logics.reference_converter import ReferenceConverter
 from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
@@ -69,6 +71,11 @@ class _Pair:
         return self._second
 
 
+def _convert_fields(source: object) -> dict[str, object]:
+    """Конвертирует модель новой фабрикой: для модели результат — словарь полей."""
+    return cast(dict[str, object], ConverterFactory().convert(source))
+
+
 def _group_dict(group: NomenclatureGroupModel) -> dict[str, object]:
     """Возвращает ожидаемый словарь группы."""
     return {"id": str(group.id), "name": group.name}
@@ -104,13 +111,14 @@ def _raw_material(name: str, group: NomenclatureGroupModel, unit: RangeModel) ->
         (date(2026, 10, 22), DatetimeConverter),
         (["Мука"], CollectionConverter),
         (("Мука",), CollectionConverter),
+        ({"name": "Мука"}, DictConverter),
         (NomenclatureGroupModel("Мясо"), ReferenceConverter),
         (RangeModel.create_piece(), ReferenceConverter),
         (_Pair(1, 2), ReferenceConverter),
     ],
     ids=[
         "str", "int", "float", "bool", "none", "enum", "uuid", "datetime", "date",
-        "list", "tuple", "group", "range", "not_entity",
+        "list", "tuple", "dict", "group", "range", "not_entity",
     ],
 )
 def test_create_value_returns_converter_for_its_type(value: object, converter_type: type[AbstractConverter]):
@@ -134,6 +142,70 @@ def test_create_same_type_returns_same_converter():
 
     # Проверка
     assert first is second
+
+
+# ---------------------------------------------------------------------------
+# convert(): значения без полей и коллекции на верхнем уровне
+# ---------------------------------------------------------------------------
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("Мука", "Мука"),
+        (1, 1),
+        (1.5, 1.5),
+        (True, True),
+        (None, None),
+        (NomenclatureType.DISH, "блюдо"),
+        (uuid.UUID("12345678-1234-5678-1234-567812345678"), "12345678-1234-5678-1234-567812345678"),
+        (date(2026, 10, 22), "2026-10-22"),
+        (datetime(2026, 10, 22, 9, 0, tzinfo=UTC), "2026-10-22T09:00:00+00:00"),
+        (["Мука", 1, None], ["Мука", 1, None]),
+        (("Мука", date(2026, 10, 22)), ["Мука", "2026-10-22"]),
+        ({"name": "Мука", "dates": [date(2026, 10, 22)]}, {"name": "Мука", "dates": ["2026-10-22"]}),
+        ({}, {}),
+    ],
+    ids=[
+        "str", "int", "float", "bool", "none", "enum", "uuid", "date", "datetime",
+        "list", "tuple", "dict", "empty_dict",
+    ],
+)
+def test_convert_value_without_fields_returns_its_data(source: object, expected: object):
+    """Фабрика принимает любое значение, а не только модель: простое значение возвращается как есть
+    (перечисление — значением, UUID — строкой), дата — строкой ISO 8601, список и словарь — с данными элементов."""
+    # Действие
+    result = ConverterFactory().convert(source)
+
+    # Проверка
+    assert result == expected
+
+
+def test_convert_list_of_models_returns_list_of_dicts():
+    """Список моделей превращается в набор словарей: по словарю полей на каждую модель, порядок сохраняется."""
+    # Подготовка
+    meat = NomenclatureGroupModel("Мясо")
+    grocery = NomenclatureGroupModel("Бакалея")
+
+    # Действие
+    result = ConverterFactory().convert([meat, grocery])
+
+    # Проверка
+    assert result == [_group_dict(meat), _group_dict(grocery)]
+
+
+def test_convert_dict_of_models_returns_dict_of_dicts():
+    """Словарь с моделями в значениях сохраняет ключи, а каждая модель раскрывается словарём полей."""
+    # Подготовка
+    meat = NomenclatureGroupModel("Мясо")
+    grocery = NomenclatureGroupModel("Бакалея")
+
+    # Действие
+    result = ConverterFactory().convert({"meat": meat, "groups": [grocery]})
+
+    # Проверка
+    assert result == {"meat": _group_dict(meat), "groups": [_group_dict(grocery)]}
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +264,7 @@ def test_convert_nomenclature_returns_nested_references_in_field_order():
     flour = NomenclatureModel.create_raw_material("Мука", "Мука пшеничная", group, kilogram, 1)
 
     # Действие
-    result = ConverterFactory().convert(flour)
+    result = _convert_fields(flour)
 
     # Проверка
     assert list(result) == ["id", "name", "full_name", "group", "range", "type", "grams_per_base_unit"]
@@ -213,7 +285,7 @@ def test_convert_recipe_returns_lists_of_steps_and_ingredients():
     recipe = RecipeModel("Хлеб", bread, 1, 60, ["Замесить", "Испечь"], [IngredientModel(flour, 400, 0.25)])
 
     # Действие
-    result = ConverterFactory().convert(recipe)
+    result = _convert_fields(recipe)
 
     # Проверка
     assert result["result"] == ConverterFactory().convert(bread)
@@ -241,7 +313,7 @@ def test_convert_composite_ingredient_returns_nested_base():
     ingredient = recipe.as_ingredient(300)
 
     # Действие
-    result = ConverterFactory().convert(ingredient)
+    result = _convert_fields(ingredient)
 
     # Проверка
     assert result["nomenclature"] == ConverterFactory().convert(bouillon)
@@ -250,7 +322,7 @@ def test_convert_composite_ingredient_returns_nested_base():
     assert isinstance(base, list)
     assert len(base) == 1  # pyright: ignore[reportUnknownArgumentType]
     assert base[0] == ConverterFactory().convert(ingredient.base[0])
-    assert base[0]["quantity"] == 150  # pyright: ignore[reportUnknownMemberType]
+    assert cast(dict[str, object], base[0])["quantity"] == 150
 
 
 def test_convert_object_with_dates_returns_iso_strings():
@@ -310,16 +382,45 @@ def test_convert_after_error_returns_full_dict():
 
 
 # Подготовка
-@pytest.mark.parametrize(
-    "source",
-    ["Мука", 1, None, NomenclatureType.DISH, date(2026, 10, 22), ["Мука"]],
-    ids=["str", "int", "none", "enum", "date", "list"],
-)
-def test_convert_value_without_fields_raises(source: object):
-    """Простое значение, дата и список не имеют полей: превратить их в словарь полей нельзя."""
+@pytest.mark.parametrize("source", [{1, 2}, print, object()], ids=["set", "function", "object"])
+def test_convert_object_without_public_properties_raises(source: object):
+    """Множество, функция и объект без публичных свойств не записываются в JSON: вместо пустого словаря,
+    который молча потерял бы данные, фабрика сообщает об ошибке."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         _ = ConverterFactory().convert(source)
+
+
+def test_convert_nested_object_without_public_properties_raises():
+    """Объект без публичных свойств внутри модели тоже вызывает ошибку, а не превращается в пустой словарь."""
+    # Подготовка
+    pair = _Pair(NomenclatureGroupModel("Мясо"), {1, 2})
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        _ = ConverterFactory().convert(pair)
+
+
+def test_convert_after_nested_object_without_public_properties_returns_full_dict():
+    """После ошибки во вложенном значении путь очищен: следующий объект раскрывается целиком."""
+    # Подготовка
+    factory = ConverterFactory()
+    group = NomenclatureGroupModel("Мясо")
+    with pytest.raises(ArgumentsException):
+        _ = factory.convert(_Pair(group, {1, 2}))
+
+    # Действие
+    result = factory.convert(_Pair(group, None))
+
+    # Проверка
+    assert result == {"first": _group_dict(group), "second": None}
+
+
+def test_convert_dict_with_not_string_key_raises():
+    """У словаря в JSON ключи — строки: словарь с числовым ключом фабрика не записывает."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        _ = ConverterFactory().convert({1: "Мука"})
 
 
 def test_convert_result_is_serialized_by_json_without_changes():

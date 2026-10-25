@@ -9,22 +9,22 @@ from Src.Core.exception import ArgumentsException
 class CollectionConverter(AbstractConverter):
     """Конвертер списков: список или кортеж записывается списком данных элементов.
 
-    Каждый элемент обрабатывается своим конвертером, который выбирает функция выбора —
-    обычно это ``ConverterFactory.create``. Поэтому в одном списке могут лежать и строки, и модели.
-    У элемента нет своего поля: он конвертируется под наименованием поля списка,
-    а в результат попадают только его данные.
+    Каждый элемент превращается в данные функцией конвертации — обычно это ``ConverterFactory.convert``.
+    Поэтому в одном списке могут лежать и строки, и модели, и вложенные списки.
     """
 
-    # Функция, выбирающая конвертер по значению элемента
-    _create: Callable[[object], AbstractConverter]
+    # Функция, превращающая элемент в данные для JSON
+    _convert_item: Callable[[object], object]
 
-    def __init__(self, create: Callable[[object], AbstractConverter]) -> None:
+    def __init__(self, convert_item: Callable[[object], object]) -> None:
         """Инициализирует конвертер.
 
-        :param create: Функция, выбирающая конвертер по значению элемента.
+        :param convert_item: Функция, превращающая элемент в данные для JSON.
         :raises ArgumentsException: Если значение нельзя вызвать.
         """
-        self._create = CommonValidator.validate_callable(create, "create", "Ожидается функция выбора конвертера")
+        self._convert_item = CommonValidator.validate_callable(
+            convert_item, "convert_item", "Ожидается функция конвертации элемента"
+        )
 
     @override
     def convert(self, field: str, value: object) -> dict[str, object]:
@@ -41,5 +41,6 @@ class CollectionConverter(AbstractConverter):
             raise ArgumentsException("value", "Ожидается список или кортеж")
 
         items = cast(Sequence[object], value)
-        data = [self._create(item).convert(field, item)[field] for item in items]
+        # Рекурсия: функция конвертации — ConverterFactory.convert, она выберет конвертер элемента
+        data = [self._convert_item(item) for item in items]
         return self._entry(field, data)
