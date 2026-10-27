@@ -224,6 +224,46 @@ def test_validate_instance_error_contains_field_and_message():
     assert "Ожидается элемент" in str(exc_info.value)
 
 
+class CallableStub:
+    """Заглушка с __call__ для проверки validate_callable."""
+
+    def __call__(self) -> None:
+        """Ничего не делает: важен только сам факт вызова."""
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "value",
+    [len, lambda: None, CallableStub().__call__, CallableStub(), ParentStub],
+    ids=["builtin", "lambda", "method", "object_with_call", "class"],
+)
+def test_validate_callable_callable_value_returned(value):
+    """Функция, метод, объект с __call__ и класс проходят проверку и возвращаются тем же объектом."""
+    # Действие
+    result = CommonValidator.validate_callable(value, "create", "Ожидается функция")
+
+    # Проверка
+    assert result is value
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [None, "len", 1, ParentStub()], ids=["none", "str", "int", "object"])
+def test_validate_callable_not_callable_raises(value):
+    """Значение, которое нельзя вызвать, вызывает ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_callable(value, "create", "Ожидается функция")
+
+
+def test_validate_callable_error_contains_field_and_message():
+    """Имя аргумента и пояснение попадают в текст ошибки."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        CommonValidator.validate_callable(None, "create", "Ожидается функция")
+    assert "create" in str(exc_info.value)
+    assert "Ожидается функция" in str(exc_info.value)
+
+
 # Подготовка
 @pytest.mark.parametrize(
     "validate",
@@ -238,6 +278,7 @@ def test_validate_instance_error_contains_field_and_message():
         lambda: CommonValidator.validate_fraction(1, "my_field"),
         lambda: CommonValidator.validate_digits("12a", "my_field", (3,)),
         lambda: CommonValidator.validate_digits("12", "my_field", (3,)),
+        lambda: CommonValidator.validate_callable(None, "my_field", "Ожидается функция"),
     ],
     ids=[
         "string_not_str",
@@ -250,6 +291,7 @@ def test_validate_instance_error_contains_field_and_message():
         "fraction_one",
         "digits_not_digits",
         "digits_wrong_length",
+        "callable_not_callable",
     ],
 )
 def test_validate_any_check_error_contains_field(validate):

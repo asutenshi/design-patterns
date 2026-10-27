@@ -54,6 +54,11 @@ API поднимается на `http://localhost:8080`, документаци�
 
 Markdown и CSV отдаются файлом на скачивание, остальные форматы — текстом.
 
+Всё хранилище превращается в JSON через `ConverterFactory`. Пример выгрузки данных первого запуска —
+[`Docs/Examples/storage_first_start.json`](Docs/Examples/storage_first_start.json). Тест следит, чтобы пример
+не устарел; после изменения начальных данных или конвертеров он обновляется так:
+`UPDATE_EXAMPLES=1 uv run pytest Tst/Integration/test_storage_json_export.py`.
+
 Проверка качества кода и запуск тестов:
 
 ```bash

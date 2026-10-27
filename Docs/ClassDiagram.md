@@ -308,6 +308,7 @@ classDiagram
         +validate_fraction(value, field)$ int | float
         +validate_digits(value, field, lengths)$ str
         +validate_instance(value, expected_type, field, message)$ T
+        +validate_callable(value, field, message)$ T
     }
 
     class InnValidator {
@@ -701,4 +702,139 @@ classDiagram
     AbstractReport ..> NamedEntity : строит по сущности
     AbstractReport ..> Common : get_fields
     ReportFactory ..> ArgumentsException : бросает для чужого или нереализованного формата
+```
+
+## Конвертация
+
+Конвертеры превращают любой объект в данные, которые `json.dumps` записывает без настроек: модель — словарь
+«наименование поля — данные поля», список моделей — список словарей, простое значение — само значение.
+Это основа сериализации: модель или всё хранилище сначала становится словарём, а словарь — JSON.
+Абстракция лежит в `Src/Core/`, конвертеры и фабрика — в `Src/Logics/`.
+
+Клиент вызывает только `ConverterFactory.convert(source)`, где `source` — объект любого типа. Фабрика выбирает
+конвертер по типу значения (`create()`) по сопоставлению `_converters` с обходом MRO типа, без цепочки `isinstance`:
+
+| Тип значения                                   | Конвертер             | Данные                                  |
+|------------------------------------------------|-----------------------|-----------------------------------------|
+| `str`, `int`, `float`, `bool`, `None`          | `BasicConverter`      | как есть                                |
+| `Enum`, `UUID`                                 | `BasicConverter`      | значение перечисления, строка кода      |
+| `date`, `datetime`                             | `DatetimeConverter`   | строка ISO 8601                         |
+| `list`, `tuple`                                | `CollectionConverter` | список данных элементов                 |
+| `dict` со строковыми ключами                   | `DictConverter`       | словарь данных значений                 |
+| остальные объекты (`object`): модели и т. п.   | `ReferenceConverter`  | вложенный словарь полей                 |
+
+Конвертер возвращает `{поле: данные}`, а у значения верхнего уровня поля нет. Поэтому `convert` передаёт
+служебное наименование `_ROOT_FIELD` и сразу снимает его с результата.
+
+Рекурсия: `ReferenceConverter` раскрывает объект через `ConverterFactory._fields`, а тот для каждого поля
+(`Common.get_fields`) снова выбирает конвертер. `CollectionConverter` и `DictConverter` отдают каждый элемент
+в `ConverterFactory.convert`. Фабрика передаёт конвертерам свои методы функциями, поэтому конвертеры
+не зависят от её класса и цикла импортов нет.
+
+```mermaid
+sequenceDiagram
+    participant Client as Клиент
+    participant F as ConverterFactory
+    participant R as ReferenceConverter
+    participant C as CollectionConverter / DictConverter
+    participant B as BasicConverter
+
+    Client->>F: convert(storage)
+    F->>F: create(storage)
+    F->>R: convert(_ROOT_FIELD, storage)
+    R->>F: _fields(storage), через функцию
+    loop каждое поле объекта
+        F->>F: create(value)
+        alt простое значение
+            F->>B: convert(field, value)
+        else список или словарь
+            F->>C: convert(field, value)
+            C->>F: convert(item) для каждого элемента — рекурсия
+        else вложенная модель
+            F->>R: convert(field, value)
+            R->>F: _fields(value), через функцию — рекурсия
+        end
+    end
+    F-->>Client: данные для JSON
+```
+
+Защита от циклов: фабрика помнит путь от корня до текущего объекта. Объект, который уже есть на пути
+(у базовой единицы `RangeModel.base` — она сама), записывается ссылкой `{"id": ...}`. Цикл через объект
+без идентификатора — `OperationException`. Общая модель без цикла (одна группа у разных позиций) раскрывается
+везде целиком. Поля — все публичные свойства, поэтому вычисляемые (`is_base`, веса) тоже попадают в словарь.
+Объект без публичных свойств (функция, множество) — `ArgumentsException`: пустой словарь молча потерял бы данные.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class AbstractConverter {
+        <<abstract>>
+        +convert(field, value)* dict~str, object~
+        #_entry(field, data)$ dict~str, object~
+    }
+
+    class BasicConverter {
+        +convert(field, value) dict~str, object~
+    }
+
+    class DatetimeConverter {
+        +convert(field, value) dict~str, object~
+    }
+
+    class ReferenceConverter {
+        -_expand: Callable
+        +convert(field, value) dict~str, object~
+    }
+
+    class CollectionConverter {
+        -_convert_item: Callable
+        +convert(field, value) dict~str, object~
+    }
+
+    class DictConverter {
+        -_convert_value: Callable
+        +convert(field, value) dict~str, object~
+    }
+
+    class ConverterFactory {
+        -_converters: dict~type, AbstractConverter~
+        -_path: list~object~
+        +create(value) AbstractConverter
+        +convert(source) object
+        -_fields(source) dict~str, object~
+        -_cycle_reference(source) dict~str, object~
+    }
+
+    class Common
+    class CommonValidator
+    class BaseEntity {
+        <<abstract>>
+    }
+    class ArgumentsException
+    class OperationException
+
+    AbstractConverter <|-- BasicConverter
+    AbstractConverter <|-- DatetimeConverter
+    AbstractConverter <|-- ReferenceConverter
+    AbstractConverter <|-- CollectionConverter
+    AbstractConverter <|-- DictConverter
+    ConverterFactory *-- AbstractConverter : _converters
+    ConverterFactory ..> AbstractConverter : create
+    ReferenceConverter ..> ConverterFactory : _fields, функцией
+    CollectionConverter ..> ConverterFactory : convert, функцией
+    DictConverter ..> ConverterFactory : convert, функцией
+    ConverterFactory ..> Common : get_fields
+    ConverterFactory ..> BaseEntity : ссылка по id в цикле
+    AbstractConverter ..> CommonValidator : наименование поля
+    ReferenceConverter ..> CommonValidator : expand
+    CollectionConverter ..> CommonValidator : convert_item
+    DictConverter ..> CommonValidator : convert_value
+    BasicConverter ..> ArgumentsException : не простое значение
+    DatetimeConverter ..> ArgumentsException : не дата
+    CollectionConverter ..> ArgumentsException : не список или кортеж, convert_item не функция
+    DictConverter ..> ArgumentsException : не словарь, ключ не строка, convert_value не функция
+    ReferenceConverter ..> ArgumentsException : expand не функция
+    ConverterFactory ..> ArgumentsException : объект без публичных свойств
+    ConverterFactory ..> OperationException : цикл без идентификатора
 ```

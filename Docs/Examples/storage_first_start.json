@@ -1,0 +1,2230 @@
+{
+  "is_loaded": true,
+  "ranges": [
+    {
+      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+      "name": "грамм",
+      "base": {
+        "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+      },
+      "factor": 1,
+      "is_base": true
+    },
+    {
+      "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+      "name": "килограмм",
+      "base": {
+        "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+        "name": "грамм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "factor": 1000,
+      "is_base": false
+    },
+    {
+      "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+      "name": "миллилитр",
+      "base": {
+        "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+      },
+      "factor": 1,
+      "is_base": true
+    },
+    {
+      "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+      "name": "литр",
+      "base": {
+        "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+        "name": "миллилитр",
+        "base": {
+          "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "factor": 1000,
+      "is_base": false
+    },
+    {
+      "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+      "name": "штука",
+      "base": {
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+      },
+      "factor": 1,
+      "is_base": true
+    }
+  ],
+  "nomenclature_groups": [
+    {
+      "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+      "name": "Мясные продукты"
+    },
+    {
+      "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+      "name": "Молочные продукты"
+    },
+    {
+      "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+      "name": "Овощи"
+    },
+    {
+      "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+      "name": "Бакалея"
+    },
+    {
+      "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+      "name": "Полуфабрикаты"
+    },
+    {
+      "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+      "name": "Блюда"
+    },
+    {
+      "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+      "name": "Упаковка"
+    }
+  ],
+  "nomenclatures": [
+    {
+      "id": "8bfbeadd-ed91-4f76-ba29-d7b6df5f204b",
+      "name": "Говядина",
+      "full_name": "Говядина охлаждённая",
+      "group": {
+        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "name": "Мясные продукты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "cefc3d36-a109-4399-b3a6-34d2fe2f79f9",
+      "name": "Молоко",
+      "full_name": "Молоко пастеризованное 3,2%",
+      "group": {
+        "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+        "name": "Молочные продукты"
+      },
+      "range": {
+        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "name": "литр",
+        "base": {
+          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "name": "миллилитр",
+          "base": {
+            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "a40dcf60-e521-48d5-a465-48b1c4b3ade5",
+      "name": "Стакан",
+      "full_name": "Стакан бумажный 300 мл",
+      "group": {
+        "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+        "name": "Упаковка"
+      },
+      "range": {
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "штука",
+        "base": {
+          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "type": "упаковка",
+      "grams_per_base_unit": 10
+    },
+    {
+      "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+      "name": "Кости говяжьи мозговые",
+      "full_name": "Кости говяжьи мозговые охлаждённые",
+      "group": {
+        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "name": "Мясные продукты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+      "name": "Говядина (мякоть)",
+      "full_name": "Говядина (мякоть) охлаждённая",
+      "group": {
+        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "name": "Мясные продукты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+      "name": "Лук репчатый",
+      "full_name": "Лук репчатый свежий",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+      "name": "Морковь",
+      "full_name": "Морковь столовая свежая",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+      "name": "Свёкла",
+      "full_name": "Свёкла столовая свежая",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "dcd158b1-cfce-4570-8c95-a62f01666fcf",
+      "name": "Картофель",
+      "full_name": "Картофель свежий",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "ace5f34c-042a-469e-9a39-9630573d34a4",
+      "name": "Капуста белокочанная",
+      "full_name": "Капуста белокочанная свежая",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "9b9ec5ba-d9b4-436c-a55e-0e3e3e45c2b1",
+      "name": "Укроп",
+      "full_name": "Укроп свежий",
+      "group": {
+        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "name": "Овощи"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+      "name": "Лавровый лист",
+      "full_name": "Лавровый лист сушёный",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "штука",
+        "base": {
+          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 0.5
+    },
+    {
+      "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+      "name": "Перец чёрный горошком",
+      "full_name": "Перец чёрный горошком",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+      "name": "Соль",
+      "full_name": "Соль пищевая поваренная",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+      "name": "Томатная паста",
+      "full_name": "Томатная паста",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+      "name": "Масло подсолнечное",
+      "full_name": "Масло подсолнечное рафинированное",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "name": "литр",
+        "base": {
+          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "name": "миллилитр",
+          "base": {
+            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 0.92
+    },
+    {
+      "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+      "name": "Уксус 9%",
+      "full_name": "Уксус столовый 9%",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "name": "литр",
+        "base": {
+          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "name": "миллилитр",
+          "base": {
+            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+      "name": "Сахар",
+      "full_name": "Сахар-песок",
+      "group": {
+        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "name": "Бакалея"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "2dd729ce-6dbf-4950-9d55-2e5d57fd57a3",
+      "name": "Сметана 20%",
+      "full_name": "Сметана 20% жирности",
+      "group": {
+        "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+        "name": "Молочные продукты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "сырьё",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "6547ad70-637b-4b03-a668-e85b101350ad",
+      "name": "Контейнер для супа 500 мл",
+      "full_name": "Контейнер для супа 500 мл (только для доставки, п. 3.3 ТЗ)",
+      "group": {
+        "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+        "name": "Упаковка"
+      },
+      "range": {
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "штука",
+        "base": {
+          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "type": "упаковка",
+      "grams_per_base_unit": 20
+    },
+    {
+      "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+      "name": "Бульон костный говяжий",
+      "full_name": "Бульон костный говяжий (полуфабрикат)",
+      "group": {
+        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "name": "Полуфабрикаты"
+      },
+      "range": {
+        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "name": "литр",
+        "base": {
+          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "name": "миллилитр",
+          "base": {
+            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "полуфабрикат",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+      "name": "Говядина отварная",
+      "full_name": "Говядина отварная нарезанная (полуфабрикат)",
+      "group": {
+        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "name": "Полуфабрикаты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "полуфабрикат",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+      "name": "Зажарка свекольная",
+      "full_name": "Зажарка свекольная (полуфабрикат)",
+      "group": {
+        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "name": "Полуфабрикаты"
+      },
+      "range": {
+        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "name": "килограмм",
+        "base": {
+          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "name": "грамм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "factor": 1000,
+        "is_base": false
+      },
+      "type": "полуфабрикат",
+      "grams_per_base_unit": 1
+    },
+    {
+      "id": "71219ce8-ced9-4d5a-9721-d5c5993343e4",
+      "name": "Борщ с говядиной",
+      "full_name": "Борщ с говядиной, порция 500 г",
+      "group": {
+        "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+        "name": "Блюда"
+      },
+      "range": {
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "штука",
+        "base": {
+          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+        },
+        "factor": 1,
+        "is_base": true
+      },
+      "type": "блюдо",
+      "grams_per_base_unit": 500
+    }
+  ],
+  "warehouses": [
+    {
+      "id": "938a6bcf-825b-4a7a-a9ef-8d030f91a773",
+      "name": "Склад ресторана"
+    },
+    {
+      "id": "ba711f30-0117-462b-adfb-8356d2e5f1c5",
+      "name": "Склад производственного цеха"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "df7e4e73-29d4-4cde-9025-82cb6ef7613c",
+      "name": "Бульон костный говяжий",
+      "result": {
+        "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+        "name": "Бульон костный говяжий",
+        "full_name": "Бульон костный говяжий (полуфабрикат)",
+        "group": {
+          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "name": "Полуфабрикаты"
+        },
+        "range": {
+          "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+          "name": "литр",
+          "base": {
+            "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+            "name": "миллилитр",
+            "base": {
+              "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+            },
+            "factor": 1,
+            "is_base": true
+          },
+          "factor": 1000,
+          "is_base": false
+        },
+        "type": "полуфабрикат",
+        "grams_per_base_unit": 1
+      },
+      "output_quantity": 2000,
+      "cooking_time_minutes": 240,
+      "steps": [
+        "Кости промыть и выдержать в холодной воде 1 час, воду слить.",
+        "Кости залить 3500 мл холодной воды (вне учёта), довести до кипения и снять пену.",
+        "Варить на слабом огне 3 часа, не допуская бурного кипения.",
+        "Лук и морковь очистить, лук разрезать пополам и подпечь на сухой сковороде до тёмных краёв.",
+        "За 40 минут до конца добавить овощи, лавровый лист, перец и соль.",
+        "Бульон процедить, довести до 2000 мл, при необходимости упарить. Кости и овощи не используются."
+      ],
+      "items": [
+        {
+          "nomenclature": {
+            "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+            "name": "Кости говяжьи мозговые",
+            "full_name": "Кости говяжьи мозговые охлаждённые",
+            "group": {
+              "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+              "name": "Мясные продукты"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 1500,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 1500,
+          "net_weight": 149.99999999999997
+        },
+        {
+          "nomenclature": {
+            "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+            "name": "Лук репчатый",
+            "full_name": "Лук репчатый свежий",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 100,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 100,
+          "net_weight": 9.999999999999998
+        },
+        {
+          "nomenclature": {
+            "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+            "name": "Морковь",
+            "full_name": "Морковь столовая свежая",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 80,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 80,
+          "net_weight": 7.999999999999998
+        },
+        {
+          "nomenclature": {
+            "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+            "name": "Лавровый лист",
+            "full_name": "Лавровый лист сушёный",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "name": "штука",
+              "base": {
+                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+              },
+              "factor": 1,
+              "is_base": true
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 0.5
+          },
+          "quantity": 1,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 0.5,
+          "net_weight": 0.04999999999999999
+        },
+        {
+          "nomenclature": {
+            "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+            "name": "Перец чёрный горошком",
+            "full_name": "Перец чёрный горошком",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 3,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 3,
+          "net_weight": 0.29999999999999993
+        },
+        {
+          "nomenclature": {
+            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "name": "Соль",
+            "full_name": "Соль пищевая поваренная",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 12,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 12,
+          "net_weight": 12
+        }
+      ],
+      "gross_weight": 1695.5,
+      "net_weight": 180.34999999999997
+    },
+    {
+      "id": "db547fa2-46d6-40d6-bfdb-e01d46ed05c2",
+      "name": "Говядина отварная",
+      "result": {
+        "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+        "name": "Говядина отварная",
+        "full_name": "Говядина отварная нарезанная (полуфабрикат)",
+        "group": {
+          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "name": "Полуфабрикаты"
+        },
+        "range": {
+          "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+          "name": "килограмм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+            "name": "грамм",
+            "base": {
+              "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            },
+            "factor": 1,
+            "is_base": true
+          },
+          "factor": 1000,
+          "is_base": false
+        },
+        "type": "полуфабрикат",
+        "grams_per_base_unit": 1
+      },
+      "output_quantity": 500,
+      "cooking_time_minutes": 120,
+      "steps": [
+        "Мякоть зачистить от плёнок и сухожилий, нарезать кусками по 200–250 г.",
+        "Залить 2000 мл кипящей воды (вне учёта), добавить соль и лавровый лист.",
+        "Варить на слабом огне 1,5 часа до мягкости, готовое мясо остудить в отваре.",
+        "Отвар не используется. Мясо нарезать полосками, дать выход 500 г."
+      ],
+      "items": [
+        {
+          "nomenclature": {
+            "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+            "name": "Говядина (мякоть)",
+            "full_name": "Говядина (мякоть) охлаждённая",
+            "group": {
+              "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+              "name": "Мясные продукты"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 800,
+          "loss_ratio": 0.38,
+          "base": [],
+          "gross_weight": 800,
+          "net_weight": 496.0
+        },
+        {
+          "nomenclature": {
+            "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+            "name": "Лавровый лист",
+            "full_name": "Лавровый лист сушёный",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "name": "штука",
+              "base": {
+                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+              },
+              "factor": 1,
+              "is_base": true
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 0.5
+          },
+          "quantity": 1,
+          "loss_ratio": 0.9,
+          "base": [],
+          "gross_weight": 0.5,
+          "net_weight": 0.04999999999999999
+        },
+        {
+          "nomenclature": {
+            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "name": "Соль",
+            "full_name": "Соль пищевая поваренная",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 8,
+          "loss_ratio": 0.5,
+          "base": [],
+          "gross_weight": 8,
+          "net_weight": 4.0
+        }
+      ],
+      "gross_weight": 808.5,
+      "net_weight": 500.05
+    },
+    {
+      "id": "b15c1f40-2f41-4a84-93d1-096d244ad0b7",
+      "name": "Зажарка свекольная",
+      "result": {
+        "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+        "name": "Зажарка свекольная",
+        "full_name": "Зажарка свекольная (полуфабрикат)",
+        "group": {
+          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "name": "Полуфабрикаты"
+        },
+        "range": {
+          "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+          "name": "килограмм",
+          "base": {
+            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+            "name": "грамм",
+            "base": {
+              "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            },
+            "factor": 1,
+            "is_base": true
+          },
+          "factor": 1000,
+          "is_base": false
+        },
+        "type": "полуфабрикат",
+        "grams_per_base_unit": 1
+      },
+      "output_quantity": 700,
+      "cooking_time_minutes": 30,
+      "steps": [
+        "Свёклу и морковь очистить и натереть на крупной тёрке, лук нарезать кубиком.",
+        "На сковороде разогреть масло, обжарить лук 3 минуты до прозрачности.",
+        "Добавить морковь, жарить ещё 4 минуты, затем свёклу.",
+        "Влить уксус (сохраняет цвет свёклы), всыпать сахар и соль, тушить 5 минут.",
+        "Добавить томатную пасту, перемешать, тушить 10 минут до мягкости свёклы."
+      ],
+      "items": [
+        {
+          "nomenclature": {
+            "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+            "name": "Свёкла",
+            "full_name": "Свёкла столовая свежая",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 400,
+          "loss_ratio": 0.05,
+          "base": [],
+          "gross_weight": 400,
+          "net_weight": 380.0
+        },
+        {
+          "nomenclature": {
+            "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+            "name": "Морковь",
+            "full_name": "Морковь столовая свежая",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 120,
+          "loss_ratio": 0.05,
+          "base": [],
+          "gross_weight": 120,
+          "net_weight": 114.0
+        },
+        {
+          "nomenclature": {
+            "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+            "name": "Лук репчатый",
+            "full_name": "Лук репчатый свежий",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 120,
+          "loss_ratio": 0.1,
+          "base": [],
+          "gross_weight": 120,
+          "net_weight": 108.0
+        },
+        {
+          "nomenclature": {
+            "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+            "name": "Томатная паста",
+            "full_name": "Томатная паста",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 50,
+          "loss_ratio": 0.1,
+          "base": [],
+          "gross_weight": 50,
+          "net_weight": 45.0
+        },
+        {
+          "nomenclature": {
+            "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+            "name": "Масло подсолнечное",
+            "full_name": "Масло подсолнечное рафинированное",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "name": "литр",
+              "base": {
+                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "name": "миллилитр",
+                "base": {
+                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 0.92
+          },
+          "quantity": 40,
+          "loss_ratio": 0.1,
+          "base": [],
+          "gross_weight": 36.800000000000004,
+          "net_weight": 33.120000000000005
+        },
+        {
+          "nomenclature": {
+            "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+            "name": "Уксус 9%",
+            "full_name": "Уксус столовый 9%",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "name": "литр",
+              "base": {
+                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "name": "миллилитр",
+                "base": {
+                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 10,
+          "loss_ratio": 0.5,
+          "base": [],
+          "gross_weight": 10,
+          "net_weight": 5.0
+        },
+        {
+          "nomenclature": {
+            "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+            "name": "Сахар",
+            "full_name": "Сахар-песок",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 10,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 10,
+          "net_weight": 10
+        },
+        {
+          "nomenclature": {
+            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "name": "Соль",
+            "full_name": "Соль пищевая поваренная",
+            "group": {
+              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "name": "Бакалея"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 5,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 5,
+          "net_weight": 5
+        }
+      ],
+      "gross_weight": 751.8,
+      "net_weight": 700.12
+    },
+    {
+      "id": "8c041f0c-b883-4d10-b4bb-b6f08c0800b8",
+      "name": "Борщ с говядиной",
+      "result": {
+        "id": "71219ce8-ced9-4d5a-9721-d5c5993343e4",
+        "name": "Борщ с говядиной",
+        "full_name": "Борщ с говядиной, порция 500 г",
+        "group": {
+          "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+          "name": "Блюда"
+        },
+        "range": {
+          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+          "name": "штука",
+          "base": {
+            "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+          },
+          "factor": 1,
+          "is_base": true
+        },
+        "type": "блюдо",
+        "grams_per_base_unit": 500
+      },
+      "output_quantity": 1,
+      "cooking_time_minutes": 15,
+      "steps": [
+        "Бульон довести до кипения, добавить картофель, нарезанный брусочками, варить 8 минут.",
+        "Добавить нашинкованную капусту, варить ещё 4 минуты.",
+        "Добавить зажарку и отварную говядину, прогреть 2 минуты, не допуская бурного кипения.",
+        "Подавать со сметаной и рубленым укропом. Для доставки разлить в контейнер, сметану и укроп положить сверху."
+      ],
+      "items": [
+        {
+          "nomenclature": {
+            "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+            "name": "Бульон костный говяжий",
+            "full_name": "Бульон костный говяжий (полуфабрикат)",
+            "group": {
+              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "name": "Полуфабрикаты"
+            },
+            "range": {
+              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "name": "литр",
+              "base": {
+                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "name": "миллилитр",
+                "base": {
+                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "полуфабрикат",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 250,
+          "loss_ratio": 0.1,
+          "base": [
+            {
+              "nomenclature": {
+                "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+                "name": "Кости говяжьи мозговые",
+                "full_name": "Кости говяжьи мозговые охлаждённые",
+                "group": {
+                  "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+                  "name": "Мясные продукты"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 187.5,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 187.5,
+              "net_weight": 18.749999999999996
+            },
+            {
+              "nomenclature": {
+                "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+                "name": "Лук репчатый",
+                "full_name": "Лук репчатый свежий",
+                "group": {
+                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "name": "Овощи"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 12.5,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 12.5,
+              "net_weight": 1.2499999999999998
+            },
+            {
+              "nomenclature": {
+                "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+                "name": "Морковь",
+                "full_name": "Морковь столовая свежая",
+                "group": {
+                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "name": "Овощи"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 10.0,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 10.0,
+              "net_weight": 0.9999999999999998
+            },
+            {
+              "nomenclature": {
+                "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+                "name": "Лавровый лист",
+                "full_name": "Лавровый лист сушёный",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+                  "name": "штука",
+                  "base": {
+                    "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                  },
+                  "factor": 1,
+                  "is_base": true
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 0.5
+              },
+              "quantity": 0.125,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 0.0625,
+              "net_weight": 0.006249999999999999
+            },
+            {
+              "nomenclature": {
+                "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+                "name": "Перец чёрный горошком",
+                "full_name": "Перец чёрный горошком",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 0.375,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 0.375,
+              "net_weight": 0.03749999999999999
+            },
+            {
+              "nomenclature": {
+                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "name": "Соль",
+                "full_name": "Соль пищевая поваренная",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 1.5,
+              "loss_ratio": 0,
+              "base": [],
+              "gross_weight": 1.5,
+              "net_weight": 1.5
+            }
+          ],
+          "gross_weight": 211.9375,
+          "net_weight": 20.289374999999996
+        },
+        {
+          "nomenclature": {
+            "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+            "name": "Говядина отварная",
+            "full_name": "Говядина отварная нарезанная (полуфабрикат)",
+            "group": {
+              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "name": "Полуфабрикаты"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "полуфабрикат",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 60,
+          "loss_ratio": 0.05,
+          "base": [
+            {
+              "nomenclature": {
+                "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+                "name": "Говядина (мякоть)",
+                "full_name": "Говядина (мякоть) охлаждённая",
+                "group": {
+                  "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+                  "name": "Мясные продукты"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 96.0,
+              "loss_ratio": 0.38,
+              "base": [],
+              "gross_weight": 96.0,
+              "net_weight": 59.519999999999996
+            },
+            {
+              "nomenclature": {
+                "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+                "name": "Лавровый лист",
+                "full_name": "Лавровый лист сушёный",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+                  "name": "штука",
+                  "base": {
+                    "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                  },
+                  "factor": 1,
+                  "is_base": true
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 0.5
+              },
+              "quantity": 0.12,
+              "loss_ratio": 0.9,
+              "base": [],
+              "gross_weight": 0.06,
+              "net_weight": 0.005999999999999998
+            },
+            {
+              "nomenclature": {
+                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "name": "Соль",
+                "full_name": "Соль пищевая поваренная",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 0.96,
+              "loss_ratio": 0.5,
+              "base": [],
+              "gross_weight": 0.96,
+              "net_weight": 0.48
+            }
+          ],
+          "gross_weight": 97.02,
+          "net_weight": 57.00569999999999
+        },
+        {
+          "nomenclature": {
+            "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+            "name": "Зажарка свекольная",
+            "full_name": "Зажарка свекольная (полуфабрикат)",
+            "group": {
+              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "name": "Полуфабрикаты"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "полуфабрикат",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 70,
+          "loss_ratio": 0.05,
+          "base": [
+            {
+              "nomenclature": {
+                "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+                "name": "Свёкла",
+                "full_name": "Свёкла столовая свежая",
+                "group": {
+                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "name": "Овощи"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 40.0,
+              "loss_ratio": 0.05,
+              "base": [],
+              "gross_weight": 40.0,
+              "net_weight": 38.0
+            },
+            {
+              "nomenclature": {
+                "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+                "name": "Морковь",
+                "full_name": "Морковь столовая свежая",
+                "group": {
+                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "name": "Овощи"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 12.0,
+              "loss_ratio": 0.05,
+              "base": [],
+              "gross_weight": 12.0,
+              "net_weight": 11.399999999999999
+            },
+            {
+              "nomenclature": {
+                "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+                "name": "Лук репчатый",
+                "full_name": "Лук репчатый свежий",
+                "group": {
+                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "name": "Овощи"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 12.0,
+              "loss_ratio": 0.1,
+              "base": [],
+              "gross_weight": 12.0,
+              "net_weight": 10.8
+            },
+            {
+              "nomenclature": {
+                "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+                "name": "Томатная паста",
+                "full_name": "Томатная паста",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 5.0,
+              "loss_ratio": 0.1,
+              "base": [],
+              "gross_weight": 5.0,
+              "net_weight": 4.5
+            },
+            {
+              "nomenclature": {
+                "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+                "name": "Масло подсолнечное",
+                "full_name": "Масло подсолнечное рафинированное",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+                  "name": "литр",
+                  "base": {
+                    "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                    "name": "миллилитр",
+                    "base": {
+                      "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 0.92
+              },
+              "quantity": 4.0,
+              "loss_ratio": 0.1,
+              "base": [],
+              "gross_weight": 3.68,
+              "net_weight": 3.3120000000000003
+            },
+            {
+              "nomenclature": {
+                "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+                "name": "Уксус 9%",
+                "full_name": "Уксус столовый 9%",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+                  "name": "литр",
+                  "base": {
+                    "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                    "name": "миллилитр",
+                    "base": {
+                      "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 1.0,
+              "loss_ratio": 0.5,
+              "base": [],
+              "gross_weight": 1.0,
+              "net_weight": 0.5
+            },
+            {
+              "nomenclature": {
+                "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+                "name": "Сахар",
+                "full_name": "Сахар-песок",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 1.0,
+              "loss_ratio": 0,
+              "base": [],
+              "gross_weight": 1.0,
+              "net_weight": 1.0
+            },
+            {
+              "nomenclature": {
+                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "name": "Соль",
+                "full_name": "Соль пищевая поваренная",
+                "group": {
+                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "name": "Бакалея"
+                },
+                "range": {
+                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "name": "килограмм",
+                  "base": {
+                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "name": "грамм",
+                    "base": {
+                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                    },
+                    "factor": 1,
+                    "is_base": true
+                  },
+                  "factor": 1000,
+                  "is_base": false
+                },
+                "type": "сырьё",
+                "grams_per_base_unit": 1
+              },
+              "quantity": 0.5,
+              "loss_ratio": 0,
+              "base": [],
+              "gross_weight": 0.5,
+              "net_weight": 0.5
+            }
+          ],
+          "gross_weight": 75.18,
+          "net_weight": 66.5114
+        },
+        {
+          "nomenclature": {
+            "id": "dcd158b1-cfce-4570-8c95-a62f01666fcf",
+            "name": "Картофель",
+            "full_name": "Картофель свежий",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 80,
+          "loss_ratio": 0.15,
+          "base": [],
+          "gross_weight": 80,
+          "net_weight": 68.0
+        },
+        {
+          "nomenclature": {
+            "id": "ace5f34c-042a-469e-9a39-9630573d34a4",
+            "name": "Капуста белокочанная",
+            "full_name": "Капуста белокочанная свежая",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 70,
+          "loss_ratio": 0.15,
+          "base": [],
+          "gross_weight": 70,
+          "net_weight": 59.5
+        },
+        {
+          "nomenclature": {
+            "id": "2dd729ce-6dbf-4950-9d55-2e5d57fd57a3",
+            "name": "Сметана 20%",
+            "full_name": "Сметана 20% жирности",
+            "group": {
+              "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+              "name": "Молочные продукты"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 20,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 20,
+          "net_weight": 20
+        },
+        {
+          "nomenclature": {
+            "id": "9b9ec5ba-d9b4-436c-a55e-0e3e3e45c2b1",
+            "name": "Укроп",
+            "full_name": "Укроп свежий",
+            "group": {
+              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "name": "Овощи"
+            },
+            "range": {
+              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "name": "килограмм",
+              "base": {
+                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "name": "грамм",
+                "base": {
+                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                },
+                "factor": 1,
+                "is_base": true
+              },
+              "factor": 1000,
+              "is_base": false
+            },
+            "type": "сырьё",
+            "grams_per_base_unit": 1
+          },
+          "quantity": 3,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 3,
+          "net_weight": 3
+        },
+        {
+          "nomenclature": {
+            "id": "6547ad70-637b-4b03-a668-e85b101350ad",
+            "name": "Контейнер для супа 500 мл",
+            "full_name": "Контейнер для супа 500 мл (только для доставки, п. 3.3 ТЗ)",
+            "group": {
+              "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+              "name": "Упаковка"
+            },
+            "range": {
+              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "name": "штука",
+              "base": {
+                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+              },
+              "factor": 1,
+              "is_base": true
+            },
+            "type": "упаковка",
+            "grams_per_base_unit": 20
+          },
+          "quantity": 1,
+          "loss_ratio": 0,
+          "base": [],
+          "gross_weight": 20,
+          "net_weight": 20
+        }
+      ],
+      "gross_weight": 577.1375,
+      "net_weight": 314.306475
+    }
+  ]
+}
