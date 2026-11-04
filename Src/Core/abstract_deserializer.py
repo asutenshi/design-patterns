@@ -26,7 +26,8 @@ class AbstractDeserializer(ABC):
     - у части данных идентификатора нет (ингредиент рецепта), такие данные в кэш не попадают.
 
     Наследник реализует только ``_build``: достаёт поля и вызывает конструктор. Вложенные модели он получает
-    через функцию ``resolve``, это и есть рекурсия.
+    через функцию ``resolve``, это и есть рекурсия. Типы простых значений (строка, число) наследник не проверяет:
+    это делает конструктор модели, поэтому правила модели не дублируются в десериализаторе.
     """
 
     # Функция фабрики: целевой тип и данные -> модель. Рекурсия идёт через неё
@@ -84,6 +85,33 @@ class AbstractDeserializer(ABC):
         :return: Новая модель. Идентификатор выставит ``deserialize``.
         :raises ArgumentsException: Если поля отсутствуют или некорректны.
         """
+
+    def _nested[T](self, target_type: type[T], data: object) -> T:
+        """Собирает вложенную модель заданного типа через функцию рекурсии.
+
+        :param target_type: Тип вложенной модели.
+        :param data: Словарь полей вложенной модели или ссылка ``{"id": ...}``.
+        :return: Вложенная модель.
+        :raises ArgumentsException: Если данные некорректны или десериализатор вернул модель другого типа.
+        :raises OperationException: Если ссылка указывает на модель, которой ещё нет в кэше.
+        """
+        model = self._resolve(target_type, data)
+        return CommonValidator.validate_instance(
+            model, target_type, "data", f"Десериализатор вернул не {target_type.__name__}"
+        )
+
+    def _nested_list[T](self, target_type: type[T], data: object, field: str) -> list[T]:
+        """Собирает список вложенных моделей заданного типа, каждый элемент — через функцию рекурсии.
+
+        :param target_type: Тип элементов списка.
+        :param data: Список словарей полей или ссылок.
+        :param field: Имя поля для текста ошибки.
+        :return: Список моделей в исходном порядке.
+        :raises ArgumentsException: Если данные не список или элемент некорректен.
+        :raises OperationException: Если элемент ссылается на модель, которой ещё нет в кэше.
+        """
+        items = cast(list[object], CommonValidator.validate_instance(data, list, field, "Ожидается список"))
+        return [self._nested(target_type, item) for item in items]
 
     @staticmethod
     def _read_id(data: dict[str, object]) -> uuid.UUID | None:

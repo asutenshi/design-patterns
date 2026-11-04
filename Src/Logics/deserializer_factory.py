@@ -5,6 +5,18 @@ from Src.Core.abstract_deserializer import AbstractDeserializer
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
+from Src.Logics.ingredient_deserializer import IngredientDeserializer
+from Src.Logics.nomenclature_deserializer import NomenclatureDeserializer
+from Src.Logics.nomenclature_group_deserializer import NomenclatureGroupDeserializer
+from Src.Logics.range_deserializer import RangeDeserializer
+from Src.Logics.recipe_deserializer import RecipeDeserializer
+from Src.Logics.warehouse_deserializer import WarehouseDeserializer
+from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nomenclature_group_model import NomenclatureGroupModel
+from Src.Models.nomenclature_model import NomenclatureModel
+from Src.Models.range_model import RangeModel
+from Src.Models.recipe_model import RecipeModel
+from Src.Models.warehouse_model import WarehouseModel
 
 
 class DeserializerFactory:
@@ -28,7 +40,14 @@ class DeserializerFactory:
     """
 
     # Сопоставление типа модели и класса её десериализатора
-    _deserializers: ClassVar[dict[type, type[AbstractDeserializer]]] = {}
+    _deserializers: ClassVar[dict[type, type[AbstractDeserializer]]] = {
+        RangeModel: RangeDeserializer,
+        NomenclatureGroupModel: NomenclatureGroupDeserializer,
+        NomenclatureModel: NomenclatureDeserializer,
+        WarehouseModel: WarehouseDeserializer,
+        IngredientModel: IngredientDeserializer,
+        RecipeModel: RecipeDeserializer,
+    }
 
     # Собранные модели по идентификатору, общий для всех десериализаторов одной загрузки
     _cache: dict[uuid.UUID, BaseEntity]

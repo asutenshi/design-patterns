@@ -309,6 +309,9 @@ classDiagram
         +validate_digits(value, field, lengths)$ str
         +validate_instance(value, expected_type, field, message)$ T
         +validate_callable(value, field, message)$ T
+        +validate_dict(value, field)$ dict~str, object~
+        +validate_enum(value, enum_type, field)$ E
+        +validate_field(data, key)$ object
     }
 
     class InnValidator {
@@ -843,7 +846,7 @@ classDiagram
 
 Обратная сторона конвертации: словарь из JSON превращается в модель. Абстракция лежит в `Src/Core/`.
 В отличие от конвертеров, десериализатор выбирается по **целевому типу** (что ждёт конструктор), а не по типу
-значения: у значения из JSON своего типа нет. У каждой модели будет свой наследник, он реализует только `_build`.
+значения: у значения из JSON своего типа нет. У каждой модели свой наследник в `Src/Logics/`, он реализует только `_build`.
 
 `AbstractDeserializer.deserialize` — шаблонный метод с общей частью:
 
@@ -859,8 +862,21 @@ classDiagram
 Клиент вызывает только `DeserializerFactory.deserialize(target_type, data)`. Фабрика выбирает класс десериализатора
 по точному целевому типу из `_deserializers` (как `ReportFactory._reports`), создаёт десериализатор в `create()` и
 передаёт ему `_resolve` и общий кэш. Кэш живёт одну загрузку: `deserialize` очищает его в `finally`.
-Поэтому фабрика хранит состояние и не годится для параллельных вызовов. Сопоставление пока пустое:
-десериализатор модели подключается строкой в `_deserializers`.
+Поэтому фабрика хранит состояние и не годится для параллельных вызовов. Новая модель подключается строкой
+в `_deserializers`.
+
+Наследник достаёт поля через `CommonValidator.validate_field` (обязательное поле, иначе `ArgumentsException`) и
+помощниками базового класса `_nested` и `_nested_list` (вложенная модель или список через `resolve` с проверкой типа;
+им нужен `resolve`, поэтому они живут в базовом классе). Типы простых значений
+проверяют конструкторы моделей, правила модели не дублируются. Вычисляемые поля из файла (`is_base`,
+`gross_weight`, `net_weight`) игнорируются. Значение перечисления превращает `CommonValidator.validate_enum`.
+
+Особые случаи:
+
+- `RangeDeserializer`: базовая единица ссылается сама на себя (`"base": {"id": <свой id>}`), конструктор ждёт
+  `base=None`, поэтому такая ссылка не разворачивается, иначе рекурсия не закончилась бы;
+- `IngredientDeserializer`: основание — список таких же ингредиентов, десериализатор вызывает сам себя через `resolve`;
+- `RecipeDeserializer`: основание берётся из файла как есть, из карт полуфабрикатов оно не пересобирается.
 
 ```mermaid
 classDiagram
@@ -872,8 +888,17 @@ classDiagram
         #_cache: dict~UUID, BaseEntity~
         +deserialize(data) object
         #_build(data)* object
+        #_nested(target_type, data) T
+        #_nested_list(target_type, data, field) list~T~
         #_read_id(data)$ UUID | None
     }
+
+    class RangeDeserializer
+    class NomenclatureGroupDeserializer
+    class NomenclatureDeserializer
+    class WarehouseDeserializer
+    class IngredientDeserializer
+    class RecipeDeserializer
 
     class DeserializerFactory {
         -_deserializers: dict~type, type~AbstractDeserializer~~$
@@ -890,6 +915,20 @@ classDiagram
     class ArgumentsException
     class OperationException
 
+    AbstractDeserializer <|-- RangeDeserializer
+    AbstractDeserializer <|-- NomenclatureGroupDeserializer
+    AbstractDeserializer <|-- NomenclatureDeserializer
+    AbstractDeserializer <|-- WarehouseDeserializer
+    AbstractDeserializer <|-- IngredientDeserializer
+    AbstractDeserializer <|-- RecipeDeserializer
+
+    RangeDeserializer ..> RangeModel : base, рекурсия
+    NomenclatureDeserializer ..> NomenclatureGroupModel : group
+    NomenclatureDeserializer ..> RangeModel : range
+    IngredientDeserializer ..> NomenclatureModel : nomenclature
+    IngredientDeserializer ..> IngredientModel : base, рекурсия
+    RecipeDeserializer ..> NomenclatureModel : result
+    RecipeDeserializer ..> IngredientModel : items
     DeserializerFactory *-- AbstractDeserializer : _deserializers
     DeserializerFactory ..> AbstractDeserializer : create, передаёт _resolve и _cache
     AbstractDeserializer ..> DeserializerFactory : _resolve, функцией
@@ -897,7 +936,8 @@ classDiagram
     DeserializerFactory ..> CommonValidator : target_type, результат
     DeserializerFactory ..> ArgumentsException : нет десериализатора, неверный тип
     AbstractDeserializer o-- BaseEntity : _cache
-    AbstractDeserializer ..> CommonValidator : resolve, cache, model
+    AbstractDeserializer ..> CommonValidator : resolve, cache, model, список
+    NomenclatureDeserializer ..> CommonValidator : validate_enum, validate_field
     AbstractDeserializer ..> ArgumentsException : не словарь, некорректный id
     AbstractDeserializer ..> OperationException : ссылка на неизвестный объект
 ```

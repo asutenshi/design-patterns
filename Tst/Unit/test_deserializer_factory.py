@@ -6,6 +6,12 @@ from Src.Core.abstract_deserializer import AbstractDeserializer
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.named_entity import NamedEntity
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Models.ingredient_model import IngredientModel
+from Src.Models.nomenclature_group_model import NomenclatureGroupModel
+from Src.Models.nomenclature_model import NomenclatureModel
+from Src.Models.range_model import RangeModel
+from Src.Models.recipe_model import RecipeModel
+from Src.Models.warehouse_model import WarehouseModel
 
 
 class ItemStub(NamedEntity):
@@ -200,3 +206,17 @@ def test_deserialize_not_a_dict_raises():
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         factory.deserialize(ItemStub, ["Мука"])
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    "target_type",
+    [RangeModel, NomenclatureGroupModel, NomenclatureModel, WarehouseModel, IngredientModel, RecipeModel],
+)
+def test_create_real_factory_model_has_deserializer(target_type: type):
+    """Для каждой модели из домена в рабочей фабрике зарегистрирован десериализатор."""
+    # Действие
+    deserializer = DeserializerFactory().create(target_type)
+
+    # Проверка
+    assert isinstance(deserializer, AbstractDeserializer)

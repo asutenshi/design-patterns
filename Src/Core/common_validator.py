@@ -1,4 +1,5 @@
 import math
+from enum import Enum
 from typing import cast
 
 from Src.Core.exception import ArgumentsException
@@ -170,3 +171,34 @@ class CommonValidator:
                 raise ArgumentsException(field, f"Ключ словаря должен быть строкой: {key!r}")
 
         return cast(dict[str, object], value)
+
+    @staticmethod
+    def validate_enum[E: Enum](value: object, enum_type: type[E], field: str) -> E:
+        """Превращает значение перечисления (как оно записано в JSON) в элемент перечисления.
+
+        :param value: Значение элемента, например ``"сырьё"``. Сам элемент тоже допустим.
+        :param enum_type: Тип перечисления.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Элемент перечисления.
+        :raises ArgumentsException: Если значение не соответствует ни одному элементу перечисления.
+        """
+        try:
+            return enum_type(value)
+        except (ValueError, TypeError) as ex:
+            allowed = ", ".join(repr(cast(object, item.value)) for item in enum_type)
+            raise ArgumentsException(field, f"Недопустимое значение {value!r}, допустимо: {allowed}") from ex
+
+    @staticmethod
+    def validate_field(data: dict[str, object], key: str) -> object:
+        """Проверяет, что в словаре есть обязательное поле, и возвращает его значение.
+
+        Тип значения не проверяется: это делает тот, кто его использует (например, конструктор модели).
+
+        :param data: Словарь полей, например данные модели из JSON.
+        :param key: Имя поля.
+        :return: Значение поля.
+        :raises ArgumentsException: Если поля в словаре нет.
+        """
+        if key not in data:
+            raise ArgumentsException(key, "Отсутствует обязательное поле")
+        return data[key]
