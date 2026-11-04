@@ -603,3 +603,152 @@ def test_properties_returned_list_modification_does_not_change_storage(first_sta
 
     # Проверка
     assert len(first_start_storage.ranges) == len(EXPECTED_RANGES)
+
+# ---------------------------------------------------------------------------
+# Загрузка из файла
+# ---------------------------------------------------------------------------
+
+_COLLECTION_KEYS = ("ranges", "nomenclature_groups", "nomenclatures", "warehouses", "recipes")
+
+
+def _write_storage_file(tmp_path: Path, **changes: object) -> str:
+    """Записывает файл выгрузки хранилища с пустыми коллекциями, ключи можно заменить или убрать (None)."""
+    data: dict[str, object] = {"is_loaded": True, **{key: [] for key in _COLLECTION_KEYS}}
+    data.update(changes)
+    path = tmp_path / "storage.json"
+    path.write_text(json.dumps({k: v for k, v in data.items() if v is not None}, ensure_ascii=False), encoding="utf-8")
+    return str(path)
+
+
+def _group(name: str = "Овощи") -> dict[str, object]:
+    """Данные группы номенклатуры."""
+    return {"id": str(uuid.uuid4()), "name": name}
+
+
+def test_load_file_settings_not_loaded_does_not_require_settings(tmp_path: Path):
+    """Если указан файл, настройки не нужны: менеджер настроек не читается, и ошибки об их отсутствии нет."""
+    # Подготовка
+    storage = StorageManager()
+    file_name = _write_storage_file(tmp_path, nomenclature_groups=[_group()])
+
+    # Действие
+    storage.load(file_name=file_name)
+
+    # Проверка
+    assert storage.is_loaded
+    assert [group.name for group in storage.nomenclature_groups] == ["Овощи"]
+
+
+def test_load_file_first_start_file_wins_over_initial_data(load_settings: Callable[[bool], None], tmp_path: Path):
+    """Если указан файл, начальные данные первого запуска не создаются, даже когда флаг first_start стоит."""
+    # Подготовка
+    load_settings(True)
+    storage = StorageManager()
+
+    # Действие
+    storage.load(file_name=_write_storage_file(tmp_path))
+
+    # Проверка
+    assert storage.is_loaded
+    assert storage.ranges == []
+    assert storage.recipes == []
+
+
+def test_load_file_replaces_previous_collections(first_start_storage: StorageManager, tmp_path: Path):
+    """Загрузка из файла заменяет прежнее содержимое, а не дописывает к нему."""
+    # Действие
+    first_start_storage.load(file_name=_write_storage_file(tmp_path, nomenclature_groups=[_group()]))
+
+    # Проверка
+    assert len(first_start_storage.nomenclature_groups) == 1
+    assert first_start_storage.nomenclatures == []
+
+
+def test_load_file_ignores_unknown_keys(tmp_path: Path):
+    """Лишние ключи файла (например, флаг is_loaded) игнорируются."""
+    # Подготовка
+    storage = StorageManager()
+
+    # Действие
+    storage.load(file_name=_write_storage_file(tmp_path, extra={"a": 1}))
+
+    # Проверка
+    assert storage.is_loaded
+
+
+def test_load_file_missing_file_raises(tmp_path: Path):
+    """Нет файла — OperationException, хранилище не загружено."""
+    # Подготовка
+    storage = StorageManager()
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        storage.load(file_name=str(tmp_path / "missing.json"))
+    assert not storage.is_loaded
+
+
+@pytest.mark.parametrize("content", ["не json", "[1, 2]", '"строка"', "null"])
+def test_load_file_not_json_object_raises(tmp_path: Path, content: str):
+    """Файл не JSON или его корень не объект — OperationException."""
+    # Подготовка
+    path = tmp_path / "bad.json"
+    path.write_text(content, encoding="utf-8")
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=str(path))
+
+
+@pytest.mark.parametrize("key", _COLLECTION_KEYS)
+def test_load_file_missing_collection_raises_with_its_name(tmp_path: Path, key: str):
+    """В файле нет одной из коллекций — OperationException с её именем."""
+    # Подготовка
+    storage = StorageManager()
+    file_name = _write_storage_file(tmp_path, **{key: None})
+
+    # Действие и проверка
+    with pytest.raises(OperationException) as exc_info:
+        storage.load(file_name=file_name)
+    assert key in str(exc_info.value)
+    assert not storage.is_loaded
+
+
+def test_load_file_collection_not_a_list_raises(tmp_path: Path):
+    """Коллекция не список — OperationException."""
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=_write_storage_file(tmp_path, ranges={"a": 1}))
+
+
+def test_load_file_invalid_model_raises_and_clears_collections(first_start_storage: StorageManager, tmp_path: Path):
+    """Некорректная модель в файле — OperationException; ни прежних, ни частично загруженных данных не остаётся."""
+    # Подготовка
+    file_name = _write_storage_file(tmp_path, nomenclature_groups=[_group("Овощи"), {"id": str(uuid.uuid4()), "name": ""}])
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        first_start_storage.load(file_name=file_name)
+    assert not first_start_storage.is_loaded
+    assert first_start_storage.nomenclature_groups == []
+    assert first_start_storage.ranges == []
+
+
+def test_load_file_duplicate_names_raises(tmp_path: Path):
+    """Две группы с одним наименованием — OperationException: уникальность коллекции действует и при загрузке."""
+    # Подготовка
+    file_name = _write_storage_file(tmp_path, nomenclature_groups=[_group("Овощи"), _group("овощи")])
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=file_name)
+
+
+def test_load_file_unknown_reference_raises(tmp_path: Path):
+    """Ссылка на модель, которой нет в файле, — OperationException."""
+    # Подготовка
+    unknown = {"id": str(uuid.uuid4())}
+    kilogram = {"id": str(uuid.uuid4()), "name": "килограмм", "base": unknown, "factor": 1000}
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=_write_storage_file(tmp_path, ranges=[kilogram]))
