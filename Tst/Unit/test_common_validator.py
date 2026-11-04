@@ -303,3 +303,42 @@ def test_validate_any_check_error_contains_field(validate):
     with pytest.raises(ArgumentsException) as exc_info:
         validate()
     assert "my_field" in str(exc_info.value)
+
+
+def test_validate_dict_string_keys_returned():
+    """Словарь со строковыми ключами возвращается тем же объектом, значения любых типов не проверяются."""
+    # Подготовка
+    value = {"name": "Мука", "count": 2, "nested": {"a": None}}
+
+    # Действие
+    result = CommonValidator.validate_dict(value, "data")
+
+    # Проверка
+    assert result is value
+
+
+def test_validate_dict_empty_dict_returned():
+    """Пустой словарь проходит проверку."""
+    # Действие
+    result = CommonValidator.validate_dict({}, "data")
+
+    # Проверка
+    assert result == {}
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [None, "data", 1, ["a"], ("a", 1), {"a"}])
+def test_validate_dict_not_dict_raises(value):
+    """Значение, не являющееся словарём, вызывает ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_dict(value, "data")
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [{1: "a"}, {"a": 1, 2: 2}, {None: "a"}])
+def test_validate_dict_non_string_key_raises(value):
+    """Словарь с ключом не строкой вызывает ArgumentsException: JSON-объект имеет только строковые ключи."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_dict(value, "data")

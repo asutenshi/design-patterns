@@ -838,3 +838,66 @@ classDiagram
     ConverterFactory ..> ArgumentsException : объект без публичных свойств
     ConverterFactory ..> OperationException : цикл без идентификатора
 ```
+
+## Десериализация
+
+Обратная сторона конвертации: словарь из JSON превращается в модель. Абстракция лежит в `Src/Core/`.
+В отличие от конвертеров, десериализатор выбирается по **целевому типу** (что ждёт конструктор), а не по типу
+значения: у значения из JSON своего типа нет. У каждой модели будет свой наследник, он реализует только `_build`.
+
+`AbstractDeserializer.deserialize` — шаблонный метод с общей частью:
+
+- модели хранятся в кэше по идентификатору, повторная встреча (полным словарём или ссылкой `{"id": ...}`)
+  возвращает тот же объект, а не копию;
+- идентификатор выставляется после конструктора, потому что конструкторы его не принимают;
+- данные без `id` (ингредиент рецепта) в кэш не попадают;
+- ссылка на модель, которой ещё нет в кэше, — `OperationException`.
+
+Вложенные модели наследник получает через функцию `resolve` (`DeserializerFactory._resolve`), как конвертеры
+получают `ConverterFactory.convert`: так сохраняется рекурсия и нет зависимости от класса фабрики.
+
+Клиент вызывает только `DeserializerFactory.deserialize(target_type, data)`. Фабрика выбирает класс десериализатора
+по точному целевому типу из `_deserializers` (как `ReportFactory._reports`), создаёт десериализатор в `create()` и
+передаёт ему `_resolve` и общий кэш. Кэш живёт одну загрузку: `deserialize` очищает его в `finally`.
+Поэтому фабрика хранит состояние и не годится для параллельных вызовов. Сопоставление пока пустое:
+десериализатор модели подключается строкой в `_deserializers`.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class AbstractDeserializer {
+        <<abstract>>
+        #_resolve: Callable
+        #_cache: dict~UUID, BaseEntity~
+        +deserialize(data) object
+        #_build(data)* object
+        #_read_id(data)$ UUID | None
+    }
+
+    class DeserializerFactory {
+        -_deserializers: dict~type, type~AbstractDeserializer~~$
+        -_cache: dict~UUID, BaseEntity~
+        +create(target_type) AbstractDeserializer
+        +deserialize(target_type, data) T
+        -_resolve(target_type, data) object
+    }
+
+    class BaseEntity {
+        <<abstract>>
+    }
+    class CommonValidator
+    class ArgumentsException
+    class OperationException
+
+    DeserializerFactory *-- AbstractDeserializer : _deserializers
+    DeserializerFactory ..> AbstractDeserializer : create, передаёт _resolve и _cache
+    AbstractDeserializer ..> DeserializerFactory : _resolve, функцией
+    DeserializerFactory o-- BaseEntity : _cache
+    DeserializerFactory ..> CommonValidator : target_type, результат
+    DeserializerFactory ..> ArgumentsException : нет десериализатора, неверный тип
+    AbstractDeserializer o-- BaseEntity : _cache
+    AbstractDeserializer ..> CommonValidator : resolve, cache, model
+    AbstractDeserializer ..> ArgumentsException : не словарь, некорректный id
+    AbstractDeserializer ..> OperationException : ссылка на неизвестный объект
+```

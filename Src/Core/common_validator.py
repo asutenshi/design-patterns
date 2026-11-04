@@ -1,4 +1,5 @@
 import math
+from typing import cast
 
 from Src.Core.exception import ArgumentsException
 
@@ -148,3 +149,24 @@ class CommonValidator:
             raise ArgumentsException(field, message)
 
         return value
+
+    @staticmethod
+    def validate_dict(value: object, field: str) -> dict[str, object]:
+        """Проверяет, что значение — словарь, все ключи которого строки (как у JSON-объекта).
+
+        Значения словаря не проверяются: их тип зависит от того, кто вызывает.
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Тот же словарь, суженный до ``dict[str, object]``.
+        :raises ArgumentsException: Если значение не словарь или какой-либо ключ не строка.
+        """
+        if not isinstance(value, dict):
+            raise ArgumentsException(field, f"Ожидается словарь: {type(value).__name__}")
+
+        mapping = cast(dict[object, object], value)
+        for key in mapping:
+            if not isinstance(key, str):
+                raise ArgumentsException(field, f"Ключ словаря должен быть строкой: {key!r}")
+
+        return cast(dict[str, object], value)
