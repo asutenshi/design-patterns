@@ -1,10 +1,12 @@
 import uuid
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import ClassVar
 
 from Src.Core.abstract_deserializer import AbstractDeserializer
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
-from Src.Core.exception import ArgumentsException
+from Src.Core.exception import ArgumentsException, OperationException
 from Src.Logics.ingredient_deserializer import IngredientDeserializer
 from Src.Logics.nomenclature_deserializer import NomenclatureDeserializer
 from Src.Logics.nomenclature_group_deserializer import NomenclatureGroupDeserializer
@@ -35,8 +37,11 @@ class DeserializerFactory:
       для вложенных моделей. Десериализаторы не зависят от класса фабрики, цикла импортов нет.
     - Все десериализаторы одной загрузки делят один кэш собранных моделей по идентификатору. Поэтому единица
       измерения, вложенная полным словарём в каждую номенклатуру, собирается один раз, а не копируется.
-    - Кэш живёт только на время ``deserialize``: следующая загрузка начинается с чистого. Из-за кэша фабрика
-      хранит состояние и не годится для параллельных вызовов.
+    - Кэш живёт только на время ``deserialize``: следующая загрузка начинается с чистого, и данные нового файла
+      не подменяются объектами прежнего. Из-за кэша фабрика хранит состояние и не годится для параллельных вызовов.
+    - Если данные состоят из нескольких частей (коллекции хранилища), а модели должны быть общими между ними,
+      части загружаются в одной сессии: ``with factory.session(): ...``. Внутри сессии кэш не сбрасывается между
+      вызовами ``deserialize`` и очищается при выходе из неё, в том числе после ошибки.
     """
 
     # Сопоставление типа модели и класса её десериализатора
@@ -51,10 +56,35 @@ class DeserializerFactory:
 
     # Собранные модели по идентификатору, общий для всех десериализаторов одной загрузки
     _cache: dict[uuid.UUID, BaseEntity]
+    # Открыта ли сессия: в ней кэш не сбрасывается после каждого deserialize
+    _in_session: bool
 
     def __init__(self) -> None:
         """Инициализирует фабрику с пустым кэшем."""
         self._cache = {}
+        self._in_session = False
+
+    @contextmanager
+    def session(self) -> Generator[None]:
+        """Открывает сессию загрузки: модели, собранные в ней, общие для всех вызовов ``deserialize``.
+
+        Применяется, когда одна модель встречается в разных частях данных. Например, единица измерения
+        есть и в коллекции единиц, и внутри каждой номенклатуры, и это должен быть один объект.
+        Без сессии каждый ``deserialize`` собирал бы свои копии.
+
+        При выходе из сессии кэш очищается, в том числе если внутри возникла ошибка.
+
+        :raises OperationException: Если сессия уже открыта: вложенная очистила бы кэш внешней раньше времени.
+        """
+        if self._in_session:
+            raise OperationException("Сессия десериализации уже открыта")
+
+        self._in_session = True
+        try:
+            yield
+        finally:
+            self._in_session = False
+            self._cache.clear()
 
     def create(self, target_type: type) -> AbstractDeserializer:
         """Создаёт десериализатор для указанного типа модели.
@@ -76,7 +106,8 @@ class DeserializerFactory:
         """Превращает данные из JSON в модель заданного типа, вложенные модели собирает рекурсивно.
 
         Это точка входа для клиента. Десериализаторы её не вызывают, для вложенных моделей у них
-        есть ``_resolve``: иначе кэш сбросился бы посреди загрузки.
+        есть ``_resolve``: иначе кэш сбросился бы посреди загрузки. Вне сессии кэш очищается после вызова,
+        в сессии (см. ``session``) — при выходе из неё.
 
         :param target_type: Тип модели, которую нужно собрать.
         :param data: Словарь полей модели, как его записал ``ConverterFactory``.
@@ -91,7 +122,8 @@ class DeserializerFactory:
                 model, target_type, "target_type", f"Десериализатор вернул не {target_type.__name__}"
             )
         finally:
-            self._cache.clear()
+            if not self._in_session:
+                self._cache.clear()
 
     def _resolve(self, target_type: type, data: object) -> object:
         """Собирает модель заданного типа, кэш не сбрасывает: вызывается рекурсивно из десериализаторов.

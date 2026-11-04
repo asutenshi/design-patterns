@@ -220,3 +220,71 @@ def test_create_real_factory_model_has_deserializer(target_type: type):
 
     # Проверка
     assert isinstance(deserializer, AbstractDeserializer)
+
+
+def test_session_deserialize_calls_share_objects():
+    """В одной сессии модель, встреченная в разных вызовах, — один объект, а не копии."""
+    # Подготовка
+    factory = FactoryStub()
+    shared = _item("Соль")
+
+    # Действие
+    with factory.session():
+        first = factory.deserialize(ItemStub, shared)
+        second = factory.deserialize(ItemStub, {"id": shared["id"]})
+
+    # Проверка
+    assert second is first
+
+
+def test_session_exit_clears_cache():
+    """Выход из сессии очищает кэш, следующая загрузка начинается с чистого."""
+    # Подготовка
+    factory = FactoryStub()
+    data = _item()
+
+    # Действие
+    with factory.session():
+        inside = factory.deserialize(ItemStub, data)
+    outside = factory.deserialize(ItemStub, data)
+
+    # Проверка
+    assert factory._cache == {}
+    assert outside is not inside
+
+
+def test_session_inside_cache_is_kept_between_calls():
+    """Внутри сессии кэш между вызовами не сбрасывается, это и отличает её от обычного deserialize."""
+    # Подготовка
+    factory = FactoryStub()
+
+    # Действие и проверка
+    with factory.session():
+        _ = factory.deserialize(ItemStub, _item())
+        assert len(factory._cache) == 1
+
+
+def test_session_error_inside_clears_cache_and_allows_new_session():
+    """Ошибка внутри сессии не оставляет в фабрике ни кэша, ни открытой сессии."""
+    # Подготовка
+    factory = FactoryStub()
+
+    # Действие
+    with pytest.raises(OperationException), factory.session():
+        _ = factory.deserialize(ItemStub, _item())
+        _ = factory.deserialize(ItemStub, {"id": str(uuid.uuid4())})
+
+    # Проверка
+    assert factory._cache == {}
+    with factory.session():
+        pass
+
+
+def test_session_nested_raises():
+    """Вложенная сессия — OperationException: она очистила бы кэш внешней раньше времени."""
+    # Подготовка
+    factory = FactoryStub()
+
+    # Действие и проверка
+    with factory.session(), pytest.raises(OperationException), factory.session():
+        pass
