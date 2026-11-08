@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Iterable
-from typing import ClassVar, cast
+from typing import ClassVar, Self, cast, override
 
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
@@ -96,6 +96,33 @@ class RecipeModel(NamedEntity):
         self._items = UniqueCollection(IngredientModel.nomenclature_key)
         for item in items:
             self.add_item(item)
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт карту по полям ``name``, ``result``, ``output_quantity``,
+        ``cooking_time_minutes``, ``steps`` и ``items``.
+
+        Основание составных ингредиентов берётся из данных как есть, а не пересобирается из карт
+        полуфабрикатов: в файле оно уже записано. Вычисляемые поля ``gross_weight`` и ``net_weight`` игнорируются.
+
+        :param data: Поля карты, результат и ингредиенты уже собраны.
+        :return: Новая технологическая карта.
+        :raises ArgumentsException: Если обязательного поля нет, состав не список
+            или значение не проходит проверку конструктора.
+        """
+        items = cast(
+            list[IngredientModel],
+            CommonValidator.validate_instance(CommonValidator.validate_field(data, "items"), list, "items", "Ожидается список"),
+        )
+        return cls(
+            name=cast(str, CommonValidator.validate_field(data, "name")),
+            result=cast(NomenclatureModel, CommonValidator.validate_field(data, "result")),
+            output_quantity=cast(float, CommonValidator.validate_field(data, "output_quantity")),
+            cooking_time_minutes=cast(float, CommonValidator.validate_field(data, "cooking_time_minutes")),
+            steps=cast(list[str], CommonValidator.validate_field(data, "steps")),
+            items=items,
+        )
 
     @property
     def result(self) -> NomenclatureModel:

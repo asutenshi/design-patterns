@@ -1,8 +1,10 @@
+from abc import ABC
+
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 
 
-class NamedEntity(BaseEntity):
+class NamedEntity(BaseEntity, ABC):
     """Абстрактный базовый класс для сущностей с обязательным наименованием."""
 
     # Наименование сущности

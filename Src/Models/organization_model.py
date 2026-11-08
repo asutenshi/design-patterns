@@ -1,3 +1,5 @@
+from typing import Self, cast, override
+
 from Src.Core.common_validator import CommonValidator
 from Src.Core.inn_validator import InnValidator
 from Src.Core.named_entity import NamedEntity
@@ -45,6 +47,28 @@ class OrganizationModel(NamedEntity):
         self.bic = bic
         self.account = account
         self.ownership_form = ownership_form
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт организацию по полям ``name``, ``inn``, ``bic``, ``account``, ``ownership_form``.
+
+        Форма собственности записана значением перечисления (``"ООО"``) и превращается в элемент OwnershipForm.
+
+        :param data: Поля организации.
+        :return: Новая организация.
+        :raises ArgumentsException: Если обязательного поля нет, форма собственности неизвестна перечислению
+            или значение не проходит проверку конструктора.
+        """
+        return cls(
+            name=cast(str, CommonValidator.validate_field(data, "name")),
+            inn=cast(str, CommonValidator.validate_field(data, "inn")),
+            bic=cast(str, CommonValidator.validate_field(data, "bic")),
+            account=cast(str, CommonValidator.validate_field(data, "account")),
+            ownership_form=CommonValidator.validate_enum(
+                CommonValidator.validate_field(data, "ownership_form"), OwnershipForm, "ownership_form"
+            ),
+        )
 
     @property
     def inn(self) -> str:

@@ -1,3 +1,5 @@
+from typing import Self, cast, override
+
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
@@ -55,6 +57,24 @@ class RangeModel(NamedEntity):
         self._base = base
         self._factor = factor
 
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт единицу измерения по полям ``name``, ``factor`` и ``base``.
+
+        Базовая единица ссылается сама на себя. В JSON это ссылка ``{"id": <свой id>}``, и десериализатор
+        передаёт её как ``None``: единица в этот момент ещё собирается. Конструктор и понимает ``None``
+        как «единица базовая». Вычисляемое поле ``is_base`` игнорируется.
+
+        :param data: Поля единицы, базовая единица уже собрана или None.
+        :return: Новая единица измерения.
+        :raises ArgumentsException: Если обязательного поля нет или значение не проходит проверку конструктора.
+        """
+        return cls(
+            name=cast(str, CommonValidator.validate_field(data, "name")),
+            factor=cast(float, CommonValidator.validate_field(data, "factor")),
+            base=cast(RangeModel | None, CommonValidator.validate_field(data, "base")),
+        )
 
     @property
     def base(self) -> "RangeModel":

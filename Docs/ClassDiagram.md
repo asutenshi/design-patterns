@@ -9,9 +9,28 @@ Mermaid отображается в GitHub и в IDE с поддержкой Mar
 Все модели лежат в `Src/Models/`, базовые классы — в `Src/Core/`.
 Стрелка с пустым треугольником — наследование, обычная стрелка — хранимая ссылка на другую модель.
 
+Корень всех моделей — `AbstractModel`: тип модели `model_type` (полное имя класса, его пишет в JSON
+`ConverterFactory`) и абстрактный фабричный метод `from_dict` для загрузки из JSON. От него наследуются
+`BaseEntity` (сущности с `id`) и `IngredientModel` (строка состава без `id`). В конструкторах моделей
+`from_dict` вызывает только сама модель, вложенные модели он получает уже собранными. Наследники
+регистрируются в реестре по `model_type` при импорте модуля, `resolve_type` находит по нему класс.
+`from_dict` есть у каждой модели, на диаграмме он не повторяется.
+
 ```mermaid
 classDiagram
     direction TB
+
+    class AbstractModel {
+        <<abstract>>
+        +TYPE_FIELD$: str
+        -_registry$: dict~str, type~
+        +model_type: str
+        +from_dict(data)* Self
+        +resolve_type(model_type)$ type~AbstractModel~
+        -_type_name(model_class)$ str
+    }
+
+    note for AbstractModel "from_dict — абстрактный метод класса (@classmethod). Реестр наследников заполняется в __init_subclass__. resolve_type отвергает неизвестный, абстрактный и нестроковый тип"
 
     class BaseEntity {
         <<abstract>>
@@ -147,6 +166,8 @@ classDiagram
         <<enumeration>>
     }
 
+    AbstractModel <|-- BaseEntity
+    AbstractModel <|-- IngredientModel
     BaseEntity <|-- NamedEntity
     BaseEntity <|-- SettingsModel
     NamedEntity <|-- RangeModel
@@ -484,8 +505,12 @@ classDiagram
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 Если в `load(file_name=...)` указан файл, коллекции читаются из него, а настройки не нужны и флаг первого запуска
 не учитывается. Файл — выгрузка хранилища через `ConverterFactory` (ключи `ranges`, `nomenclature_groups`,
-`nomenclatures`, `warehouses`, `recipes`). Все коллекции загружаются в одной сессии `DeserializerFactory`,
-поэтому единицы, группы и номенклатура становятся общими объектами, а не копиями, и `find_recipe()` их находит.
+`nomenclatures`, `warehouses`, `recipes`). Состав хранилища описан один раз, в `_collections()`: ключ коллекции
+и функция, которая проверяет тип модели и добавляет её в коллекцию. Загрузка идёт циклом по ключам файла
+в их порядке, лишние ключи (`is_loaded`) пропускаются, отсутствующая коллекция — ошибка. Какую модель собирать,
+говорит сам файл (`model_type`). Все коллекции загружаются в одной сессии `DeserializerFactory`, поэтому
+единицы, группы и номенклатура становятся общими объектами, а не копиями, и `find_recipe()` их находит.
+Порядок коллекций в файле на результат не влияет: модели записаны целиком, общие объекты сводит кэш по `id`.
 `StorageManager` читает файл сам, а не через `AbstractFileManager`: у того `load(file_name)` и жёсткая схема
 `_read` + `convert`, а хранилищу нужен ещё и параметр `settings_manager`, поэтому наследует `AbstractManager`.
 
@@ -522,8 +547,10 @@ classDiagram
         -_reset_collections() None
         -_fill_first_start_data() None
         -_load_from_file(file_name) None
+        -_collections() dict~str, Callable~
+        -_adder(model_type, collection)$ Callable
         -_read_file(path)$ dict
-        -_load_collection(factory, data, key, model_type, collection)$ None
+        -_load_collection(factory, key, items, add)$ None
         -_create_nomenclatures() list~NomenclatureModel~
     }
 
@@ -854,43 +881,38 @@ classDiagram
 
 ## Десериализация
 
-Обратная сторона конвертации: словарь из JSON превращается в модель. Абстракция лежит в `Src/Core/`.
-В отличие от конвертеров, десериализатор выбирается по **целевому типу** (что ждёт конструктор), а не по типу
-значения: у значения из JSON своего типа нет. У каждой модели свой наследник в `Src/Logics/`, он реализует только `_build`.
+Обратная сторона конвертации: данные из JSON превращаются обратно в модели. Абстракция лежит в `Src/Core/`,
+десериализаторы и фабрика — в `Src/Logics/`. Как и конвертер, десериализатор выбирается по **виду значения**:
+словарь — `ModelDeserializer`, список — `ListDeserializer`, строка, число, bool и None — `BasicDeserializer`.
+Ни один десериализатор не знает конкретных моделей: какую модель собирать, записано в данных (`model_type`),
+а создаёт модель её фабричный метод `AbstractModel.from_dict`. Новая модель подключается только своим `from_dict`.
 
-`AbstractDeserializer.deserialize` — шаблонный метод с общей частью:
+`ModelDeserializer.deserialize`:
 
-- модели хранятся в кэше по идентификатору, повторная встреча (полным словарём или ссылкой `{"id": ...}`)
-  возвращает тот же объект, а не копию;
-- идентификатор выставляется после конструктора, потому что конструкторы его не принимают;
-- данные без `id` (ингредиент рецепта) в кэш не попадают;
-- ссылка на модель, которой ещё нет в кэше, — `OperationException`.
+1. есть `id`, и модель уже в кэше — вернуть её: одному `id` соответствует один объект;
+2. в словаре только `id` (ссылка): модель с этим `id` сейчас собирается выше по вложенности — это цикл,
+   вернуть `None`; иначе — `OperationException` (ссылка на неизвестный объект). В домене цикл один:
+   базовая единица ссылается сама на себя, и `RangeModel` понимает `base=None` как «я базовая»;
+3. класс модели — по `model_type` из реестра `AbstractModel` (`resolve_type`), не импортом модуля по строке
+   из файла. Нет `model_type` или тип неизвестен — `ArgumentsException`;
+4. `id` попадает в множество собираемых, значения всех полей собираются рекурсивно через `_resolve`,
+   модель создаёт `from_dict`, затем ей выставляется `id`, и она кладётся в кэш. Модели без `id`
+   (ингредиент) в кэш не попадают.
 
-Вложенные модели наследник получает через функцию `resolve` (`DeserializerFactory._resolve`), как конвертеры
-получают `ConverterFactory.convert`: так сохраняется рекурсия и нет зависимости от класса фабрики.
+Десериализаторы получают функцию `_resolve` фабрики, как конвертеры получают `ConverterFactory.convert`:
+так сохраняется рекурсия и нет зависимости от класса фабрики. Кэш и множество собираемых принадлежат фабрике
+и передаются `ModelDeserializer` общими объектами.
 
-Клиент вызывает только `DeserializerFactory.deserialize(target_type, data)`. Фабрика выбирает класс десериализатора
-по точному целевому типу из `_deserializers` (как `ReportFactory._reports`), создаёт десериализатор в `create()` и
-передаёт ему `_resolve` и общий кэш. Кэш живёт одну загрузку: `deserialize` очищает его в `finally`.
-Поэтому фабрика хранит состояние и не годится для параллельных вызовов.
-
+Клиент вызывает `DeserializerFactory.deserialize(data)` или `deserialize_as(target_type, data)`: второй
+не выбирает модель, а только проверяет, что получен ожидаемый тип. Кэш живёт одну загрузку: `deserialize`
+очищает его в `finally`. Поэтому фабрика хранит состояние и не годится для параллельных вызовов.
 Когда данные состоят из нескольких частей (коллекции хранилища), а модели должны быть общими между ними,
 части загружаются в одной сессии: `with factory.session(): ...`. Внутри сессии `deserialize` кэш не очищает,
-очистка происходит при выходе из неё, в том числе после ошибки. Вложенная сессия — `OperationException`. Новая модель подключается строкой
-в `_deserializers`.
+очистка происходит при выходе из неё, в том числе после ошибки. Вложенная сессия — `OperationException`.
 
-Наследник достаёт поля через `CommonValidator.validate_field` (обязательное поле, иначе `ArgumentsException`) и
-помощниками базового класса `_nested` и `_nested_list` (вложенная модель или список через `resolve` с проверкой типа;
-им нужен `resolve`, поэтому они живут в базовом классе). Типы простых значений
-проверяют конструкторы моделей, правила модели не дублируются. Вычисляемые поля из файла (`is_base`,
-`gross_weight`, `net_weight`) игнорируются. Значение перечисления превращает `CommonValidator.validate_enum`.
-
-Особые случаи:
-
-- `RangeDeserializer`: базовая единица ссылается сама на себя (`"base": {"id": <свой id>}`), конструктор ждёт
-  `base=None`, поэтому такая ссылка не разворачивается, иначе рекурсия не закончилась бы;
-- `IngredientDeserializer`: основание — список таких же ингредиентов, десериализатор вызывает сам себя через `resolve`;
-- `RecipeDeserializer`: основание берётся из файла как есть, из карт полуфабрикатов оно не пересобирается.
+Модель в `from_dict` достаёт поля через `CommonValidator.validate_field` (обязательное поле, иначе
+`ArgumentsException`), значение перечисления превращает `CommonValidator.validate_enum`. Типы значений
+проверяют конструкторы моделей. Вычисляемые поля из файла (`is_base`, `gross_weight`, `net_weight`) игнорируются.
 
 ```mermaid
 classDiagram
@@ -898,32 +920,45 @@ classDiagram
 
     class AbstractDeserializer {
         <<abstract>>
-        #_resolve: Callable
-        #_cache: dict~UUID, BaseEntity~
-        +deserialize(data) object
-        #_build(data)* object
-        #_nested(target_type, data) T
-        #_nested_list(target_type, data, field) list~T~
-        #_read_id(data)$ UUID | None
+        +deserialize(data)* object
     }
 
-    class RangeDeserializer
-    class NomenclatureGroupDeserializer
-    class NomenclatureDeserializer
-    class WarehouseDeserializer
-    class IngredientDeserializer
-    class RecipeDeserializer
+    class ModelDeserializer {
+        -_resolve: Callable
+        -_cache: dict~UUID, BaseEntity~
+        -_in_progress: set~UUID~
+        +deserialize(data) object
+        -_build(model_class, fields, entity_id) AbstractModel
+        -_read_id(data)$ UUID | None
+    }
+
+    class ListDeserializer {
+        -_resolve: Callable
+        +deserialize(data) object
+    }
+
+    class BasicDeserializer {
+        +deserialize(data) object
+    }
 
     class DeserializerFactory {
-        -_deserializers: dict~type, type~AbstractDeserializer~~$
+        -_deserializers: dict~type, AbstractDeserializer~
         -_cache: dict~UUID, BaseEntity~
+        -_in_progress: set~UUID~
         -_in_session: bool
         +session() Generator
-        +create(target_type) AbstractDeserializer
-        +deserialize(target_type, data) T
-        -_resolve(target_type, data) object
+        +create(data) AbstractDeserializer
+        +deserialize(data) object
+        +deserialize_as(target_type, data) T
+        -_resolve(data) object
     }
 
+    class AbstractModel {
+        <<abstract>>
+        +model_type: str
+        +from_dict(data)* Self
+        +resolve_type(model_type)$ type~AbstractModel~
+    }
     class BaseEntity {
         <<abstract>>
     }
@@ -931,30 +966,21 @@ classDiagram
     class ArgumentsException
     class OperationException
 
-    AbstractDeserializer <|-- RangeDeserializer
-    AbstractDeserializer <|-- NomenclatureGroupDeserializer
-    AbstractDeserializer <|-- NomenclatureDeserializer
-    AbstractDeserializer <|-- WarehouseDeserializer
-    AbstractDeserializer <|-- IngredientDeserializer
-    AbstractDeserializer <|-- RecipeDeserializer
+    AbstractDeserializer <|-- ModelDeserializer
+    AbstractDeserializer <|-- ListDeserializer
+    AbstractDeserializer <|-- BasicDeserializer
 
-    RangeDeserializer ..> RangeModel : base, рекурсия
-    NomenclatureDeserializer ..> NomenclatureGroupModel : group
-    NomenclatureDeserializer ..> RangeModel : range
-    IngredientDeserializer ..> NomenclatureModel : nomenclature
-    IngredientDeserializer ..> IngredientModel : base, рекурсия
-    RecipeDeserializer ..> NomenclatureModel : result
-    RecipeDeserializer ..> IngredientModel : items
     DeserializerFactory *-- AbstractDeserializer : _deserializers
-    DeserializerFactory ..> AbstractDeserializer : create, передаёт _resolve и _cache
-    AbstractDeserializer ..> DeserializerFactory : _resolve, функцией
+    ModelDeserializer ..> DeserializerFactory : _resolve, функцией
+    ListDeserializer ..> DeserializerFactory : _resolve, функцией
+    ModelDeserializer ..> AbstractModel : resolve_type, from_dict
+    ModelDeserializer o-- BaseEntity : _cache
     DeserializerFactory o-- BaseEntity : _cache
-    DeserializerFactory ..> CommonValidator : target_type, результат
-    DeserializerFactory ..> ArgumentsException : нет десериализатора, неверный тип
+    ModelDeserializer ..> CommonValidator : словарь, model_type, id у сущности
+    ListDeserializer ..> CommonValidator : список
+    DeserializerFactory ..> CommonValidator : deserialize_as
+    ModelDeserializer ..> ArgumentsException : нет model_type, некорректный id
+    ModelDeserializer ..> OperationException : ссылка на неизвестный объект
+    DeserializerFactory ..> ArgumentsException : значение не из JSON, неверный тип
     DeserializerFactory ..> OperationException : вложенная сессия
-    AbstractDeserializer o-- BaseEntity : _cache
-    AbstractDeserializer ..> CommonValidator : resolve, cache, model, список
-    NomenclatureDeserializer ..> CommonValidator : validate_enum, validate_field
-    AbstractDeserializer ..> ArgumentsException : не словарь, некорректный id
-    AbstractDeserializer ..> OperationException : ссылка на неизвестный объект
 ```

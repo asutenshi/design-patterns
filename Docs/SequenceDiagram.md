@@ -123,7 +123,7 @@ sequenceDiagram
             St->>M: фабрики складов: ресторана и производственного цеха
             St->>C: add() для 2 складов
             St->>M: фабрики карт RecipeModel.create_*(словарь наименование → номенклатура)
-            Note over St,M: порядок: бульон, отварная говядина, зажарка, затем борщ; борщ включает их снимки (as_ingredient)
+            Note over St,M: порядок: бульон, отварная говядина, зажарка, затем борщ, который включает их снимки (as_ingredient)
             loop для каждой карты
                 St->>C: add() карты, ключ — id результата
             end
@@ -144,33 +144,49 @@ sequenceDiagram
 
 ### Загрузка из файла: StorageManager.load(file_name=...)
 
-Файл — выгрузка хранилища, сделанная через `ConverterFactory`. Все пять коллекций загружаются в одной сессии
-`DeserializerFactory`: кэш моделей по идентификатору живёт до конца загрузки, поэтому единица измерения,
-которая в файле записана и в `ranges`, и внутри каждой номенклатуры, становится одним объектом.
+Файл — выгрузка хранилища, сделанная через `ConverterFactory`. Состав хранилища описан один раз
+(`StorageManager._collections()`), а коллекции загружаются в том порядке, в каком записаны в файле.
+Все они загружаются в одной сессии `DeserializerFactory`: кэш моделей по идентификатору живёт до конца загрузки,
+поэтому единица измерения, которая в файле записана и в `ranges`, и внутри каждой номенклатуры, становится
+одним объектом, и порядок коллекций на результат не влияет. Какую модель собирать, говорит `model_type` в данных,
+а создаёт её фабричный метод модели `from_dict`.
 
 ```mermaid
 sequenceDiagram
     participant K as Клиент
     participant St as StorageManager
     participant F as DeserializerFactory
-    participant D as Десериализаторы
+    participant D as ModelDeserializer
+    participant M as Класс модели
     participant C as UniqueCollection
 
     K->>St: load(file_name=путь)
     St->>St: is_loaded = False, _reset_collections()
     St->>St: _read_file(путь): JSON-объект
+    St->>St: _collections(): ключ → функция добавления, проверка, что все ключи есть в файле
     St->>F: session() открывает сессию, кэш общий
-    loop ranges, nomenclature_groups, nomenclatures, warehouses, recipes
+    loop ключи файла в их порядке (лишние, например is_loaded, пропускаются)
         loop для каждого элемента коллекции
-            St->>F: deserialize(тип модели, данные)
-            F->>D: create(тип) и deserialize(данные)
-            Note over D: вложенные модели собираются рекурсивно через resolve; повторная встреча берётся из кэша
-            D-->>St: модель
-            St->>C: add(модель)
+            St->>F: deserialize(данные)
+            F->>D: create(словарь) и deserialize(данные)
+            alt id уже в кэше
+                D-->>F: модель из кэша
+            else ссылка {"id"} на собираемую модель
+                D-->>F: None (цикл: базовая единица)
+            else полный словарь
+                D->>M: AbstractModel.resolve_type(model_type)
+                Note over D,F: значения полей собираются рекурсивно через _resolve фабрики
+                D->>M: from_dict(собранные поля)
+                M-->>D: модель
+                D->>D: выставить id, положить в кэш
+                D-->>F: модель
+            end
+            F-->>St: модель
+            St->>C: add(модель) после проверки типа коллекции
         end
     end
     St->>F: выход из сессии очищает кэш
-    alt файл недоступен, нет коллекции, модель некорректна, дубликат или неизвестная ссылка
+    alt файл недоступен, нет коллекции, модель некорректна или другого типа, дубликат или неизвестная ссылка
         St->>St: _reset_collections()
         St-->>K: OperationException, is_loaded остаётся False
     else всё загружено

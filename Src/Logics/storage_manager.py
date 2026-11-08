@@ -1,6 +1,6 @@
 import json
 import uuid
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import ClassVar, Self, cast, override
 
@@ -30,7 +30,9 @@ class StorageManager(AbstractManager):
     Источник данных ``load()`` выбирает так:
 
     - указан файл (``file_name``) — коллекции читаются из JSON-файла в формате выгрузки через
-      ``ConverterFactory``; настройки при этом не нужны и не читаются;
+      ``ConverterFactory``; настройки при этом не нужны и не читаются. Какие коллекции есть в хранилище,
+      описано один раз, в ``_collections()``, а порядок их загрузки задаёт файл: модели в нём записаны
+      целиком, поэтому порядок на результат не влияет;
     - файла нет, и в настройках стоит флаг ``is_first_start`` — коллекции наполняются начальными данными;
     - иначе коллекции остаются пустыми: чтение из БД появится вместе с SQLite.
 
@@ -124,13 +126,48 @@ class StorageManager(AbstractManager):
                 raise OperationException(f"Не удалось сформировать начальные данные: {ex}") from ex
         self._is_loaded = True
 
+    def _collections(self) -> dict[str, Callable[[object], None]]:
+        """Возвращает состав хранилища: ключ коллекции в файле и функцию, которая добавляет в неё модель.
+
+        Ключи совпадают с именами свойств, под которыми ``ConverterFactory`` выгружает коллекции.
+        Функция проверяет тип модели: тип выбирает файл (``model_type``), и в коллекцию единиц
+        не должна попасть, например, группа. Новая коллекция подключается строкой здесь.
+
+        :return: Функции добавления по ключам коллекций.
+        """
+        return {
+            "ranges": self._adder(RangeModel, self._ranges),
+            "nomenclature_groups": self._adder(NomenclatureGroupModel, self._nomenclature_groups),
+            "nomenclatures": self._adder(NomenclatureModel, self._nomenclatures),
+            "warehouses": self._adder(WarehouseModel, self._warehouses),
+            "recipes": self._adder(RecipeModel, self._recipes),
+        }
+
+    @staticmethod
+    def _adder[T](model_type: type[T], collection: UniqueCollection[T]) -> Callable[[object], None]:
+        """Возвращает функцию, которая проверяет тип модели и добавляет её в коллекцию.
+
+        :param model_type: Тип моделей коллекции.
+        :param collection: Коллекция хранилища.
+        :return: Функция добавления. Она бросает ArgumentsException, если модель другого типа
+            или повторяется в коллекции.
+        """
+
+        def add(model: object) -> None:
+            collection.add(
+                CommonValidator.validate_instance(model, model_type, "model", f"Ожидается {model_type.__name__}")
+            )
+
+        return add
+
     def _load_from_file(self, file_name: str) -> None:
         """Наполняет коллекции из JSON-файла с выгрузкой хранилища.
 
-        Все коллекции загружаются в одной сессии десериализации: единица измерения, группа и номенклатура,
-        которые в файле встречаются много раз (в коллекции и внутри других моделей), становятся одним
-        объектом. Это важно для ``find_recipe``, который сравнивает номенклатуры по тождеству.
-        Лишние ключи файла (``is_loaded``) игнорируются.
+        Коллекции загружаются в том порядке, в каком они записаны в файле, и в одной сессии десериализации.
+        Модель, которая встречается в файле много раз (в своей коллекции и внутри других моделей), собирается
+        при первой встрече и дальше берётся из кэша. Поэтому порядок коллекций не важен, а единица измерения,
+        группа и номенклатура становятся одним объектом. Это важно для ``find_recipe``, который сравнивает
+        номенклатуры по тождеству. Лишние ключи файла (``is_loaded``) игнорируются.
 
         :param file_name: Путь к файлу.
         :raises OperationException: Если файл недоступен, не является выгрузкой хранилища, в нём нет
@@ -139,15 +176,17 @@ class StorageManager(AbstractManager):
         path = Path(file_name)
         try:
             data = self._read_file(path)
+            collections = self._collections()
+            missing = [key for key in collections if key not in data]
+            if missing:
+                raise OperationException(f"В файле хранилища нет коллекций: {', '.join(missing)}")
+
             factory = DeserializerFactory()
             with factory.session():
-                self._load_collection(factory, data, "ranges", RangeModel, self._ranges)
-                self._load_collection(
-                    factory, data, "nomenclature_groups", NomenclatureGroupModel, self._nomenclature_groups
-                )
-                self._load_collection(factory, data, "nomenclatures", NomenclatureModel, self._nomenclatures)
-                self._load_collection(factory, data, "warehouses", WarehouseModel, self._warehouses)
-                self._load_collection(factory, data, "recipes", RecipeModel, self._recipes)
+                for key, items in data.items():
+                    add = collections.get(key)
+                    if add is not None:
+                        self._load_collection(factory, key, items, add)
         except ArgumentsException as ex:
             self._reset_collections()
             raise OperationException(f"Не удалось загрузить хранилище из файла {path}: {ex}") from ex
@@ -175,28 +214,21 @@ class StorageManager(AbstractManager):
         return cast(dict[str, object], data)
 
     @staticmethod
-    def _load_collection[T](
-        factory: DeserializerFactory,
-        data: dict[str, object],
-        key: str,
-        model_type: type[T],
-        collection: UniqueCollection[T],
+    def _load_collection(
+        factory: DeserializerFactory, key: str, items: object, add: Callable[[object], None]
     ) -> None:
         """Десериализует одну коллекцию из данных файла и добавляет модели в коллекцию хранилища.
 
         :param factory: Фабрика десериализаторов с открытой сессией.
-        :param data: Корневой JSON-объект файла.
-        :param key: Ключ коллекции в файле.
-        :param model_type: Тип моделей коллекции.
-        :param collection: Коллекция хранилища, в которую добавляются модели.
-        :raises OperationException: Если в файле нет коллекции или в данных ссылка на неизвестную модель.
-        :raises ArgumentsException: Если коллекция не список, модель некорректна или повторяется.
+        :param key: Ключ коллекции в файле, для текста ошибки.
+        :param items: Данные коллекции из файла.
+        :param add: Функция, добавляющая модель в коллекцию хранилища (см. ``_collections``).
+        :raises OperationException: Если в данных ссылка на неизвестную модель.
+        :raises ArgumentsException: Если коллекция не список, модель некорректна, другого типа или повторяется.
         """
-        if key not in data:
-            raise OperationException(f"В файле хранилища нет коллекции {key}")
-        items = cast(list[object], CommonValidator.validate_instance(data[key], list, key, "Ожидается список"))
-        for item in items:
-            collection.add(factory.deserialize(model_type, item))
+        models = cast(list[object], CommonValidator.validate_instance(items, list, key, "Ожидается список"))
+        for item in models:
+            add(factory.deserialize(item))
 
     def _fill_first_start_data(self) -> None:
         """Наполняет коллекции начальными данными.

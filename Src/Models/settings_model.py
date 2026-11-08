@@ -1,3 +1,5 @@
+from typing import Self, cast, override
+
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.response_format import ResponseFormat
@@ -41,6 +43,30 @@ class SettingsModel(BaseEntity):
         self.account_name = account_name
         self.is_first_start = is_first_start
         self.response_format = response_format
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт настройки по полям ``organization``, ``boss_name``, ``account_name``,
+        ``is_first_start`` и ``response_format``.
+
+        Флаг первого запуска и формат отчётов необязательны, как и параметры конструктора: по умолчанию
+        первый запуск и TXT. Формат записан значением перечисления (``"txt"``).
+
+        :param data: Поля настроек, карточка организации уже собрана.
+        :return: Новые настройки.
+        :raises ArgumentsException: Если обязательного поля нет, формат неизвестен перечислению
+            или значение не проходит проверку конструктора.
+        """
+        return cls(
+            organization=cast(OrganizationModel, CommonValidator.validate_field(data, "organization")),
+            boss_name=cast(str, CommonValidator.validate_field(data, "boss_name")),
+            account_name=cast(str, CommonValidator.validate_field(data, "account_name")),
+            is_first_start=cast(bool, data.get("is_first_start", True)),
+            response_format=CommonValidator.validate_enum(
+                data.get("response_format", ResponseFormat.TXT), ResponseFormat, "response_format"
+            ),
+        )
 
     @property
     def organization(self) -> OrganizationModel:

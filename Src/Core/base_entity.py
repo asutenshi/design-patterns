@@ -2,15 +2,17 @@ import uuid
 from abc import ABC
 from typing import override
 
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.exception import ArgumentsException
 
 
-class BaseEntity(ABC):
+class BaseEntity(AbstractModel, ABC):
     """Абстрактный базовый класс для идентифицируемых сущностей.
 
     Хранит только идентификатор и определяет равенство и хэш по нему.
     Сущности без наименования (остатки, записи журнала, документы) наследуются отсюда,
-    сущности с наименованием — от NamedEntity.
+    сущности с наименованием — от NamedEntity. Тип модели и фабричный метод ``from_dict``
+    приходят из AbstractModel.
     """
 
     # Уникальный идентификатор сущности
@@ -52,4 +54,3 @@ class BaseEntity(ABC):
 
 # В будущем я бы добавл repr для удобной отладки
 # Также стоило бы реализовать восстановление сущности по ее известному id, но это уже когда появится БД
-# Сейчас ABC не делает клсс абстрактным тк abstractmethod нигде не применен

@@ -1,3 +1,6 @@
+from typing import Self, cast, override
+
+from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
 
 
@@ -17,6 +20,17 @@ class WarehouseModel(NamedEntity):
         :raises ArgumentsException: Если наименование не строка, пустое или состоит из пробелов.
         """
         super().__init__(name)
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт склад по полю ``name``.
+
+        :param data: Поля склада.
+        :return: Новый склад.
+        :raises ArgumentsException: Если наименования нет или оно некорректно.
+        """
+        return cls(cast(str, CommonValidator.validate_field(data, "name")))
 
     @staticmethod
     def create_restaurant_warehouse() -> "WarehouseModel":

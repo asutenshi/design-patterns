@@ -1,3 +1,6 @@
+from typing import Self, cast, override
+
+from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
 
 
@@ -16,6 +19,17 @@ class NomenclatureGroupModel(NamedEntity):
         :raises ArgumentsException: Если наименование не строка, пустое или состоит из пробелов.
         """
         super().__init__(name)
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт группу номенклатуры по полю ``name``.
+
+        :param data: Поля группы.
+        :return: Новая группа номенклатуры.
+        :raises ArgumentsException: Если наименования нет или оно некорректно.
+        """
+        return cls(cast(str, CommonValidator.validate_field(data, "name")))
 
     @staticmethod
     def create_meat() -> "NomenclatureGroupModel":
