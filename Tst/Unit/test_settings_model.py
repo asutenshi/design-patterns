@@ -97,3 +97,74 @@ def test_response_format_setter_not_response_format_raises(value: object):
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         settings.response_format = value  # pyright: ignore[reportAttributeAccessIssue]
+
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def _settings_data(**changes: object) -> dict[str, object]:
+    """Данные настроек для from_dict: карточка организации уже собрана, поля можно заменить."""
+    data: dict[str, object] = {
+        "organization": _organization(),
+        "boss_name": "Иванов И. И.",
+        "account_name": "Петрова А. А.",
+        "is_first_start": False,
+        "response_format": "csv",
+    }
+    data.update(changes)
+    return data
+
+
+def test_from_dict_valid_data_fields_set():
+    """Настройки создаются из словаря, формат отчётов превращается в элемент перечисления."""
+    # Подготовка
+    data = _settings_data()
+
+    # Действие
+    settings = SettingsModel.from_dict(data)
+
+    # Проверка
+    assert settings.organization is data["organization"]
+    assert settings.boss_name == "Иванов И. И."
+    assert settings.account_name == "Петрова А. А."
+    assert settings.is_first_start is False
+    assert settings.response_format is ResponseFormat.CSV
+
+
+def test_from_dict_optional_fields_missing_defaults_applied():
+    """Без флага первого запуска и формата отчётов действуют значения конструктора: первый запуск и TXT."""
+    # Подготовка
+    data = _settings_data()
+    del data["is_first_start"]
+    del data["response_format"]
+
+    # Действие
+    settings = SettingsModel.from_dict(data)
+
+    # Проверка
+    assert settings.is_first_start is True
+    assert settings.response_format is ResponseFormat.TXT
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["organization", "boss_name", "account_name"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие любого обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data = _settings_data()
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        SettingsModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_unknown_response_format_raises():
+    """Формат отчётов, которого нет в перечислении, — ArgumentsException с именем поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        SettingsModel.from_dict(_settings_data(response_format="pdf"))
+    assert "response_format" in str(exc_info.value)

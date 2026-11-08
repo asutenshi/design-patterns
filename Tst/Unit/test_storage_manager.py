@@ -2,11 +2,13 @@ import json
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.nomenclature_type import NomenclatureType
+from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
@@ -620,9 +622,14 @@ def _write_storage_file(tmp_path: Path, **changes: object) -> str:
     return str(path)
 
 
+# Типы моделей, как их записывает ConverterFactory
+_GROUP_TYPE = "Src.Models.nomenclature_group_model.NomenclatureGroupModel"
+_RANGE_TYPE = "Src.Models.range_model.RangeModel"
+
+
 def _group(name: str = "Овощи") -> dict[str, object]:
     """Данные группы номенклатуры."""
-    return {"id": str(uuid.uuid4()), "name": name}
+    return {"model_type": _GROUP_TYPE, "id": str(uuid.uuid4()), "name": name}
 
 
 def test_load_file_settings_not_loaded_does_not_require_settings(tmp_path: Path):
@@ -723,7 +730,7 @@ def test_load_file_collection_not_a_list_raises(tmp_path: Path):
 def test_load_file_invalid_model_raises_and_clears_collections(first_start_storage: StorageManager, tmp_path: Path):
     """Некорректная модель в файле — OperationException; ни прежних, ни частично загруженных данных не остаётся."""
     # Подготовка
-    file_name = _write_storage_file(tmp_path, nomenclature_groups=[_group("Овощи"), {"id": str(uuid.uuid4()), "name": ""}])
+    file_name = _write_storage_file(tmp_path, nomenclature_groups=[_group("Овощи"), _group("")])
 
     # Действие и проверка
     with pytest.raises(OperationException):
@@ -747,8 +754,60 @@ def test_load_file_unknown_reference_raises(tmp_path: Path):
     """Ссылка на модель, которой нет в файле, — OperationException."""
     # Подготовка
     unknown = {"id": str(uuid.uuid4())}
-    kilogram = {"id": str(uuid.uuid4()), "name": "килограмм", "base": unknown, "factor": 1000}
+    kilogram = {"model_type": _RANGE_TYPE, "id": str(uuid.uuid4()), "name": "килограмм", "base": unknown, "factor": 1000}
 
     # Действие и проверка
     with pytest.raises(OperationException):
         StorageManager().load(file_name=_write_storage_file(tmp_path, ranges=[kilogram]))
+
+
+def test_load_file_collections_in_other_order_loads_same_models(first_start_storage: StorageManager, tmp_path: Path):
+    """Порядок коллекций в файле не важен: рецепты раньше единиц загружаются так же, общие модели — один объект."""
+    # Подготовка
+    data = cast(dict[str, object], ConverterFactory().convert(first_start_storage))
+    reordered = {key: data[key] for key in reversed(_COLLECTION_KEYS)}
+    path = tmp_path / "storage.json"
+    path.write_text(json.dumps(reordered, ensure_ascii=False), encoding="utf-8")
+    storage = StorageManager()
+
+    # Действие
+    storage.load(file_name=str(path))
+
+    # Проверка
+    assert [unit.name for unit in storage.ranges] == EXPECTED_RANGES
+    assert [recipe.name for recipe in storage.recipes] == [recipe.name for recipe in first_start_storage.recipes]
+    stored_ranges = {unit.id: unit for unit in storage.ranges}
+    assert all(item.range is stored_ranges[item.range.id] for item in storage.nomenclatures)
+
+
+def test_load_file_model_of_other_type_in_collection_raises(tmp_path: Path):
+    """Тип модели выбирает файл, поэтому коллекция проверяет его: группа в коллекции единиц — OperationException."""
+    # Подготовка
+    file_name = _write_storage_file(tmp_path, ranges=[_group()])
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=file_name)
+
+
+def test_load_file_model_without_type_raises(tmp_path: Path):
+    """Модель без model_type не загружается: без него неизвестно, какую модель собирать."""
+    # Подготовка
+    group = _group()
+    del group["model_type"]
+
+    # Действие и проверка
+    with pytest.raises(OperationException) as exc_info:
+        StorageManager().load(file_name=_write_storage_file(tmp_path, nomenclature_groups=[group]))
+    assert "model_type" in str(exc_info.value)
+
+
+def test_load_file_unknown_model_type_raises(tmp_path: Path):
+    """Тип модели, которого нет среди моделей, — OperationException: модуль по строке из файла не импортируется."""
+    # Подготовка
+    group = _group()
+    group["model_type"] = "os.system"
+
+    # Действие и проверка
+    with pytest.raises(OperationException):
+        StorageManager().load(file_name=_write_storage_file(tmp_path, nomenclature_groups=[group]))

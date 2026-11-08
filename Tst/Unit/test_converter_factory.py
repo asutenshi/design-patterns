@@ -78,12 +78,19 @@ def _convert_fields(source: object) -> dict[str, object]:
 
 def _group_dict(group: NomenclatureGroupModel) -> dict[str, object]:
     """Возвращает ожидаемый словарь группы."""
-    return {"id": str(group.id), "name": group.name}
+    return {"model_type": group.model_type, "id": str(group.id), "name": group.name}
 
 
 def _base_range_dict(unit: RangeModel) -> dict[str, object]:
     """Возвращает ожидаемый словарь базовой единицы: её base замыкает цикл и записывается ссылкой."""
-    return {"id": str(unit.id), "name": unit.name, "base": {"id": str(unit.id)}, "factor": 1, "is_base": True}
+    return {
+        "model_type": unit.model_type,
+        "id": str(unit.id),
+        "name": unit.name,
+        "base": {"id": str(unit.id)},
+        "factor": 1,
+        "is_base": True,
+    }
 
 
 def _raw_material(name: str, group: NomenclatureGroupModel, unit: RangeModel) -> NomenclatureModel:
@@ -222,7 +229,7 @@ def test_convert_group_returns_dict_of_fields():
     result = ConverterFactory().convert(group)
 
     # Проверка
-    assert result == {"id": str(group.id), "name": "Мясные продукты"}
+    assert result == {"model_type": group.model_type, "id": str(group.id), "name": "Мясные продукты"}
 
 
 def test_convert_base_range_returns_reference_instead_of_self():
@@ -247,6 +254,7 @@ def test_convert_derived_range_returns_nested_base():
 
     # Проверка
     assert result == {
+        "model_type": kilogram.model_type,
         "id": str(kilogram.id),
         "name": "килограмм",
         "base": _base_range_dict(kilogram.base),
@@ -267,7 +275,7 @@ def test_convert_nomenclature_returns_nested_references_in_field_order():
     result = _convert_fields(flour)
 
     # Проверка
-    assert list(result) == ["id", "name", "full_name", "group", "range", "type", "grams_per_base_unit"]
+    assert list(result) == ["model_type", "id", "name", "full_name", "group", "range", "type", "grams_per_base_unit"]
     assert result["group"] == _group_dict(group)
     assert result["range"] == ConverterFactory().convert(kilogram)
     assert result["type"] == "сырьё"
@@ -292,6 +300,7 @@ def test_convert_recipe_returns_lists_of_steps_and_ingredients():
     assert result["steps"] == ["Замесить", "Испечь"]
     assert result["items"] == [
         {
+            "model_type": "Src.Models.ingredient_model.IngredientModel",
             "nomenclature": ConverterFactory().convert(flour),
             "quantity": 400,
             "loss_ratio": 0.25,

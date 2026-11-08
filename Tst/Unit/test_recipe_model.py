@@ -958,3 +958,79 @@ def test_create_recipe_missing_nomenclature_raises(factory, missing):
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         factory(catalog)
+
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def _recipe_data(**changes: object) -> dict[str, object]:
+    """Данные карты для from_dict: результат и ингредиенты уже собраны, поля можно заменить."""
+    data: dict[str, object] = {
+        "name": "Зажарка свекольная",
+        "result": make_result(),
+        "output_quantity": 700,
+        "cooking_time_minutes": 30,
+        "steps": ["Нарезать овощи", "Обжарить"],
+        "items": [make_ingredient("Свёкла", 500), make_ingredient("Лук", 200)],
+        "gross_weight": 1,
+        "net_weight": 1,
+    }
+    data.update(changes)
+    return data
+
+
+def test_from_dict_valid_data_fields_set():
+    """Карта создаётся из словаря: результат и состав берутся как есть, вычисляемые веса считаются заново."""
+    # Подготовка
+    data = _recipe_data()
+
+    # Действие
+    recipe = RecipeModel.from_dict(data)
+
+    # Проверка
+    assert recipe.name == "Зажарка свекольная"
+    assert recipe.result is data["result"]
+    assert recipe.output_quantity == 700
+    assert recipe.cooking_time_minutes == 30
+    assert recipe.steps == ["Нарезать овощи", "Обжарить"]
+    assert [item.nomenclature.name for item in recipe.items] == ["Свёкла", "Лук"]
+    assert recipe.gross_weight == 700
+
+
+def test_from_dict_empty_items_creates_empty_recipe():
+    """Карта без состава допустима, как и в конструкторе."""
+    # Действие
+    recipe = RecipeModel.from_dict(_recipe_data(items=[]))
+
+    # Проверка
+    assert recipe.items == []
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["name", "result", "output_quantity", "cooking_time_minutes", "steps", "items"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие любого обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data = _recipe_data()
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        RecipeModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_result_not_cookable_raises():
+    """Правила конструктора действуют и в from_dict: результатом карты не может быть сырьё."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        RecipeModel.from_dict(_recipe_data(result=make_result(NomenclatureType.RAW_MATERIAL)))
+
+
+def test_from_dict_items_not_a_list_raises():
+    """Состав не список — ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        RecipeModel.from_dict(_recipe_data(items="Свёкла"))

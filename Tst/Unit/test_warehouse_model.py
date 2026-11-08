@@ -1,4 +1,5 @@
 import pytest
+from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
 from Src.Models.warehouse_model import WarehouseModel
 
@@ -63,3 +64,40 @@ def test_create_warehouse_returns_warehouse_with_expected_name(factory, expected
     assert isinstance(first, WarehouseModel)
     assert first.name == expected_name
     assert first is not second
+
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def test_from_dict_valid_name_fields_set():
+    """Склад создаётся из словаря по наименованию, служебные поля model_type и id не читаются."""
+    # Подготовка
+    data: dict[str, object] = {
+        "model_type": "Src.Models.warehouse_model.WarehouseModel",
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "Склад ресторана",
+    }
+
+    # Действие
+    model = WarehouseModel.from_dict(data)
+
+    # Проверка
+    assert model.name == "Склад ресторана"
+    assert str(model.id) != data["id"]
+
+
+def test_from_dict_missing_name_raises():
+    """Без наименования модель не создаётся: ArgumentsException с именем поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        WarehouseModel.from_dict({"title": "Склад ресторана"})
+    assert "name" in str(exc_info.value)
+
+
+def test_from_dict_empty_name_raises():
+    """Правила конструктора действуют и в from_dict: пустое наименование недопустимо."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        WarehouseModel.from_dict({"name": "  "})

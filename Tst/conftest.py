@@ -4,8 +4,6 @@ from pathlib import Path
 
 import pytest
 from Src.Core.abstract_manager import AbstractManager
-from Src.Logics.converter_factory import ConverterFactory
-from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 
@@ -67,18 +65,3 @@ def first_start_storage(load_settings: Callable[..., None]) -> StorageManager:
     storage = StorageManager()
     storage.load()
     return storage
-
-
-@pytest.fixture
-def roundtrip() -> Callable[..., object]:
-    """Возвращает функцию «туда и обратно»: модель -> ``ConverterFactory`` -> текст JSON -> ``DeserializerFactory``.
-
-    Текст JSON нужен, чтобы данные прошли тот же путь, что и в файле: кортежи становятся списками и т. п.
-    Вызов: ``roundtrip(model, ТипМодели)``.
-    """
-
-    def run(model: object, target_type: type) -> object:
-        data = json.loads(json.dumps(ConverterFactory().convert(model), ensure_ascii=False))
-        return DeserializerFactory().deserialize(target_type, data)
-
-    return run

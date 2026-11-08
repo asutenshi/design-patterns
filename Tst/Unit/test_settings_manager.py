@@ -57,6 +57,20 @@ def test_load_valid_file_converts_organization(tmp_path: Path, settings_data: di
     assert organization.ownership_form == OwnershipForm.LLC
 
 
+def test_load_file_without_model_type_loads(tmp_path: Path, settings_data: dict[str, Any]):
+    """Тип модели (model_type) — служебное поле выгрузки: в файле настроек его нет, и он не обязателен."""
+    # Подготовка
+    manager = SettingsManager()
+    assert "model_type" not in settings_data
+    assert "model_type" not in settings_data["organization"]
+
+    # Действие
+    manager.load(_write_json(tmp_path, settings_data))
+
+    # Проверка
+    assert manager.is_loaded
+
+
 def test_load_valid_file_converts_responsible_persons(tmp_path: Path, settings_data: dict[str, Any]):
     """Директор и главный бухгалтер берутся из данных файла."""
     # Подготовка

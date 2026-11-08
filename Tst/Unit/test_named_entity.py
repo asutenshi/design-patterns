@@ -1,3 +1,5 @@
+from typing import Self, cast, override
+
 import pytest
 from Src.Core.base_entity import BaseEntity
 from Src.Core.exception import ArgumentsException
@@ -6,6 +8,12 @@ from Src.Core.named_entity import NamedEntity
 
 class NamedEntityStub(NamedEntity):
     """Минимальная конкретная сущность для проверки поведения NamedEntity."""
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Создаёт сущность по наименованию."""
+        return cls(cast(str, data["name"]))
 
 
 def test_name_getter_valid_name_returned():

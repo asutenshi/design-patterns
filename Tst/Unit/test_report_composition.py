@@ -49,6 +49,21 @@ def test_build_range_every_format_contains_all_fields_and_values(
 
 # Подготовка
 @pytest.mark.parametrize("response_format", list(ResponseFormat), ids=lambda item: item.value)
+def test_build_recipe_every_format_omits_model_type(first_start_storage: StorageManager, response_format: ResponseFormat):
+    """Тип модели — служебное поле для загрузки из JSON: его нет в отчёте ни у карты, ни у её ингредиентов."""
+    # Подготовка
+    borscht = _find_recipe(first_start_storage, "Борщ с говядиной")
+
+    # Действие
+    text = _report(response_format).build(borscht).text
+
+    # Проверка
+    assert "model_type" not in text
+    assert "Src.Models" not in text
+
+
+# Подготовка
+@pytest.mark.parametrize("response_format", list(ResponseFormat), ids=lambda item: item.value)
 def test_build_nomenclature_every_format_contains_references_and_type(
     first_start_storage: StorageManager, response_format: ResponseFormat
 ):
