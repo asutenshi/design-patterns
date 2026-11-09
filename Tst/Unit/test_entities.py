@@ -1,4 +1,5 @@
 import uuid
+from typing import Self, override
 
 import pytest
 from Src.Core.base_entity import BaseEntity
@@ -8,9 +9,21 @@ from Src.Core.exception import ArgumentsException
 class EntityStub(BaseEntity):
     """Минимальная конкретная сущность для проверки поведения BaseEntity."""
 
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Создаёт сущность: полей, кроме id, у неё нет."""
+        return cls()
+
 
 class OtherEntityStub(BaseEntity):
     """Вторая конкретная сущность другого типа для проверки сравнения по типу."""
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Создаёт сущность: полей, кроме id, у неё нет."""
+        return cls()
 
 
 def test_id_getter_new_entity_not_none():

@@ -557,3 +557,71 @@ def test_contains_nomenclature_deep_in_base_returns_true():
     # Действие и проверка
     assert soup.contains(bones) is True
     assert soup.contains(bouillon.nomenclature) is True
+
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def test_from_dict_raw_ingredient_defaults_applied():
+    """Сырьё без доли потерь и основания создаётся с потерями 0 и пустым основанием, как в конструкторе."""
+    # Подготовка
+    nomenclature = make_nomenclature()
+
+    # Действие
+    ingredient = IngredientModel.from_dict({"nomenclature": nomenclature, "quantity": 200})
+
+    # Проверка
+    assert ingredient.nomenclature is nomenclature
+    assert ingredient.quantity == 200
+    assert ingredient.loss_ratio == 0
+    assert ingredient.base == ()
+
+
+def test_from_dict_composite_ingredient_base_kept():
+    """Основание приходит списком уже собранных ингредиентов, вес составного узла — вес основания."""
+    # Подготовка
+    inner = IngredientModel(make_nomenclature(), 10, 0.2)
+    semi = make_nomenclature(type=NomenclatureType.SEMI_FINISHED)
+
+    # Действие
+    ingredient = IngredientModel.from_dict({"nomenclature": semi, "quantity": 100, "loss_ratio": 0.05, "base": [inner]})
+
+    # Проверка
+    assert ingredient.loss_ratio == 0.05
+    assert [item.quantity for item in ingredient.base] == [10]
+    assert ingredient.gross_weight == 10
+
+
+def test_from_dict_computed_weights_ignored():
+    """Вычисляемые поля gross_weight и net_weight не читаются: веса считаются заново."""
+    # Действие
+    ingredient = IngredientModel.from_dict(
+        {"nomenclature": make_nomenclature(), "quantity": 200, "gross_weight": 1, "net_weight": 1}
+    )
+
+    # Проверка
+    assert ingredient.gross_weight == 200
+    assert ingredient.net_weight == 200
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["nomenclature", "quantity"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data: dict[str, object] = {"nomenclature": make_nomenclature(), "quantity": 200}
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        IngredientModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_base_not_a_list_raises():
+    """Основание не список — ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        IngredientModel.from_dict({"nomenclature": make_nomenclature(), "quantity": 200, "base": {"quantity": 1}})

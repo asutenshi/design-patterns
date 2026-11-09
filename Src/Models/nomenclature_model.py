@@ -1,4 +1,4 @@
-from typing import override
+from typing import Self, cast, override
 
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
@@ -80,6 +80,28 @@ class NomenclatureModel(NamedEntity):
         self.range = range
         self.type = type
         self.grams_per_base_unit = grams_per_base_unit
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт номенклатуру по полям ``name``, ``full_name``, ``group``, ``range``, ``type``
+        и ``grams_per_base_unit``.
+
+        Тип записан в JSON значением перечисления (``"сырьё"``) и превращается в элемент NomenclatureType.
+
+        :param data: Поля номенклатуры, группа и единица измерения уже собраны.
+        :return: Новая номенклатура.
+        :raises ArgumentsException: Если обязательного поля нет, тип неизвестен перечислению
+            или значение не проходит проверку конструктора.
+        """
+        return cls(
+            name=cast(str, CommonValidator.validate_field(data, "name")),
+            full_name=cast(str, CommonValidator.validate_field(data, "full_name")),
+            group=cast(NomenclatureGroupModel, CommonValidator.validate_field(data, "group")),
+            range=cast(RangeModel, CommonValidator.validate_field(data, "range")),
+            type=CommonValidator.validate_enum(CommonValidator.validate_field(data, "type"), NomenclatureType, "type"),
+            grams_per_base_unit=cast(float, CommonValidator.validate_field(data, "grams_per_base_unit")),
+        )
 
     @property
     @override

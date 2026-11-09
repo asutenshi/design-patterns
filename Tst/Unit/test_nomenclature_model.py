@@ -278,3 +278,68 @@ def test_create_typed_factory_invalid_grams_per_base_unit_raises(factory):
     # Действие и проверка
     with pytest.raises(ArgumentsException):
         factory("Лук", "Лук репчатый", group, gram, 0)
+
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def _nomenclature_data(**changes: object) -> dict[str, object]:
+    """Данные номенклатуры для from_dict: группа и единица уже собраны, тип записан значением перечисления."""
+    data: dict[str, object] = {
+        "name": "Говядина",
+        "full_name": "Говядина охлаждённая",
+        "group": NomenclatureGroupModel("Мясные продукты"),
+        "range": RangeModel.create_kilogram(),
+        "type": "сырьё",
+        "grams_per_base_unit": 1,
+    }
+    data.update(changes)
+    return data
+
+
+def test_from_dict_valid_data_fields_set():
+    """Номенклатура создаётся из словаря: группа и единица берутся как есть, тип — элементом перечисления."""
+    # Подготовка
+    data = _nomenclature_data()
+
+    # Действие
+    beef = NomenclatureModel.from_dict(data)
+
+    # Проверка
+    assert beef.name == "Говядина"
+    assert beef.full_name == "Говядина охлаждённая"
+    assert beef.group is data["group"]
+    assert beef.range is data["range"]
+    assert beef.type is NomenclatureType.RAW_MATERIAL
+    assert beef.grams_per_base_unit == 1
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["name", "full_name", "group", "range", "type", "grams_per_base_unit"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие любого обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data = _nomenclature_data()
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        NomenclatureModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_unknown_type_raises():
+    """Тип, которого нет в перечислении, — ArgumentsException с именем поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        NomenclatureModel.from_dict(_nomenclature_data(type="еда"))
+    assert "type" in str(exc_info.value)
+
+
+def test_from_dict_non_positive_weight_raises():
+    """Правила конструктора действуют и в from_dict: вес базовой единицы должен быть больше нуля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        NomenclatureModel.from_dict(_nomenclature_data(grams_per_base_unit=0))

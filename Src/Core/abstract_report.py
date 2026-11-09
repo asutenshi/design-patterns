@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import ClassVar, TypeGuard
 
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.common import Common
 from Src.Core.named_entity import NamedEntity
 from Src.Dtos.report_result import ReportResult
@@ -17,7 +18,8 @@ class AbstractReport(ABC):
     (``media_type``) и расширением (``file_extension``). Общие для всех форматов правила обхода сущности заданы здесь, чтобы форматы выводили
     одни и те же данные:
 
-    - поля объекта — его публичные свойства (``Common.get_fields``), в порядке объявления;
+    - поля объекта — его публичные свойства (``Common.get_fields``), в порядке объявления. Тип модели
+      (``model_type``) не выводится: это служебное поле для загрузки из JSON, читателю отчёта оно не нужно;
     - вложенная сущность с наименованием выводится ссылкой (наименование и код), а не целиком:
       она живёт в хранилище сама по себе, а раскрытие ссылок зацикливается
       (у базовой единицы ``RangeModel.base`` — она сама);
@@ -72,9 +74,10 @@ class AbstractReport(ABC):
         """Возвращает пары «имя поля — значение» для публичных свойств объекта.
 
         :param source: Раскрываемый объект.
-        :return: Поля в порядке объявления, сначала поля базовых классов.
+        :return: Поля в порядке объявления, сначала поля базовых классов, без типа модели.
         """
-        return [(field, getattr(source, field)) for field in Common.get_fields(source)]
+        fields = Common.get_fields(source, exclude=(AbstractModel.TYPE_FIELD,))
+        return [(field, getattr(source, field)) for field in fields]
 
     @staticmethod
     def _is_scalar(value: object) -> bool:

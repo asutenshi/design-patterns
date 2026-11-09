@@ -2,22 +2,25 @@
   "is_loaded": true,
   "ranges": [
     {
-      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+      "model_type": "Src.Models.range_model.RangeModel",
+      "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
       "name": "грамм",
       "base": {
-        "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+        "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
       },
       "factor": 1,
       "is_base": true
     },
     {
-      "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+      "model_type": "Src.Models.range_model.RangeModel",
+      "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
       "name": "килограмм",
       "base": {
-        "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
         "name": "грамм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
         },
         "factor": 1,
         "is_base": true
@@ -26,22 +29,25 @@
       "is_base": false
     },
     {
-      "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+      "model_type": "Src.Models.range_model.RangeModel",
+      "id": "0df4c668-6de7-46e8-933e-38ba55485347",
       "name": "миллилитр",
       "base": {
-        "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+        "id": "0df4c668-6de7-46e8-933e-38ba55485347"
       },
       "factor": 1,
       "is_base": true
     },
     {
-      "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+      "model_type": "Src.Models.range_model.RangeModel",
+      "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
       "name": "литр",
       "base": {
-        "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "0df4c668-6de7-46e8-933e-38ba55485347",
         "name": "миллилитр",
         "base": {
-          "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+          "id": "0df4c668-6de7-46e8-933e-38ba55485347"
         },
         "factor": 1,
         "is_base": true
@@ -50,10 +56,11 @@
       "is_base": false
     },
     {
-      "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+      "model_type": "Src.Models.range_model.RangeModel",
+      "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
       "name": "штука",
       "base": {
-        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+        "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
       },
       "factor": 1,
       "is_base": true
@@ -61,51 +68,62 @@
   ],
   "nomenclature_groups": [
     {
-      "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
       "name": "Мясные продукты"
     },
     {
-      "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "20ceaa12-9c80-4620-aba8-d170e6ad51b3",
       "name": "Молочные продукты"
     },
     {
-      "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
       "name": "Овощи"
     },
     {
-      "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
       "name": "Бакалея"
     },
     {
-      "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
       "name": "Полуфабрикаты"
     },
     {
-      "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "32da3827-8300-4c9d-8c3e-186f9c8f2e2b",
       "name": "Блюда"
     },
     {
-      "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+      "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+      "id": "0d0d1b31-c321-4e63-90a4-f21eb63457a9",
       "name": "Упаковка"
     }
   ],
   "nomenclatures": [
     {
-      "id": "8bfbeadd-ed91-4f76-ba29-d7b6df5f204b",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "430e9c3d-6cc6-4dfb-87da-e30dbc3b604f",
       "name": "Говядина",
       "full_name": "Говядина охлаждённая",
       "group": {
-        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
         "name": "Мясные продукты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -117,21 +135,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "cefc3d36-a109-4399-b3a6-34d2fe2f79f9",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "4d5b09c0-ea30-4336-82c8-29d8fe2e0b1a",
       "name": "Молоко",
       "full_name": "Молоко пастеризованное 3,2%",
       "group": {
-        "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "20ceaa12-9c80-4620-aba8-d170e6ad51b3",
         "name": "Молочные продукты"
       },
       "range": {
-        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
         "name": "литр",
         "base": {
-          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "0df4c668-6de7-46e8-933e-38ba55485347",
           "name": "миллилитр",
           "base": {
-            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+            "id": "0df4c668-6de7-46e8-933e-38ba55485347"
           },
           "factor": 1,
           "is_base": true
@@ -143,18 +165,21 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "a40dcf60-e521-48d5-a465-48b1c4b3ade5",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "8b39a2cc-bce5-4347-adf9-8450bfe67e50",
       "name": "Стакан",
       "full_name": "Стакан бумажный 300 мл",
       "group": {
-        "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "0d0d1b31-c321-4e63-90a4-f21eb63457a9",
         "name": "Упаковка"
       },
       "range": {
-        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
         "name": "штука",
         "base": {
-          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+          "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
         },
         "factor": 1,
         "is_base": true
@@ -163,21 +188,25 @@
       "grams_per_base_unit": 10
     },
     {
-      "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "4743ed97-1e8d-4233-bb92-2b1634dc28ed",
       "name": "Кости говяжьи мозговые",
       "full_name": "Кости говяжьи мозговые охлаждённые",
       "group": {
-        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
         "name": "Мясные продукты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -189,21 +218,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "3c76cd5d-dbbb-4cf4-80c3-4c58f02d8efb",
       "name": "Говядина (мякоть)",
       "full_name": "Говядина (мякоть) охлаждённая",
       "group": {
-        "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
         "name": "Мясные продукты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -215,21 +248,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "b1ea5347-1259-421d-b657-2cafc5193939",
       "name": "Лук репчатый",
       "full_name": "Лук репчатый свежий",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -241,21 +278,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "d617ac55-3d2f-4b3a-bcbc-2e00245b88a8",
       "name": "Морковь",
       "full_name": "Морковь столовая свежая",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -267,21 +308,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "3435f440-d551-42f0-8bb4-2e1a7af8b35c",
       "name": "Свёкла",
       "full_name": "Свёкла столовая свежая",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -293,21 +338,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "dcd158b1-cfce-4570-8c95-a62f01666fcf",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "32894d90-e5a3-4c1d-9801-c73f2e6e115e",
       "name": "Картофель",
       "full_name": "Картофель свежий",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -319,21 +368,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "ace5f34c-042a-469e-9a39-9630573d34a4",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "6f196684-cbe4-443b-bd2f-6db729ea68e7",
       "name": "Капуста белокочанная",
       "full_name": "Капуста белокочанная свежая",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -345,21 +398,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "9b9ec5ba-d9b4-436c-a55e-0e3e3e45c2b1",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "bf897d8b-95ec-43ac-9008-c1bff016da42",
       "name": "Укроп",
       "full_name": "Укроп свежий",
       "group": {
-        "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
         "name": "Овощи"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -371,18 +428,21 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "a8bcd4ab-5da2-42a1-bc74-d524d33d9c79",
       "name": "Лавровый лист",
       "full_name": "Лавровый лист сушёный",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
         "name": "штука",
         "base": {
-          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+          "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
         },
         "factor": 1,
         "is_base": true
@@ -391,21 +451,25 @@
       "grams_per_base_unit": 0.5
     },
     {
-      "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "35e6b523-fae1-45b9-a5f3-04d4efb59720",
       "name": "Перец чёрный горошком",
       "full_name": "Перец чёрный горошком",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -417,21 +481,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
       "name": "Соль",
       "full_name": "Соль пищевая поваренная",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -443,21 +511,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "f2a77b77-7ace-4ba1-83f4-8f451ec049e1",
       "name": "Томатная паста",
       "full_name": "Томатная паста",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -469,21 +541,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "50293678-14a2-4a54-835e-e6c898fcaa49",
       "name": "Масло подсолнечное",
       "full_name": "Масло подсолнечное рафинированное",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
         "name": "литр",
         "base": {
-          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "0df4c668-6de7-46e8-933e-38ba55485347",
           "name": "миллилитр",
           "base": {
-            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+            "id": "0df4c668-6de7-46e8-933e-38ba55485347"
           },
           "factor": 1,
           "is_base": true
@@ -495,21 +571,25 @@
       "grams_per_base_unit": 0.92
     },
     {
-      "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "7e7e11c4-70ed-4af0-9552-1ccf75e5f94e",
       "name": "Уксус 9%",
       "full_name": "Уксус столовый 9%",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
         "name": "литр",
         "base": {
-          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "0df4c668-6de7-46e8-933e-38ba55485347",
           "name": "миллилитр",
           "base": {
-            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+            "id": "0df4c668-6de7-46e8-933e-38ba55485347"
           },
           "factor": 1,
           "is_base": true
@@ -521,21 +601,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "0e652a38-127d-4f0c-b94f-36e9a2dd0d8e",
       "name": "Сахар",
       "full_name": "Сахар-песок",
       "group": {
-        "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
         "name": "Бакалея"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -547,21 +631,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "2dd729ce-6dbf-4950-9d55-2e5d57fd57a3",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "66ae568d-2274-495e-922d-ff8b334ba7b2",
       "name": "Сметана 20%",
       "full_name": "Сметана 20% жирности",
       "group": {
-        "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "20ceaa12-9c80-4620-aba8-d170e6ad51b3",
         "name": "Молочные продукты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -573,18 +661,21 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "6547ad70-637b-4b03-a668-e85b101350ad",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "bef8c5ef-7d79-4ba2-9f19-0885053a6778",
       "name": "Контейнер для супа 500 мл",
       "full_name": "Контейнер для супа 500 мл (только для доставки, п. 3.3 ТЗ)",
       "group": {
-        "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "0d0d1b31-c321-4e63-90a4-f21eb63457a9",
         "name": "Упаковка"
       },
       "range": {
-        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
         "name": "штука",
         "base": {
-          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+          "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
         },
         "factor": 1,
         "is_base": true
@@ -593,21 +684,25 @@
       "grams_per_base_unit": 20
     },
     {
-      "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "97a2ce9e-0f1c-45e4-bece-4f23d597b627",
       "name": "Бульон костный говяжий",
       "full_name": "Бульон костный говяжий (полуфабрикат)",
       "group": {
-        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
         "name": "Полуфабрикаты"
       },
       "range": {
-        "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
         "name": "литр",
         "base": {
-          "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "0df4c668-6de7-46e8-933e-38ba55485347",
           "name": "миллилитр",
           "base": {
-            "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+            "id": "0df4c668-6de7-46e8-933e-38ba55485347"
           },
           "factor": 1,
           "is_base": true
@@ -619,21 +714,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "3aefb5a7-d28f-4663-b9a6-4843e29984a6",
       "name": "Говядина отварная",
       "full_name": "Говядина отварная нарезанная (полуфабрикат)",
       "group": {
-        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
         "name": "Полуфабрикаты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -645,21 +744,25 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "2b1cb8df-8c3d-4ee4-815e-e4f11a5b9c1b",
       "name": "Зажарка свекольная",
       "full_name": "Зажарка свекольная (полуфабрикат)",
       "group": {
-        "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
         "name": "Полуфабрикаты"
       },
       "range": {
-        "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
         "name": "килограмм",
         "base": {
-          "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
           "name": "грамм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
           },
           "factor": 1,
           "is_base": true
@@ -671,18 +774,21 @@
       "grams_per_base_unit": 1
     },
     {
-      "id": "71219ce8-ced9-4d5a-9721-d5c5993343e4",
+      "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+      "id": "eb4062e2-03ad-4268-8bb6-fa6a2b9abbe7",
       "name": "Борщ с говядиной",
       "full_name": "Борщ с говядиной, порция 500 г",
       "group": {
-        "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+        "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+        "id": "32da3827-8300-4c9d-8c3e-186f9c8f2e2b",
         "name": "Блюда"
       },
       "range": {
-        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
         "name": "штука",
         "base": {
-          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+          "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
         },
         "factor": 1,
         "is_base": true
@@ -693,34 +799,41 @@
   ],
   "warehouses": [
     {
-      "id": "938a6bcf-825b-4a7a-a9ef-8d030f91a773",
+      "model_type": "Src.Models.warehouse_model.WarehouseModel",
+      "id": "f6ba7691-c296-4111-a1cd-678ff904eaed",
       "name": "Склад ресторана"
     },
     {
-      "id": "ba711f30-0117-462b-adfb-8356d2e5f1c5",
+      "model_type": "Src.Models.warehouse_model.WarehouseModel",
+      "id": "8042ed09-445b-493a-aedb-dec475b4876c",
       "name": "Склад производственного цеха"
     }
   ],
   "recipes": [
     {
-      "id": "df7e4e73-29d4-4cde-9025-82cb6ef7613c",
+      "model_type": "Src.Models.recipe_model.RecipeModel",
+      "id": "af145983-c629-462c-89bc-3eb8620a5ced",
       "name": "Бульон костный говяжий",
       "result": {
-        "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+        "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+        "id": "97a2ce9e-0f1c-45e4-bece-4f23d597b627",
         "name": "Бульон костный говяжий",
         "full_name": "Бульон костный говяжий (полуфабрикат)",
         "group": {
-          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+          "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
           "name": "Полуфабрикаты"
         },
         "range": {
-          "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
           "name": "литр",
           "base": {
-            "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+            "model_type": "Src.Models.range_model.RangeModel",
+            "id": "0df4c668-6de7-46e8-933e-38ba55485347",
             "name": "миллилитр",
             "base": {
-              "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+              "id": "0df4c668-6de7-46e8-933e-38ba55485347"
             },
             "factor": 1,
             "is_base": true
@@ -743,22 +856,27 @@
       ],
       "items": [
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "4743ed97-1e8d-4233-bb92-2b1634dc28ed",
             "name": "Кости говяжьи мозговые",
             "full_name": "Кости говяжьи мозговые охлаждённые",
             "group": {
-              "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
               "name": "Мясные продукты"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -776,22 +894,27 @@
           "net_weight": 149.99999999999997
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "b1ea5347-1259-421d-b657-2cafc5193939",
             "name": "Лук репчатый",
             "full_name": "Лук репчатый свежий",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -809,22 +932,27 @@
           "net_weight": 9.999999999999998
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "d617ac55-3d2f-4b3a-bcbc-2e00245b88a8",
             "name": "Морковь",
             "full_name": "Морковь столовая свежая",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -842,19 +970,23 @@
           "net_weight": 7.999999999999998
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "a8bcd4ab-5da2-42a1-bc74-d524d33d9c79",
             "name": "Лавровый лист",
             "full_name": "Лавровый лист сушёный",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
               "name": "штука",
               "base": {
-                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
               },
               "factor": 1,
               "is_base": true
@@ -869,22 +1001,27 @@
           "net_weight": 0.04999999999999999
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "35e6b523-fae1-45b9-a5f3-04d4efb59720",
             "name": "Перец чёрный горошком",
             "full_name": "Перец чёрный горошком",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -902,22 +1039,27 @@
           "net_weight": 0.29999999999999993
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
             "name": "Соль",
             "full_name": "Соль пищевая поваренная",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -939,24 +1081,29 @@
       "net_weight": 180.34999999999997
     },
     {
-      "id": "db547fa2-46d6-40d6-bfdb-e01d46ed05c2",
+      "model_type": "Src.Models.recipe_model.RecipeModel",
+      "id": "1297df34-2c67-4292-8e9a-b7ef0a837946",
       "name": "Говядина отварная",
       "result": {
-        "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+        "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+        "id": "3aefb5a7-d28f-4663-b9a6-4843e29984a6",
         "name": "Говядина отварная",
         "full_name": "Говядина отварная нарезанная (полуфабрикат)",
         "group": {
-          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+          "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
           "name": "Полуфабрикаты"
         },
         "range": {
-          "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
           "name": "килограмм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+            "model_type": "Src.Models.range_model.RangeModel",
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
             "name": "грамм",
             "base": {
-              "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+              "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
             },
             "factor": 1,
             "is_base": true
@@ -977,22 +1124,27 @@
       ],
       "items": [
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "3c76cd5d-dbbb-4cf4-80c3-4c58f02d8efb",
             "name": "Говядина (мякоть)",
             "full_name": "Говядина (мякоть) охлаждённая",
             "group": {
-              "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
               "name": "Мясные продукты"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1010,19 +1162,23 @@
           "net_weight": 496.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "a8bcd4ab-5da2-42a1-bc74-d524d33d9c79",
             "name": "Лавровый лист",
             "full_name": "Лавровый лист сушёный",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
               "name": "штука",
               "base": {
-                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
               },
               "factor": 1,
               "is_base": true
@@ -1037,22 +1193,27 @@
           "net_weight": 0.04999999999999999
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
             "name": "Соль",
             "full_name": "Соль пищевая поваренная",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1074,24 +1235,29 @@
       "net_weight": 500.05
     },
     {
-      "id": "b15c1f40-2f41-4a84-93d1-096d244ad0b7",
+      "model_type": "Src.Models.recipe_model.RecipeModel",
+      "id": "76ee3fbe-184a-457f-aa5b-b8f7bcd3544b",
       "name": "Зажарка свекольная",
       "result": {
-        "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+        "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+        "id": "2b1cb8df-8c3d-4ee4-815e-e4f11a5b9c1b",
         "name": "Зажарка свекольная",
         "full_name": "Зажарка свекольная (полуфабрикат)",
         "group": {
-          "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+          "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+          "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
           "name": "Полуфабрикаты"
         },
         "range": {
-          "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
           "name": "килограмм",
           "base": {
-            "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+            "model_type": "Src.Models.range_model.RangeModel",
+            "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
             "name": "грамм",
             "base": {
-              "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+              "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
             },
             "factor": 1,
             "is_base": true
@@ -1113,22 +1279,27 @@
       ],
       "items": [
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "3435f440-d551-42f0-8bb4-2e1a7af8b35c",
             "name": "Свёкла",
             "full_name": "Свёкла столовая свежая",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1146,22 +1317,27 @@
           "net_weight": 380.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "d617ac55-3d2f-4b3a-bcbc-2e00245b88a8",
             "name": "Морковь",
             "full_name": "Морковь столовая свежая",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1179,22 +1355,27 @@
           "net_weight": 114.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "b1ea5347-1259-421d-b657-2cafc5193939",
             "name": "Лук репчатый",
             "full_name": "Лук репчатый свежий",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1212,22 +1393,27 @@
           "net_weight": 108.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "f2a77b77-7ace-4ba1-83f4-8f451ec049e1",
             "name": "Томатная паста",
             "full_name": "Томатная паста",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1245,22 +1431,27 @@
           "net_weight": 45.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "50293678-14a2-4a54-835e-e6c898fcaa49",
             "name": "Масло подсолнечное",
             "full_name": "Масло подсолнечное рафинированное",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
               "name": "литр",
               "base": {
-                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "0df4c668-6de7-46e8-933e-38ba55485347",
                 "name": "миллилитр",
                 "base": {
-                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                  "id": "0df4c668-6de7-46e8-933e-38ba55485347"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1278,22 +1469,27 @@
           "net_weight": 33.120000000000005
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "7e7e11c4-70ed-4af0-9552-1ccf75e5f94e",
             "name": "Уксус 9%",
             "full_name": "Уксус столовый 9%",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
               "name": "литр",
               "base": {
-                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "0df4c668-6de7-46e8-933e-38ba55485347",
                 "name": "миллилитр",
                 "base": {
-                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                  "id": "0df4c668-6de7-46e8-933e-38ba55485347"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1311,22 +1507,27 @@
           "net_weight": 5.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "0e652a38-127d-4f0c-b94f-36e9a2dd0d8e",
             "name": "Сахар",
             "full_name": "Сахар-песок",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1344,22 +1545,27 @@
           "net_weight": 10
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
             "name": "Соль",
             "full_name": "Соль пищевая поваренная",
             "group": {
-              "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
               "name": "Бакалея"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1381,21 +1587,25 @@
       "net_weight": 700.12
     },
     {
-      "id": "8c041f0c-b883-4d10-b4bb-b6f08c0800b8",
+      "model_type": "Src.Models.recipe_model.RecipeModel",
+      "id": "8058570e-2d74-47aa-94aa-e934f2e1018d",
       "name": "Борщ с говядиной",
       "result": {
-        "id": "71219ce8-ced9-4d5a-9721-d5c5993343e4",
+        "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+        "id": "eb4062e2-03ad-4268-8bb6-fa6a2b9abbe7",
         "name": "Борщ с говядиной",
         "full_name": "Борщ с говядиной, порция 500 г",
         "group": {
-          "id": "c394ef96-1f1a-4293-89cd-9df26e0fe80c",
+          "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+          "id": "32da3827-8300-4c9d-8c3e-186f9c8f2e2b",
           "name": "Блюда"
         },
         "range": {
-          "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+          "model_type": "Src.Models.range_model.RangeModel",
+          "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
           "name": "штука",
           "base": {
-            "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+            "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
           },
           "factor": 1,
           "is_base": true
@@ -1413,22 +1623,27 @@
       ],
       "items": [
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "1bdb5fa0-334c-4602-bc2c-d00a0b556e62",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "97a2ce9e-0f1c-45e4-bece-4f23d597b627",
             "name": "Бульон костный говяжий",
             "full_name": "Бульон костный говяжий (полуфабрикат)",
             "group": {
-              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
               "name": "Полуфабрикаты"
             },
             "range": {
-              "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
               "name": "литр",
               "base": {
-                "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "0df4c668-6de7-46e8-933e-38ba55485347",
                 "name": "миллилитр",
                 "base": {
-                  "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                  "id": "0df4c668-6de7-46e8-933e-38ba55485347"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1443,22 +1658,27 @@
           "loss_ratio": 0.1,
           "base": [
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "bdccaca4-8388-47e3-96b2-dd82b68d99d9",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "4743ed97-1e8d-4233-bb92-2b1634dc28ed",
                 "name": "Кости говяжьи мозговые",
                 "full_name": "Кости говяжьи мозговые охлаждённые",
                 "group": {
-                  "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
                   "name": "Мясные продукты"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1476,22 +1696,27 @@
               "net_weight": 18.749999999999996
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "b1ea5347-1259-421d-b657-2cafc5193939",
                 "name": "Лук репчатый",
                 "full_name": "Лук репчатый свежий",
                 "group": {
-                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
                   "name": "Овощи"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1509,22 +1734,27 @@
               "net_weight": 1.2499999999999998
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "d617ac55-3d2f-4b3a-bcbc-2e00245b88a8",
                 "name": "Морковь",
                 "full_name": "Морковь столовая свежая",
                 "group": {
-                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
                   "name": "Овощи"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1542,19 +1772,23 @@
               "net_weight": 0.9999999999999998
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "a8bcd4ab-5da2-42a1-bc74-d524d33d9c79",
                 "name": "Лавровый лист",
                 "full_name": "Лавровый лист сушёный",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
                   "name": "штука",
                   "base": {
-                    "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                    "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
                   },
                   "factor": 1,
                   "is_base": true
@@ -1569,22 +1803,27 @@
               "net_weight": 0.006249999999999999
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "d5f29547-6748-4f85-b196-d52454fe79ec",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "35e6b523-fae1-45b9-a5f3-04d4efb59720",
                 "name": "Перец чёрный горошком",
                 "full_name": "Перец чёрный горошком",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1602,22 +1841,27 @@
               "net_weight": 0.03749999999999999
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
                 "name": "Соль",
                 "full_name": "Соль пищевая поваренная",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1639,22 +1883,27 @@
           "net_weight": 20.289374999999996
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "3c2f62aa-ee85-41cf-b4c5-cd492827218f",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "3aefb5a7-d28f-4663-b9a6-4843e29984a6",
             "name": "Говядина отварная",
             "full_name": "Говядина отварная нарезанная (полуфабрикат)",
             "group": {
-              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
               "name": "Полуфабрикаты"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1669,22 +1918,27 @@
           "loss_ratio": 0.05,
           "base": [
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "9f87ad1e-04f6-45ca-afd0-d58e5b6b3684",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "3c76cd5d-dbbb-4cf4-80c3-4c58f02d8efb",
                 "name": "Говядина (мякоть)",
                 "full_name": "Говядина (мякоть) охлаждённая",
                 "group": {
-                  "id": "386d3a66-45fa-405f-9e73-567efe49b707",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "a22d5238-0fc1-4c82-8e18-a72df461bbd7",
                   "name": "Мясные продукты"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1702,19 +1956,23 @@
               "net_weight": 59.519999999999996
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "62717b94-fbf3-4880-97a3-6b891c78d4a7",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "a8bcd4ab-5da2-42a1-bc74-d524d33d9c79",
                 "name": "Лавровый лист",
                 "full_name": "Лавровый лист сушёный",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
                   "name": "штука",
                   "base": {
-                    "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                    "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
                   },
                   "factor": 1,
                   "is_base": true
@@ -1729,22 +1987,27 @@
               "net_weight": 0.005999999999999998
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
                 "name": "Соль",
                 "full_name": "Соль пищевая поваренная",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1766,22 +2029,27 @@
           "net_weight": 57.00569999999999
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "1ea97dab-2bbb-4a0a-aea1-42e20a773a02",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "2b1cb8df-8c3d-4ee4-815e-e4f11a5b9c1b",
             "name": "Зажарка свекольная",
             "full_name": "Зажарка свекольная (полуфабрикат)",
             "group": {
-              "id": "39537c29-15d1-4358-8d14-a6f0222b29ab",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "86b98977-b0ee-4b5a-932d-3b4d7b503195",
               "name": "Полуфабрикаты"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -1796,22 +2064,27 @@
           "loss_ratio": 0.05,
           "base": [
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "60aa5cd3-8e6f-4bad-8292-8d4e4db4268e",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "3435f440-d551-42f0-8bb4-2e1a7af8b35c",
                 "name": "Свёкла",
                 "full_name": "Свёкла столовая свежая",
                 "group": {
-                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
                   "name": "Овощи"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1829,22 +2102,27 @@
               "net_weight": 38.0
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "afb44283-cfef-4573-b123-a478fcaf12e2",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "d617ac55-3d2f-4b3a-bcbc-2e00245b88a8",
                 "name": "Морковь",
                 "full_name": "Морковь столовая свежая",
                 "group": {
-                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
                   "name": "Овощи"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1862,22 +2140,27 @@
               "net_weight": 11.399999999999999
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "357d228e-4da6-4b47-a24d-b3607beaf3e5",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "b1ea5347-1259-421d-b657-2cafc5193939",
                 "name": "Лук репчатый",
                 "full_name": "Лук репчатый свежий",
                 "group": {
-                  "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
                   "name": "Овощи"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1895,22 +2178,27 @@
               "net_weight": 10.8
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "9addb50c-03b0-4698-8abf-9b064f6a36bf",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "f2a77b77-7ace-4ba1-83f4-8f451ec049e1",
                 "name": "Томатная паста",
                 "full_name": "Томатная паста",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1928,22 +2216,27 @@
               "net_weight": 4.5
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "10747cce-2776-41ba-8fdb-57a5615a47bb",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "50293678-14a2-4a54-835e-e6c898fcaa49",
                 "name": "Масло подсолнечное",
                 "full_name": "Масло подсолнечное рафинированное",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
                   "name": "литр",
                   "base": {
-                    "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "0df4c668-6de7-46e8-933e-38ba55485347",
                     "name": "миллилитр",
                     "base": {
-                      "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                      "id": "0df4c668-6de7-46e8-933e-38ba55485347"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1961,22 +2254,27 @@
               "net_weight": 3.3120000000000003
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "7a6d50a4-c44f-496c-9f64-b3dc033dd3e8",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "7e7e11c4-70ed-4af0-9552-1ccf75e5f94e",
                 "name": "Уксус 9%",
                 "full_name": "Уксус столовый 9%",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "0eb77806-3d98-43ed-9892-8433a37b329c",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "72ebabf0-88c0-4ee8-a0ec-08b9fea4328c",
                   "name": "литр",
                   "base": {
-                    "id": "a7128d0d-0449-4224-8b58-cae80c353724",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "0df4c668-6de7-46e8-933e-38ba55485347",
                     "name": "миллилитр",
                     "base": {
-                      "id": "a7128d0d-0449-4224-8b58-cae80c353724"
+                      "id": "0df4c668-6de7-46e8-933e-38ba55485347"
                     },
                     "factor": 1,
                     "is_base": true
@@ -1994,22 +2292,27 @@
               "net_weight": 0.5
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "224ee5f9-b22a-41b6-8aaa-4dfa9d6fc9fb",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "0e652a38-127d-4f0c-b94f-36e9a2dd0d8e",
                 "name": "Сахар",
                 "full_name": "Сахар-песок",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -2027,22 +2330,27 @@
               "net_weight": 1.0
             },
             {
+              "model_type": "Src.Models.ingredient_model.IngredientModel",
               "nomenclature": {
-                "id": "1093066c-ca2a-4023-be39-f67b4c212045",
+                "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+                "id": "a2f3be20-9b42-435b-b866-01f0ae499c03",
                 "name": "Соль",
                 "full_name": "Соль пищевая поваренная",
                 "group": {
-                  "id": "e682ef35-11c5-4133-bf2e-c149a10839ce",
+                  "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+                  "id": "45f305a8-cef5-4b28-af01-fdaf25adb4c0",
                   "name": "Бакалея"
                 },
                 "range": {
-                  "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+                  "model_type": "Src.Models.range_model.RangeModel",
+                  "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
                   "name": "килограмм",
                   "base": {
-                    "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                    "model_type": "Src.Models.range_model.RangeModel",
+                    "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                     "name": "грамм",
                     "base": {
-                      "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                      "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                     },
                     "factor": 1,
                     "is_base": true
@@ -2064,22 +2372,27 @@
           "net_weight": 66.5114
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "dcd158b1-cfce-4570-8c95-a62f01666fcf",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "32894d90-e5a3-4c1d-9801-c73f2e6e115e",
             "name": "Картофель",
             "full_name": "Картофель свежий",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -2097,22 +2410,27 @@
           "net_weight": 68.0
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "ace5f34c-042a-469e-9a39-9630573d34a4",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "6f196684-cbe4-443b-bd2f-6db729ea68e7",
             "name": "Капуста белокочанная",
             "full_name": "Капуста белокочанная свежая",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -2130,22 +2448,27 @@
           "net_weight": 59.5
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "2dd729ce-6dbf-4950-9d55-2e5d57fd57a3",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "66ae568d-2274-495e-922d-ff8b334ba7b2",
             "name": "Сметана 20%",
             "full_name": "Сметана 20% жирности",
             "group": {
-              "id": "b331a690-6864-4703-8ad9-1d6719f8eb7e",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "20ceaa12-9c80-4620-aba8-d170e6ad51b3",
               "name": "Молочные продукты"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -2163,22 +2486,27 @@
           "net_weight": 20
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "9b9ec5ba-d9b4-436c-a55e-0e3e3e45c2b1",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "bf897d8b-95ec-43ac-9008-c1bff016da42",
             "name": "Укроп",
             "full_name": "Укроп свежий",
             "group": {
-              "id": "1a4b16d7-d13d-4e72-a3da-743b65efe569",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "f2a2d8c1-da76-4d74-9b48-1b3b8e660564",
               "name": "Овощи"
             },
             "range": {
-              "id": "9a158582-7311-44b7-8520-b82d85eda0ae",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "4a8913bb-3e77-4db4-a27a-d5e66f267ce7",
               "name": "килограмм",
               "base": {
-                "id": "11aac853-55ea-48d8-bf02-7d79dd781f37",
+                "model_type": "Src.Models.range_model.RangeModel",
+                "id": "4476f906-66f9-40a5-8839-e862c8bf436b",
                 "name": "грамм",
                 "base": {
-                  "id": "11aac853-55ea-48d8-bf02-7d79dd781f37"
+                  "id": "4476f906-66f9-40a5-8839-e862c8bf436b"
                 },
                 "factor": 1,
                 "is_base": true
@@ -2196,19 +2524,23 @@
           "net_weight": 3
         },
         {
+          "model_type": "Src.Models.ingredient_model.IngredientModel",
           "nomenclature": {
-            "id": "6547ad70-637b-4b03-a668-e85b101350ad",
+            "model_type": "Src.Models.nomenclature_model.NomenclatureModel",
+            "id": "bef8c5ef-7d79-4ba2-9f19-0885053a6778",
             "name": "Контейнер для супа 500 мл",
             "full_name": "Контейнер для супа 500 мл (только для доставки, п. 3.3 ТЗ)",
             "group": {
-              "id": "b04025b9-1b19-4cf7-9084-2910d8c2709c",
+              "model_type": "Src.Models.nomenclature_group_model.NomenclatureGroupModel",
+              "id": "0d0d1b31-c321-4e63-90a4-f21eb63457a9",
               "name": "Упаковка"
             },
             "range": {
-              "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+              "model_type": "Src.Models.range_model.RangeModel",
+              "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001",
               "name": "штука",
               "base": {
-                "id": "7d185d40-a1f7-469c-a070-6f9c924906e1"
+                "id": "79b2e656-78f1-4e5c-9940-f67ff2e9a001"
               },
               "factor": 1,
               "is_base": true

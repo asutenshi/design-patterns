@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Self, cast, override
 
 from Src.Core.abstract_file_manager import AbstractFileManager
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
 from Src.Core.ownership_form import OwnershipForm
@@ -130,7 +131,7 @@ class SettingsManager(AbstractFileManager):
     def _values(model: type, data: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
         """Берёт из data значения полей модели по совпадению имён.
 
-        Служебный id пропускается: его нет в файле, а конструкторы моделей его не принимают.
+        Служебные id и model_type пропускаются: их нет в файле, а конструкторы моделей их не принимают.
         Вложенные объекты и значения, требующие преобразования (перечисления), вызывающий
         подменяет сам.
 
@@ -143,7 +144,7 @@ class SettingsManager(AbstractFileManager):
         """
         return {
             field: data[field]
-            for field in Common.get_fields(model, exclude=("id",))
+            for field in Common.get_fields(model, exclude=("id", AbstractModel.TYPE_FIELD))
             if field in data or field not in optional
         }
 

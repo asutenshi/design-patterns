@@ -1,14 +1,15 @@
 import uuid
 from collections.abc import Iterable
-from typing import cast
+from typing import Self, cast, override
 
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.unique_collection import UniqueCollection
 from Src.Models.nomenclature_model import NomenclatureModel
 
 
-class IngredientModel:
+class IngredientModel(AbstractModel):
     """Модель ингредиента: строка состава технологической карты с основанием (паттерн «Компоновщик»).
 
     Количество измеряется в базовой единице номенклатуры (``nomenclature.range.base``):
@@ -36,7 +37,11 @@ class IngredientModel:
       иначе модули карты и ингредиента импортировали бы друг друга.
     - ``nomenclature`` задаётся только в конструкторе и не имеет сеттера: она служит ключом
       уникальности в коллекции карты, и смена номенклатуры сделала бы ключ устаревшим.
-    - Ингредиент принадлежит одной карте и не наследует BaseEntity: собственный id ему не нужен.
+    - Ингредиент принадлежит одной карте и не наследует BaseEntity: собственный id ему не нужен
+      (DomainEntities.md). Тип модели и ``from_dict`` для загрузки из JSON он получает от AbstractModel.
+      С id копии строки были бы плохи в обоих вариантах: новый id у каждой копии менял бы выгрузку
+      при каждом чтении ``base``, а общий id у строк с разным количеством (кости в бульоне и в борще)
+      склеил бы их при загрузке в одну.
     - Веса не хранятся, а вычисляются при каждом обращении: изменение количества или потерь
       сразу отражается в расчёте.
     - Способ приготовления не хранится: на расчёт влияет только явно заданная доля потерь,
@@ -77,6 +82,30 @@ class IngredientModel:
         self._quantity = CommonValidator.validate_positive_number(quantity, "quantity")
         self._loss_ratio = CommonValidator.validate_fraction(loss_ratio, "loss_ratio")
         self._base = self._copy_base(base)
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Фабричный метод: создаёт ингредиент по полям ``nomenclature``, ``quantity``, ``loss_ratio`` и ``base``.
+
+        Доля потерь и основание необязательны, как и параметры конструктора: по умолчанию 0 и пустое основание.
+        Вычисляемые поля ``gross_weight`` и ``net_weight`` игнорируются.
+
+        :param data: Поля ингредиента, номенклатура и строки основания уже собраны.
+        :return: Новый ингредиент.
+        :raises ArgumentsException: Если обязательного поля нет, основание не список
+            или значение не проходит проверку конструктора.
+        """
+        base = cast(
+            list[IngredientModel],
+            CommonValidator.validate_instance(data.get("base", []), list, "base", "Ожидается список"),
+        )
+        return cls(
+            nomenclature=cast(NomenclatureModel, CommonValidator.validate_field(data, "nomenclature")),
+            quantity=cast(float, CommonValidator.validate_field(data, "quantity")),
+            loss_ratio=cast(float, data.get("loss_ratio", 0)),
+            base=base,
+        )
 
     def _copy_base(self, base: Iterable["IngredientModel"]) -> tuple["IngredientModel", ...]:
         """Проверяет основание и возвращает копии его элементов.

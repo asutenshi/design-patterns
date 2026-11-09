@@ -1,6 +1,7 @@
 import pytest
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
+from Src.Core.nomenclature_type import NomenclatureType
 
 
 class ParentStub:
@@ -303,3 +304,92 @@ def test_validate_any_check_error_contains_field(validate):
     with pytest.raises(ArgumentsException) as exc_info:
         validate()
     assert "my_field" in str(exc_info.value)
+
+
+def test_validate_dict_string_keys_returned():
+    """Словарь со строковыми ключами возвращается тем же объектом, значения любых типов не проверяются."""
+    # Подготовка
+    value = {"name": "Мука", "count": 2, "nested": {"a": None}}
+
+    # Действие
+    result = CommonValidator.validate_dict(value, "data")
+
+    # Проверка
+    assert result is value
+
+
+def test_validate_dict_empty_dict_returned():
+    """Пустой словарь проходит проверку."""
+    # Действие
+    result = CommonValidator.validate_dict({}, "data")
+
+    # Проверка
+    assert result == {}
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [None, "data", 1, ["a"], ("a", 1), {"a"}])
+def test_validate_dict_not_dict_raises(value):
+    """Значение, не являющееся словарём, вызывает ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_dict(value, "data")
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [{1: "a"}, {"a": 1, 2: 2}, {None: "a"}])
+def test_validate_dict_non_string_key_raises(value):
+    """Словарь с ключом не строкой вызывает ArgumentsException: JSON-объект имеет только строковые ключи."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_dict(value, "data")
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["сырьё", NomenclatureType.RAW_MATERIAL])
+def test_validate_enum_valid_value_returns_member(value):
+    """Значение элемента (как оно записано в JSON) и сам элемент превращаются в элемент перечисления."""
+    # Действие
+    result = CommonValidator.validate_enum(value, NomenclatureType, "type")
+
+    # Проверка
+    assert result is NomenclatureType.RAW_MATERIAL
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["еда", "", None, 1, ["сырьё"]])
+def test_validate_enum_unknown_value_raises(value):
+    """Значение, которого нет в перечислении, вызывает ArgumentsException с именем поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        CommonValidator.validate_enum(value, NomenclatureType, "type")
+    assert "type" in str(exc_info.value)
+
+
+def test_validate_field_existing_key_returns_value_as_is():
+    """Значение существующего поля возвращается как есть, его тип не проверяется."""
+    # Подготовка
+    nested = {"a": 1}
+
+    # Действие
+    result = CommonValidator.validate_field({"name": "Мука", "nested": nested, "none": None}, "nested")
+
+    # Проверка
+    assert result is nested
+
+
+def test_validate_field_none_value_is_returned():
+    """Поле со значением None существует: возвращается None, а не ошибка."""
+    # Действие
+    result = CommonValidator.validate_field({"none": None}, "none")
+
+    # Проверка
+    assert result is None
+
+
+def test_validate_field_missing_key_raises_with_field_name():
+    """Отсутствие поля вызывает ArgumentsException, в тексте которой имя поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        CommonValidator.validate_field({"name": "Мука"}, "factor")
+    assert "factor" in str(exc_info.value)

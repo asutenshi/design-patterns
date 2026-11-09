@@ -3,10 +3,12 @@ import inspect
 import pytest
 from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.abstract_manager import AbstractManager
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.base_entity import BaseEntity
 from Src.Core.named_entity import NamedEntity
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
+from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.organization_model import OrganizationModel
@@ -167,3 +169,42 @@ def test_named_entities_subclass_overrides_name_only_when_listed(entity_type: ty
 
     # Проверка
     assert overrides_name == (entity_type in _NAME_OVERRIDING_MODELS)
+
+
+# ---------------------------------------------------------------------------
+# AbstractModel: тип модели задаёт корень, создание из словаря — каждая модель сама
+# ---------------------------------------------------------------------------
+
+
+def test_models_project_subclasses_are_discovered():
+    """Поиск подклассов находит и сущности, и строку состава карты, иначе проверки ниже ничего не проверяют."""
+    # Действие
+    models = _concrete_subclasses(AbstractModel)
+
+    # Проверка
+    assert IngredientModel in models
+    assert SettingsModel in models
+    assert RecipeModel in models
+
+
+# Подготовка
+@pytest.mark.parametrize("model_type", _project_subclasses(AbstractModel), ids=lambda cls: cls.__name__)
+def test_models_subclass_does_not_override_model_type(model_type: type):
+    """Модель не переопределяет model_type: по нему десериализатор находит класс, и формат задаёт AbstractModel."""
+    # Действие
+    overrides = AbstractModel.TYPE_FIELD in vars(model_type)
+
+    # Проверка
+    assert overrides is False
+
+
+# Подготовка
+@pytest.mark.parametrize("model_type", _concrete_subclasses(AbstractModel), ids=lambda cls: cls.__name__)
+def test_models_concrete_class_defines_own_from_dict(model_type: type):
+    """Конкретная модель сама реализует from_dict: унаследованный создал бы модель родителя с чужими полями."""
+    # Действие
+    defines = "from_dict" in vars(model_type)
+
+    # Проверка
+    assert defines is True
+

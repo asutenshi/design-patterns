@@ -104,7 +104,11 @@ def test_export_first_start_nomenclature_contains_nested_group_and_range(
 
     # Проверка
     for stored, item in zip(first_start_storage.nomenclatures, exported, strict=True):
-        assert item["group"] == {"id": str(stored.group.id), "name": stored.group.name}
+        assert item["group"] == {
+            "model_type": stored.group.model_type,
+            "id": str(stored.group.id),
+            "name": stored.group.name,
+        }
         assert cast(dict[str, object], item["range"])["id"] == str(stored.range.id)
         assert item["type"] == stored.type.value
 

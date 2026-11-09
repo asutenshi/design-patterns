@@ -206,3 +206,80 @@ def test_init_gram_and_kilogram_example_demonstration():
     assert new_range.factor == 1000
     assert new_range.factor * 2 == 2000  # 2 кг = 2000 грамм
     assert base_range != new_range
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def test_from_dict_derived_range_fields_set():
+    """Производная единица создаётся из словаря: базовая единица в нём уже собрана и передаётся как есть."""
+    # Подготовка
+    gram = RangeModel("грамм", 1)
+
+    # Действие
+    kilogram = RangeModel.from_dict({"name": "килограмм", "factor": 1000, "base": gram})
+
+    # Проверка
+    assert kilogram.name == "килограмм"
+    assert kilogram.factor == 1000
+    assert kilogram.base is gram
+    assert not kilogram.is_base
+
+
+def test_from_dict_base_none_creates_base_range():
+    """Ссылка базовой единицы на себя приходит как None: единица становится базовой и ссылается сама на себя."""
+    # Действие
+    gram = RangeModel.from_dict({"name": "грамм", "factor": 1, "base": None})
+
+    # Проверка
+    assert gram.is_base
+    assert gram.base is gram
+
+
+def test_from_dict_service_and_computed_fields_ignored():
+    """Поля model_type, id и is_base не читаются: is_base вычисляется, id выставляет тот, кто загружает."""
+    # Подготовка
+    data: dict[str, object] = {
+        "model_type": "Src.Models.range_model.RangeModel",
+        "id": "7d185d40-a1f7-469c-a070-6f9c924906e1",
+        "name": "грамм",
+        "factor": 1,
+        "base": None,
+        "is_base": False,
+    }
+
+    # Действие
+    gram = RangeModel.from_dict(data)
+
+    # Проверка
+    assert gram.is_base
+    assert str(gram.id) != data["id"]
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["name", "factor", "base"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие любого обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data: dict[str, object] = {"name": "килограмм", "factor": 1000, "base": RangeModel("грамм", 1)}
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        RangeModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_base_range_factor_not_one_raises():
+    """Правила конструктора действуют и в from_dict: у базовой единицы коэффициент должен быть равен 1."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        RangeModel.from_dict({"name": "грамм", "factor": 5, "base": None})
+
+
+def test_from_dict_base_not_range_raises():
+    """Базовая единица не модель единицы (например, строка) — ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        RangeModel.from_dict({"name": "килограмм", "factor": 1000, "base": "грамм"})

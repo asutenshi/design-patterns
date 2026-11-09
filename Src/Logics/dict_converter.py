@@ -1,9 +1,8 @@
-from collections.abc import Callable, Mapping
-from typing import cast, override
+from collections.abc import Callable
+from typing import override
 
 from Src.Core.abstract_converter import AbstractConverter
 from Src.Core.common_validator import CommonValidator
-from Src.Core.exception import ArgumentsException
 
 
 class DictConverter(AbstractConverter):
@@ -38,14 +37,9 @@ class DictConverter(AbstractConverter):
             либо значение не удалось сконвертировать.
         """
         field = CommonValidator.validate_string(field, "field")
-        if not isinstance(value, dict):
-            raise ArgumentsException("value", "Ожидается словарь")
-
-        mapping = cast(Mapping[object, object], value)
+        mapping = CommonValidator.validate_dict(value, "value")
         data: dict[str, object] = {}
         for key, item in mapping.items():
-            if not isinstance(key, str):
-                raise ArgumentsException("value", f"Ключ словаря должен быть строкой: {key!r}")
             # Рекурсия: функция конвертации — ConverterFactory.convert, она выберет конвертер значения
             data[key] = self._convert_value(item)
         return self._entry(field, data)

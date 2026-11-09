@@ -301,11 +301,11 @@ def test_get_fields_class_without_properties_returns_empty_list():
 
 
 def test_get_fields_settings_model_returns_expected_fields():
-    """Контракт: поля настроек перечислены в порядке объявления, id идёт первым."""
+    """Контракт: поля настроек перечислены в порядке объявления, поля базовых классов (model_type, id) идут первыми."""
     # Подготовка
 
     # Действие
     fields = Common.get_fields(SettingsModel)
 
     # Проверка
-    assert fields == ["id", "organization", "boss_name", "account_name", "is_first_start", "response_format"]
+    assert fields == ["model_type", "id", "organization", "boss_name", "account_name", "is_first_start", "response_format"]

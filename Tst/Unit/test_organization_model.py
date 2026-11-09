@@ -171,3 +171,55 @@ def test_init_romashka_example_demonstration():
     # Проверка
     assert organization.ownership_form.value == "ООО"
     assert organization.account == "40702810500000000002"
+
+# ---------------------------------------------------------------------------
+# from_dict: создание из словаря полей, как его записал ConverterFactory
+# ---------------------------------------------------------------------------
+
+
+def _organization_data(**changes: object) -> dict[str, object]:
+    """Данные организации для from_dict: форма собственности записана значением перечисления."""
+    data: dict[str, object] = {
+        "name": "Ромашка",
+        "inn": VALID_INN,
+        "bic": VALID_BIC,
+        "account": VALID_ACCOUNT,
+        "ownership_form": "ООО",
+    }
+    data.update(changes)
+    return data
+
+
+def test_from_dict_valid_data_fields_set():
+    """Организация создаётся из словаря, форма собственности превращается в элемент перечисления."""
+    # Действие
+    organization = OrganizationModel.from_dict(_organization_data())
+
+    # Проверка
+    assert organization.name == "Ромашка"
+    assert organization.inn == VALID_INN
+    assert organization.bic == VALID_BIC
+    assert organization.account == VALID_ACCOUNT
+    assert organization.ownership_form is OwnershipForm.LLC
+
+
+# Подготовка
+@pytest.mark.parametrize("field", ["name", "inn", "bic", "account", "ownership_form"])
+def test_from_dict_missing_field_raises(field: str):
+    """Отсутствие любого обязательного поля вызывает ArgumentsException с его именем."""
+    # Подготовка
+    data = _organization_data()
+    del data[field]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        OrganizationModel.from_dict(data)
+    assert field in str(exc_info.value)
+
+
+def test_from_dict_unknown_ownership_form_raises():
+    """Форма собственности, которой нет в перечислении, — ArgumentsException с именем поля."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException) as exc_info:
+        OrganizationModel.from_dict(_organization_data(ownership_form="ЗАО"))
+    assert "ownership_form" in str(exc_info.value)
