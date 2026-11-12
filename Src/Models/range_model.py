@@ -1,5 +1,6 @@
 from typing import Self, cast, override
 
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
@@ -96,6 +97,14 @@ class RangeModel(NamedEntity):
     def is_base(self) -> bool:
         """Возвращает True, если единица измерения является базовой."""
         return self._base is self
+
+    @override
+    def references(self) -> list[BaseEntity]:
+        """Возвращает базовую единицу. У самой базовой единицы ссылок нет: она ссылается на себя.
+
+        :return: Список из базовой единицы или пустой список, если единица базовая.
+        """
+        return [] if self.is_base else [self._base]
 
     @staticmethod
     def create_kilogram() -> "RangeModel":

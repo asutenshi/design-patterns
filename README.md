@@ -29,6 +29,7 @@
 - [basedpyright](https://docs.basedpyright.com/) — проверка типов
 - [pytest](https://docs.pytest.org/) — тестирование
 - [FastAPI](https://fastapi.tiangolo.com/) и [uvicorn](https://www.uvicorn.org/) — REST API, Swagger UI на `/docs`
+- [PyYAML](https://pyyaml.org/) (только для разработки) — выгрузка описания API в `Docs/openapi.yaml`
 
 По ТЗ в дальнейшем планируются: SQLite, HTML/JavaScript.
 
@@ -51,8 +52,24 @@ API поднимается на `http://localhost:8080`, документаци�
 | `GET /api/reports/{response_format}/{entity_type}/{entity_id}` | Отчёт в указанном формате: `txt`, `markdown`, `csv`, `xml`, `html` |
 | `GET /api/reports/{entity_type}/{entity_id}` | Отчёт в формате `response_format` из `settings.json` |
 | `GET /api/get_report?recipe_name=...` | Отчёт по технологической карте по наименованию |
+| `GET /api/get_report_formats` | Список форматов отчётов (JSON) |
 
 Markdown и CSV отдаются файлом на скачивание, остальные форматы — текстом.
+
+CRUD доменных сущностей (тип — `nomenclature`, `nomenclature_group`, `range`, `warehouse` или `recipe`):
+
+| Метод | Назначение | Ответ |
+|-------|------------|-------|
+| `GET /api/entities/{entity_type}` | Все сущности типа | 200 |
+| `GET /api/entities/{entity_type}/{entity_id}` | Сущность по коду | 200, 404 |
+| `POST /api/entities/{entity_type}` | Создать сущность | 201, 400 |
+| `PUT /api/entities/{entity_type}/{entity_id}` | Заменить все поля сущности | 200, 400, 404, 409 |
+| `PATCH /api/entities/{entity_type}/{entity_id}` | Изменить часть полей | 200, 400, 404, 409 |
+| `DELETE /api/entities/{entity_type}/{entity_id}` | Удалить сущность | 204, 404, 409 |
+
+Описание API — [`Docs/openapi.yaml`](Docs/openapi.yaml), его же по маршрутам строит FastAPI для Swagger UI.
+Тест следит, чтобы файл не устарел; после изменения маршрутов он обновляется так:
+`UPDATE_EXAMPLES=1 uv run pytest Tst/Integration/test_openapi_spec.py`.
 
 Всё хранилище превращается в JSON через `ConverterFactory`. Пример выгрузки данных первого запуска —
 [`Docs/Examples/storage_first_start.json`](Docs/Examples/storage_first_start.json). Тест следит, чтобы пример

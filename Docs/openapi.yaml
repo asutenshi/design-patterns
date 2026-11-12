@@ -1,0 +1,615 @@
+openapi: 3.1.0
+info:
+  title: Ромашка
+  description: Автоматизация сети ресторанов «Ромашка»
+  version: 0.1.0
+paths:
+  /api/reports/{response_format}/{entity_type}/{entity_id}:
+    get:
+      tags:
+      - Отчёты
+      summary: Отчёт по сущности в указанном формате
+      description: |-
+        Формирует отчёт по сущности указанного типа и кода в указанном формате.
+
+        :param response_format: Формат отчёта.
+        :param entity_type: Тип сущности.
+        :param entity_id: Код сущности.
+        :param storage: Хранилище, в котором ищется сущность.
+        :param factory: Фабрика, создающая отчёт нужного формата.
+        :return: Содержимое отчёта: Markdown и CSV — файлом, остальные форматы — текстом.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: get_entity_report_api_reports__response_format___entity_type___entity_id__get
+      parameters:
+      - name: response_format
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/ResponseFormat'
+          description: Формат отчёта
+        description: Формат отчёта
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      responses:
+        '200':
+          description: 'Отчёт: Markdown и CSV — файлом на скачивание, остальные форматы — текстом'
+        '404':
+          description: Сущность не найдена
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/reports/{entity_type}/{entity_id}:
+    get:
+      tags:
+      - Отчёты
+      summary: Отчёт по сущности в формате из настроек
+      description: |-
+        Формирует отчёт по сущности указанного типа и кода в формате из настроек (``create_default``).
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Код сущности.
+        :param storage: Хранилище, в котором ищется сущность.
+        :param factory: Фабрика, создающая отчёт в формате из настроек.
+        :return: Содержимое отчёта: Markdown и CSV — файлом, остальные форматы — текстом.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: get_entity_default_report_api_reports__entity_type___entity_id__get
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      responses:
+        '200':
+          description: 'Отчёт: Markdown и CSV — файлом на скачивание, остальные форматы — текстом'
+        '404':
+          description: Сущность не найдена
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/get_report:
+    get:
+      tags:
+      - Отчёты
+      summary: Отчёт по технологической карте по наименованию
+      description: |-
+        Формирует отчёт по технологической карте в указанном формате.
+
+        :param recipe_name: Наименование карты, регистр и пробелы по краям не учитываются.
+        :param storage: Хранилище, в котором ищется карта.
+        :param factory: Фабрика, создающая отчёт нужного формата.
+        :param response_format: Формат отчёта, None — формат из настроек.
+        :return: Содержимое отчёта: Markdown и CSV — файлом, остальные форматы — текстом.
+        :raises HTTPException: 404, если карты с таким наименованием нет.
+      operationId: get_report_api_get_report_get
+      parameters:
+      - name: recipe_name
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Наименование карты, регистр не учитывается
+          title: Recipe Name
+        description: Наименование карты, регистр не учитывается
+      - name: response_format
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ResponseFormat'
+          - type: 'null'
+          description: Формат отчёта, по умолчанию из настроек
+          title: Response Format
+        description: Формат отчёта, по умолчанию из настроек
+      responses:
+        '200':
+          description: Successful Response
+        '404':
+          description: Карта не найдена
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/get_report_formats:
+    get:
+      tags:
+      - Отчёты
+      summary: Форматы отчётов
+      description: |-
+        Возвращает все форматы, в которых можно построить отчёт.
+
+        Список берётся из перечисления ``ResponseFormat``: новый формат появляется здесь без правки маршрута.
+
+        :return: Значения форматов в порядке объявления, например ``["txt", "markdown", ...]``.
+      operationId: get_report_formats_api_get_report_formats_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ResponseFormat'
+                type: array
+                title: Response Get Report Formats Api Get Report Formats Get
+  /api/entities/{entity_type}:
+    get:
+      tags:
+      - Сущности
+      summary: Список сущностей типа
+      description: |-
+        Возвращает все сущности указанного типа.
+
+        :param entity_type: Тип сущности.
+        :param storage: Хранилище сущностей.
+        :return: Сущности в формате выгрузки, в порядке добавления.
+      operationId: get_entities_api_entities__entity_type__get
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Get Entities Api Entities  Entity Type  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Сущности
+      summary: Создать сущность
+      description: |-
+        Создаёт сущность указанного типа.
+
+        Если в данных есть ``id``, он становится кодом сущности, иначе код создаётся автоматически.
+
+        :param entity_type: Тип сущности.
+        :param data: Поля сущности.
+        :param storage: Хранилище сущностей.
+        :return: Созданная сущность в формате выгрузки.
+      operationId: create_entity_api_entities__entity_type__post
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: 'Поля сущности в формате выгрузки. Вложенные сущности хранилища задаются ссылкой ``{"id": "<код>"}``,
+                ``model_type`` у самой сущности можно не указывать.'
+              title: Data
+            examples:
+              warehouse:
+                summary: Склад или группа номенклатуры
+                value:
+                  name: Склад №3
+              range:
+                summary: Единица измерения
+                description: Производная единица ссылается на базовую по коду; у базовой ``base`` равен null.
+                value:
+                  name: центнер
+                  factor: 100000
+                  base:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+              nomenclature:
+                summary: Номенклатура
+                description: Группа и единица измерения задаются ссылками на сущности хранилища.
+                value:
+                  name: Пастернак
+                  full_name: Пастернак корневой
+                  group:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  range:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  type: сырьё
+                  grams_per_base_unit: 1
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Entity Api Entities  Entity Type  Post
+        '400':
+          description: Некорректные данные, ссылка на неизвестную сущность, занятые код или наименование
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/entities/{entity_type}/{entity_id}:
+    get:
+      tags:
+      - Сущности
+      summary: Сущность по коду
+      description: |-
+        Возвращает сущность указанного типа по коду.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Код сущности.
+        :param storage: Хранилище сущностей.
+        :return: Сущность в формате выгрузки.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: get_entity_api_entities__entity_type___entity_id__get
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Entity Api Entities  Entity Type   Entity Id  Get
+        '404':
+          description: Сущность не найдена
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    put:
+      tags:
+      - Сущности
+      summary: Заменить все поля сущности
+      description: |-
+        Полностью заменяет поля сущности: поля, которых нет в данных, не сохраняются.
+
+        Без ``id`` в данных код не меняется. Другой ``id`` меняет код, но только у сущности,
+        на которую никто не ссылается.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Текущий код сущности.
+        :param data: Все поля сущности.
+        :param storage: Хранилище сущностей.
+        :return: Изменённая сущность в формате выгрузки.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: put_entity_api_entities__entity_type___entity_id__put
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: 'Поля сущности в формате выгрузки. Вложенные сущности хранилища задаются ссылкой ``{"id": "<код>"}``,
+                ``model_type`` у самой сущности можно не указывать.'
+              title: Data
+            examples:
+              warehouse:
+                summary: Склад или группа номенклатуры
+                value:
+                  name: Склад №3
+              range:
+                summary: Единица измерения
+                description: Производная единица ссылается на базовую по коду; у базовой ``base`` равен null.
+                value:
+                  name: центнер
+                  factor: 100000
+                  base:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+              nomenclature:
+                summary: Номенклатура
+                description: Группа и единица измерения задаются ссылками на сущности хранилища.
+                value:
+                  name: Пастернак
+                  full_name: Пастернак корневой
+                  group:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  range:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  type: сырьё
+                  grams_per_base_unit: 1
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Put Entity Api Entities  Entity Type   Entity Id  Put
+        '400':
+          description: Некорректные данные, ссылка на неизвестную сущность, занятые код или наименование
+        '404':
+          description: Сущность не найдена
+        '409':
+          description: 'На сущность ссылаются другие сущности: удалять её и менять код нельзя'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Сущности
+      summary: Изменить часть полей сущности
+      description: |-
+        Изменяет только указанные поля сущности, остальные сохраняются.
+
+        Значение поля заменяется целиком, в том числе вложенный объект. Код меняется по тем же правилам, что у PUT.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Текущий код сущности.
+        :param data: Изменяемые поля сущности.
+        :param storage: Хранилище сущностей.
+        :return: Изменённая сущность в формате выгрузки.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: patch_entity_api_entities__entity_type___entity_id__patch
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: 'Поля сущности в формате выгрузки. Вложенные сущности хранилища задаются ссылкой ``{"id": "<код>"}``,
+                ``model_type`` у самой сущности можно не указывать.'
+              title: Data
+            examples:
+              warehouse:
+                summary: Склад или группа номенклатуры
+                value:
+                  name: Склад №3
+              range:
+                summary: Единица измерения
+                description: Производная единица ссылается на базовую по коду; у базовой ``base`` равен null.
+                value:
+                  name: центнер
+                  factor: 100000
+                  base:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+              nomenclature:
+                summary: Номенклатура
+                description: Группа и единица измерения задаются ссылками на сущности хранилища.
+                value:
+                  name: Пастернак
+                  full_name: Пастернак корневой
+                  group:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  range:
+                    id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  type: сырьё
+                  grams_per_base_unit: 1
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Patch Entity Api Entities  Entity Type   Entity Id  Patch
+        '400':
+          description: Некорректные данные, ссылка на неизвестную сущность, занятые код или наименование
+        '404':
+          description: Сущность не найдена
+        '409':
+          description: 'На сущность ссылаются другие сущности: удалять её и менять код нельзя'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - Сущности
+      summary: Удалить сущность
+      description: |-
+        Удаляет сущность, если на неё никто не ссылается.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Код сущности.
+        :param storage: Хранилище сущностей.
+        :raises HTTPException: 404, если сущности нет.
+      operationId: delete_entity_api_entities__entity_type___entity_id__delete
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      - name: entity_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Код (идентификатор) сущности
+          title: Entity Id
+        description: Код (идентификатор) сущности
+      responses:
+        '204':
+          description: Successful Response
+        '404':
+          description: Сущность не найдена
+        '409':
+          description: 'На сущность ссылаются другие сущности: удалять её и менять код нельзя'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    EntityType:
+      type: string
+      enum:
+      - nomenclature
+      - nomenclature_group
+      - range
+      - warehouse
+      - recipe
+      title: EntityType
+      description: |-
+        Тип сущности, которую можно найти в хранилище по коду.
+
+        Значения — строки: в таком виде тип задаётся в параметре запроса API.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ResponseFormat:
+      type: string
+      enum:
+      - txt
+      - markdown
+      - csv
+      - xml
+      - html
+      title: ResponseFormat
+      description: |-
+        Формат, в котором формируется отчёт.
+
+        Значения — строки: в таком виде формат задаётся в параметре запроса API и в файле настроек.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+tags:
+- name: Отчёты
+  description: Отчёты по сущностям в разных форматах
+- name: Сущности
+  description: Создание, чтение, изменение и удаление доменных сущностей

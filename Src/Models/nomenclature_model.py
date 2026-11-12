@@ -1,5 +1,6 @@
 from typing import Self, cast, override
 
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.named_entity import NamedEntity
 from Src.Core.nomenclature_type import NomenclatureType
@@ -161,6 +162,14 @@ class NomenclatureModel(NamedEntity):
         :raises ArgumentsException: Если значение не является RangeModel.
         """
         self._range = CommonValidator.validate_instance(value, RangeModel, "range", "Ожидается единица измерения")
+
+    @override
+    def references(self) -> list[BaseEntity]:
+        """Возвращает группу и единицу измерения номенклатуры.
+
+        :return: Список из группы и единицы измерения.
+        """
+        return [self._group, self._range]
 
     @property
     def type(self) -> NomenclatureType:

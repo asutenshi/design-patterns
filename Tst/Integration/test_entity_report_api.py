@@ -30,7 +30,9 @@ def _entity(storage: StorageManager, entity_type: EntityType) -> NamedEntity:
     """Возвращает сущность указанного типа из начальных данных."""
     entities: dict[EntityType, NamedEntity] = {
         EntityType.NOMENCLATURE: next(item for item in storage.nomenclatures if item.name == "Свёкла"),
+        EntityType.NOMENCLATURE_GROUP: next(item for item in storage.nomenclature_groups if item.name == "Овощи"),
         EntityType.RANGE: next(item for item in storage.ranges if item.name == "килограмм"),
+        EntityType.WAREHOUSE: storage.warehouses[0],
         EntityType.RECIPE: next(item for item in storage.recipes if item.name == "Борщ с говядиной"),
     }
     return entities[entity_type]
@@ -133,7 +135,7 @@ def test_get_entity_report_id_of_other_type_returns_not_found(client: TestClient
     "path",
     [
         f"/api/reports/pdf/recipe/{uuid.uuid4()}",
-        f"/api/reports/txt/warehouse/{uuid.uuid4()}",
+        f"/api/reports/txt/employee/{uuid.uuid4()}",
         "/api/reports/txt/recipe/not-a-uuid",
         "/api/reports/recipe/not-a-uuid",
     ],

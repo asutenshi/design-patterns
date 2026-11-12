@@ -1,15 +1,21 @@
 import json
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.common_validator import CommonValidator
 from Src.Core.entity_type import EntityType
-from Src.Core.exception import ArgumentsException, OperationException
+from Src.Core.exception import (
+    ArgumentsException,
+    OperationException,
+    ReferencedEntityException,
+)
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
+from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.settings_manager import SettingsManager
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
@@ -26,7 +32,19 @@ class StorageManager(AbstractManager):
     Коллекции единиц, групп, номенклатуры и складов не содержат дубликатов по наименованию
     (без учёта регистра). Коллекция технологических карт содержит не более одной карты
     на номенклатуру-результат; карту полуфабриката находит ``find_recipe()``.
-    Сущность по типу и коду находит ``find()``.
+    Сущность по типу и коду находит ``find()``, сущности, ссылающиеся на сущность с заданным кодом, —
+    ``find_referrers()``.
+
+    Изменяют хранилище ``create``, ``put``, ``patch`` и ``delete``: их будет вызывать API. Данные приходят
+    словарём в формате выгрузки (``ConverterFactory``): поля модели, вложенные сущности хранилища задаются
+    ссылкой ``{"id": ...}``, а ``model_type`` можно не указывать, его задаёт тип сущности. Правила:
+
+    - Все ссылки новой сущности должны вести на сущности хранилища (те же объекты), иначе ошибка аргумента.
+    - Удалить сущность или сменить ей код (``id``) нельзя, пока на неё ссылаются другие сущности
+      (``ReferencedEntityException``). Менять остальные поля можно: ссылающиеся сущности видят изменения,
+      потому что сущность меняется на месте (``BaseEntity.replace_state``), а не заменяется.
+    - Операция атомарна: все проверки идут до первого изменения коллекций, при ошибке хранилище не меняется.
+    - Каскадной пересборки снимков карт полуфабрикатов при правке сущностей пока нет.
     Источник данных ``load()`` выбирает так:
 
     - указан файл (``file_name``) — коллекции читаются из JSON-файла в формате выгрузки через
@@ -47,6 +65,15 @@ class StorageManager(AbstractManager):
 
     # Единственный экземпляр этого класса
     _instance: ClassVar["StorageManager | None"] = None
+
+    # Класс модели для каждого типа сущности: по нему create/put/patch собирают сущность из данных
+    _ENTITY_CLASSES: ClassVar[dict[EntityType, type[NamedEntity]]] = {
+        EntityType.NOMENCLATURE: NomenclatureModel,
+        EntityType.NOMENCLATURE_GROUP: NomenclatureGroupModel,
+        EntityType.RANGE: RangeModel,
+        EntityType.WAREHOUSE: WarehouseModel,
+        EntityType.RECIPE: RecipeModel,
+    }
 
     # Единицы измерения
     _ranges: UniqueCollection[RangeModel]
@@ -349,6 +376,49 @@ class StorageManager(AbstractManager):
         key = name.strip().casefold()
         return next((recipe for recipe in self._recipes if recipe.name_key() == key), None)
 
+    def _entity_collections(self) -> dict[EntityType, UniqueCollection[NamedEntity]]:
+        """Возвращает все коллекции хранилища по типам сущностей.
+
+        Состав коллекций для поиска и изменения задаётся здесь один раз: им пользуются ``find()``,
+        ``find_referrers()``, ``create()``, ``put()``, ``patch()`` и ``delete()``. Новая коллекция подключается
+        строкой здесь, значением в ``EntityType`` и классом в ``_ENTITY_CLASSES``.
+        Не путать с ``_collections()``: тот описывает загрузку из файла (ключи файла и функции добавления).
+
+        Коллекции приводятся к ``UniqueCollection[NamedEntity]``: общий код работает с ними через базовый класс,
+        а тип добавляемой сущности гарантирует ``_build_entity()`` (класс берётся из ``_ENTITY_CLASSES``).
+
+        :return: Коллекции хранилища по типам сущностей.
+        """
+        return {
+            EntityType.NOMENCLATURE: cast(UniqueCollection[NamedEntity], self._nomenclatures),
+            EntityType.NOMENCLATURE_GROUP: cast(UniqueCollection[NamedEntity], self._nomenclature_groups),
+            EntityType.RANGE: cast(UniqueCollection[NamedEntity], self._ranges),
+            EntityType.WAREHOUSE: cast(UniqueCollection[NamedEntity], self._warehouses),
+            EntityType.RECIPE: cast(UniqueCollection[NamedEntity], self._recipes),
+        }
+
+    def find_referrers(self, target_id: uuid.UUID) -> list[NamedEntity]:
+        """Возвращает сущности хранилища, которые ссылаются на сущность с указанным кодом.
+
+        Обходит все коллекции и проверяет ``references()`` каждой сущности. Результат нужен, чтобы запретить
+        удалять сущность или менять ей код, пока на неё кто-то ссылается (Docs/.homework.md, п. 3).
+        Сама сущность в результат не попадает, даже если ссылается на себя (базовая единица), и сущность
+        с несколькими ссылками на цель возвращается один раз. Ссылки внутри состава карты учитываются:
+        сырьё, которое входит только в основание строки, тоже считается связанным с картой.
+
+        :param target_id: Код сущности, на которую ищутся ссылки. Существование сущности не проверяется:
+            для неизвестного кода результат пуст.
+        :return: Сущности, ссылающиеся на цель, в порядке обхода коллекций.
+        :raises ArgumentsException: Если код не UUID.
+        """
+        target_id = CommonValidator.validate_instance(target_id, uuid.UUID, "target_id", "Ожидается UUID")
+        return [
+            entity
+            for collection in self._entity_collections().values()
+            for entity in collection
+            if entity.id != target_id and any(ref.id == target_id for ref in entity.references())
+        ]
+
     def find(self, entity_type: EntityType, entity_id: uuid.UUID) -> NamedEntity | None:
         """Возвращает сущность указанного типа по коду.
 
@@ -362,16 +432,201 @@ class StorageManager(AbstractManager):
         """
         entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
         entity_id = CommonValidator.validate_instance(entity_id, uuid.UUID, "entity_id", "Ожидается UUID")
-        collections: dict[EntityType, Iterable[NamedEntity]] = {
-            EntityType.NOMENCLATURE: self._nomenclatures,
-            EntityType.RANGE: self._ranges,
-            EntityType.RECIPE: self._recipes,
-        }
-        collection = collections.get(entity_type)
+        collection = self._entity_collections().get(entity_type)
         if collection is None:
             raise ArgumentsException("entity_type", f"Поиск сущностей типа {entity_type.value} не поддерживается")
 
         return next((entity for entity in collection if entity.id == entity_id), None)
+
+    def entities(self, entity_type: EntityType) -> list[NamedEntity]:
+        """Возвращает копию списка сущностей указанного типа в порядке добавления.
+
+        Общий доступ к коллекции по типу для API: свойства ``ranges``, ``nomenclatures`` и другие
+        дают то же самое, но каждое для своего типа.
+
+        :param entity_type: Тип сущности, определяет коллекцию.
+        :return: Сущности этого типа; изменение списка не меняет хранилище.
+        :raises ArgumentsException: Если тип не EntityType.
+        """
+        entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
+        return list(self._entity_collections()[entity_type])
+
+    def create(self, entity_type: EntityType, data: dict[str, object]) -> NamedEntity:
+        """Создаёт сущность указанного типа из данных и добавляет её в хранилище.
+
+        :param entity_type: Тип создаваемой сущности.
+        :param data: Поля сущности в формате выгрузки. Вложенные сущности хранилища — ссылки ``{"id": ...}``.
+            Если указан ``id``, он становится кодом сущности, иначе код создаётся автоматически.
+        :return: Созданная сущность, та же, что лежит в хранилище.
+        :raises ArgumentsException: Если тип не EntityType, данные некорректны, ссылка ведёт на неизвестную
+            сущность, код уже занят или такое наименование (ключ) уже есть в коллекции.
+        """
+        entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
+        entity = self._build_entity(entity_type, data, None)
+        self._ensure_id_is_free(entity)
+        self._entity_collections()[entity_type].add(entity)
+        return entity
+
+    def put(self, entity_type: EntityType, entity_id: uuid.UUID, data: dict[str, object]) -> NamedEntity:
+        """Полностью заменяет поля сущности значениями из данных, сама сущность остаётся тем же объектом.
+
+        Поля, которых нет в данных, не сохраняются (обязательные приводят к ошибке). Если ``id`` в данных нет,
+        код сущности не меняется, если он другой — сущность получает новый код, но только когда на неё
+        никто не ссылается.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Текущий код сущности.
+        :param data: Все поля сущности в формате выгрузки.
+        :return: Изменённая сущность, та же, что лежит в хранилище.
+        :raises ArgumentsException: Если аргументы некорректны, сущности нет, данные некорректны, ссылка ведёт
+            на неизвестную сущность, новый код или наименование (ключ) уже заняты.
+        :raises ReferencedEntityException: Если меняется код сущности, на которую ссылаются.
+        """
+        return self._update(entity_type, entity_id, data, merge=False)
+
+    def patch(self, entity_type: EntityType, entity_id: uuid.UUID, data: dict[str, object]) -> NamedEntity:
+        """Изменяет только указанные в данных поля сущности, остальные сохраняются.
+
+        Слияние поверхностное: значение поля заменяется целиком, в том числе вложенный словарь.
+        Остальное, как у ``put()``.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Текущий код сущности.
+        :param data: Изменяемые поля сущности в формате выгрузки.
+        :return: Изменённая сущность, та же, что лежит в хранилище.
+        :raises ArgumentsException: Если аргументы некорректны, сущности нет, данные некорректны, ссылка ведёт
+            на неизвестную сущность, новый код или наименование (ключ) уже заняты.
+        :raises ReferencedEntityException: Если меняется код сущности, на которую ссылаются.
+        """
+        return self._update(entity_type, entity_id, data, merge=True)
+
+    def delete(self, entity_type: EntityType, entity_id: uuid.UUID) -> None:
+        """Удаляет сущность из хранилища, если на неё никто не ссылается.
+
+        :param entity_type: Тип сущности.
+        :param entity_id: Код сущности.
+        :raises ArgumentsException: Если аргументы некорректны или сущности нет.
+        :raises ReferencedEntityException: Если на сущность ссылаются другие сущности.
+        """
+        entity = self._get(entity_type, entity_id)
+        self._ensure_not_referenced(entity)
+        collection = self._entity_collections()[entity_type]
+        collection.remove(collection.key_of(entity))
+
+    def _get(self, entity_type: EntityType, entity_id: uuid.UUID) -> NamedEntity:
+        """Возвращает сущность по типу и коду, а если её нет, бросает исключение.
+
+        :raises ArgumentsException: Если аргументы некорректны или сущности нет.
+        """
+        entity = self.find(entity_type, entity_id)
+        if entity is None:
+            raise ArgumentsException("entity_id", f"Сущность {entity_type.value} с кодом {entity_id} не найдена")
+        return entity
+
+    def _update(
+        self, entity_type: EntityType, entity_id: uuid.UUID, data: dict[str, object], *, merge: bool
+    ) -> NamedEntity:
+        """Общая часть ``put()`` и ``patch()``: собирает новую сущность из данных и переносит её состояние на месте.
+
+        Новая сущность собирается в стороне, все проверки идут до первого изменения. Затем коллекция
+        перестраивается, если ключ уникальности (наименование) изменился: она хранит элемент под ключом,
+        вычисленным при добавлении.
+
+        :param merge: True — данные накладываются на текущие поля сущности (patch), False — заменяют их (put).
+        :raises ArgumentsException: См. ``put()``.
+        :raises ReferencedEntityException: Если меняется код сущности, на которую ссылаются.
+        """
+        target = self._get(entity_type, entity_id)
+        fields = CommonValidator.validate_dict(data, "data")
+        if merge:
+            current = cast(dict[str, object], ConverterFactory().convert(target))
+            fields = {**current, **fields}
+        else:
+            fields = {"id": str(target.id), **fields}
+
+        # Сама сущность не попадает в известные: иначе вместо новой собралась бы она же
+        fresh = self._build_entity(entity_type, fields, target)
+        collection = self._entity_collections()[entity_type]
+        old_key = collection.key_of(target)
+        new_key = collection.key_of(fresh)
+        if new_key != old_key and collection.has_key(new_key):
+            raise ArgumentsException("data", f"Элемент с ключом {new_key!r} уже есть в коллекции")
+        if fresh.id != target.id:
+            self._ensure_id_is_free(fresh)
+            self._ensure_not_referenced(target)
+
+        if new_key != old_key:
+            collection.remove(old_key)
+        target.replace_state(fresh)
+        if new_key != old_key:
+            collection.add(target)
+        return target
+
+    def _build_entity(self, entity_type: EntityType, data: dict[str, object], exclude: NamedEntity | None) -> NamedEntity:
+        """Собирает сущность типа ``entity_type`` из данных; ссылки ``{"id": ...}`` ведут на сущности хранилища.
+
+        Хранилище при этом не меняется.
+
+        :param entity_type: Тип сущности, определяет класс модели.
+        :param data: Поля сущности в формате выгрузки; ``model_type`` необязателен.
+        :param exclude: Сущность, которую нельзя возвращать по её коду (меняемая): None, если такой нет.
+        :return: Новая сущность.
+        :raises ArgumentsException: Если данные не словарь, ``model_type`` не тот, ссылка ведёт на неизвестную
+            сущность, значения не прошли проверку модели или модель ссылается на то, чего нет в хранилище.
+        """
+        fields = CommonValidator.validate_dict(data, "data")
+        model_class = self._ENTITY_CLASSES[entity_type]
+        expected_type = AbstractModel.type_name(model_class)
+        if fields.get(AbstractModel.TYPE_FIELD, expected_type) != expected_type:
+            raise ArgumentsException(
+                AbstractModel.TYPE_FIELD, f"Для типа {entity_type.value} ожидается модель {expected_type}"
+            )
+        fields = {**fields, AbstractModel.TYPE_FIELD: expected_type}
+
+        factory = DeserializerFactory()
+        known = [entity for entity in self._all_entities() if entity is not exclude]
+        try:
+            with factory.session(known):
+                entity = factory.deserialize_as(model_class, fields)
+        except OperationException as ex:
+            # Для десериализатора это ссылка на неизвестный объект, для вызывающего — некорректные данные
+            raise ArgumentsException("data", str(ex)) from ex
+
+        stored = {id(item) for item in self._all_entities()}
+        unknown = [str(ref.id) for ref in entity.references() if id(ref) not in stored]
+        if unknown:
+            raise ArgumentsException("data", f"Ссылки на сущности, которых нет в хранилище: {', '.join(unknown)}")
+        return entity
+
+    def _all_entities(self) -> list[NamedEntity]:
+        """Возвращает все сущности всех коллекций хранилища."""
+        return [entity for collection in self._entity_collections().values() for entity in collection]
+
+    def _ensure_id_is_free(self, entity: NamedEntity) -> None:
+        """Проверяет, что код сущности не занят ни одной сущностью хранилища любого типа.
+
+        Коды должны быть уникальны во всём хранилище: ``find_referrers()`` сопоставляет ссылки по коду.
+
+        :raises ArgumentsException: Если код занят.
+        """
+        if any(stored.id == entity.id for stored in self._all_entities()):
+            raise ArgumentsException("id", f"Код {entity.id} уже занят")
+
+    def _ensure_not_referenced(self, entity: NamedEntity) -> None:
+        """Проверяет, что на сущность никто не ссылается.
+
+        :raises ReferencedEntityException: Если на сущность ссылаются; в исключении описаны ссылающиеся сущности.
+        """
+        referrers = self.find_referrers(entity.id)
+        if referrers:
+            raise ReferencedEntityException(entity.id, [self._describe(referrer) for referrer in referrers])
+
+    def _describe(self, entity: NamedEntity) -> str:
+        """Возвращает описание сущности для текста ошибки: тип, наименование и код."""
+        for entity_type, collection in self._entity_collections().items():
+            if any(item is entity for item in collection):
+                return f"{entity_type.value}: {entity.name} ({entity.id})"
+        return f"{entity.name} ({entity.id})"
 
     @property
     def ranges(self) -> list[RangeModel]:

@@ -133,3 +133,25 @@ def test_iter_changing_collection_does_not_affect_other_collection():
     # Проверка
     assert list(first) == ["a"]
     assert list(second) == ["a"]
+
+
+def test_key_of_returns_key_by_key_function_for_item_outside_collection():
+    """key_of вычисляет ключ по функции коллекции, элемент не обязан в ней лежать."""
+    # Подготовка
+    collection = UniqueCollection[str](lambda item: item.casefold())
+
+    # Действие и проверка
+    assert collection.key_of("Соль") == "соль"
+    assert len(collection) == 0
+
+
+def test_has_key_reports_presence_of_key():
+    """has_key отвечает, есть ли элемент с таким ключом."""
+    # Подготовка
+    collection = UniqueCollection[str](lambda item: item)
+    collection.add("a")
+
+    # Действие и проверка
+    assert collection.has_key("a")
+    assert not collection.has_key("b")
+

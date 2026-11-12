@@ -27,7 +27,7 @@ classDiagram
         +model_type: str
         +from_dict(data)* Self
         +resolve_type(model_type)$ type~AbstractModel~
-        -_type_name(model_class)$ str
+        +type_name(model_class)$ str
     }
 
     note for AbstractModel "from_dict — абстрактный метод класса (@classmethod). Реестр наследников заполняется в __init_subclass__. resolve_type отвергает неизвестный, абстрактный и нестроковый тип"
@@ -35,9 +35,11 @@ classDiagram
     class BaseEntity {
         <<abstract>>
         +id: UUID
+        +references() list~BaseEntity~
+        +replace_state(other) None
     }
 
-    note for BaseEntity "Равенство и хэш определяются по id и типу"
+    note for BaseEntity "Равенство и хэш определяются по id и типу. references() — прямые ссылки на другие сущности (по умолчанию пусто): группа и единица у номенклатуры, база у производной единицы, результат и состав у карты. Склад и группа номенклатуры ни на что не ссылаются. Нужен для запрета удаления связанных сущностей. replace_state копирует состояние другой сущности того же типа, чтобы менять сущность на месте: ссылки на неё остаются верными"
 
     class NamedEntity {
         <<abstract>>
@@ -51,6 +53,7 @@ classDiagram
         +base: RangeModel
         +factor: int | float
         +is_base: bool
+        +references() list~BaseEntity~
         +create_kilogram()$ RangeModel
         +create_liter()$ RangeModel
         +create_piece()$ RangeModel
@@ -64,6 +67,7 @@ classDiagram
         +range: RangeModel
         +type: NomenclatureType
         +grams_per_base_unit: int | float
+        +references() list~BaseEntity~
         +create_raw_material(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
         +create_semi_finished(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
         +create_dish(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
@@ -88,6 +92,7 @@ classDiagram
         +net_weight: float
         +scaled(factor) IngredientModel
         +contains(nomenclature) bool
+        +references() list~BaseEntity~
         +nomenclature_key() UUID
     }
 
@@ -113,6 +118,7 @@ classDiagram
         +add_item(item) None
         +remove_item(nomenclature) None
         +as_ingredient(quantity, loss_ratio) IngredientModel
+        +references() list~BaseEntity~
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -278,6 +284,8 @@ classDiagram
     class UniqueCollection~T~ {
         +add(item) None
         +remove(key) None
+        +key_of(item) Hashable
+        +has_key(key) bool
     }
 
     note for UniqueCollection "Функцию ключа даёт сама модель: IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата), NamedEntity.name_key (наименование)"
@@ -287,6 +295,12 @@ classDiagram
         +find_recipe(nomenclature) RecipeModel | None
         +find_recipe_by_name(name) RecipeModel | None
         +find(entity_type, entity_id) NamedEntity | None
+        +entities(entity_type) list~NamedEntity~
+        +find_referrers(target_id) list~NamedEntity~
+        +create(entity_type, data) NamedEntity
+        +put(entity_type, entity_id, data) NamedEntity
+        +patch(entity_type, entity_id, data) NamedEntity
+        +delete(entity_type, entity_id) None
     }
 
     note for StorageManager "Одна карта на номенклатуру-результат. Включение снимка самой себя отвергает карта при добавлении строки, хранилище его не проверяет"
@@ -353,6 +367,15 @@ classDiagram
 
     class OperationException
 
+    class ReferencedEntityException {
+        -_target_id: UUID
+        -_referrers: tuple~str~
+        +target_id: UUID
+        +referrers: tuple~str~
+    }
+
+    note for ReferencedEntityException "На сущность есть ссылки, удалять её или менять код нельзя (п. 3 домашнего задания). Описания ссылающихся сущностей — строки, чтобы исключения не зависели от моделей. Бросает StorageManager в delete, put и patch по результату find_referrers()"
+
     class Exception {
         <<built-in>>
     }
@@ -376,6 +399,7 @@ classDiagram
     Exception <|-- ProjectException
     ProjectException <|-- ArgumentsException
     ProjectException <|-- OperationException
+    ProjectException <|-- ReferencedEntityException
     InnValidator ..> CommonValidator : формат и цифры
     CommonValidator ..> ArgumentsException : бросает
     InnValidator ..> ArgumentsException : бросает
@@ -407,8 +431,12 @@ classDiagram
 
 ### SettingsManager
 
-Читает `settings.json` и собирает из него `SettingsModel`. Ошибки модели (`ArgumentsException`) превращает
-в `OperationException`, чтобы вызывающий код ловил одно исключение.
+Читает `settings.json` и собирает из него `SettingsModel` общим механизмом десериализации — `DeserializerFactory`,
+тем же, что загружает хранилище из файла. Модели создают себя сами (`from_dict`), поэтому правила полей
+(обязательные, значения по умолчанию, перечисления) описаны один раз, в моделях. В файле настроек, который правит
+человек, нет служебного `model_type`: его подставляет `_typed()` для корня и карточки организации, а уже указанный
+тип не заменяет. Ошибки модели (`ArgumentsException`) превращает в `OperationException`, чтобы вызывающий код
+ловил одно исключение.
 
 ```mermaid
 classDiagram
@@ -453,7 +481,7 @@ classDiagram
         #_read(file_name) dict
         -_read_file(path)$ dict
         -_write_defaults(path) None
-        -_values(model, data, optional)$ dict
+        -_typed(data)$ dict
         +convert() None
     }
 
@@ -474,6 +502,9 @@ classDiagram
     class ResponseFormat {
         <<enumeration>>
     }
+    class DeserializerFactory {
+        +deserialize_as(target_type, data) T
+    }
     class ArgumentsException
     class OperationException
 
@@ -482,11 +513,11 @@ classDiagram
     SettingsManager --> SettingsModel : settings
     SettingsModel --> OrganizationModel : organization
     OrganizationModel --> OwnershipForm : ownership_form
-    SettingsManager ..> Common : путь к файлу, поля моделей
+    SettingsModel --> ResponseFormat : response_format
+    SettingsManager ..> Common : путь к файлу
     Common ..> OperationException : бросает
-    SettingsManager ..> OrganizationModel : создаёт в convert()
-    SettingsManager ..> OwnershipForm : значение из файла
-    SettingsManager ..> ResponseFormat : значение из файла
+    SettingsManager ..> DeserializerFactory : convert() собирает SettingsModel
+    SettingsManager ..> OrganizationModel : model_type в _typed()
     SettingsManager ..> ArgumentsException : перехватывает
     SettingsManager ..> OperationException : бросает
 ```
@@ -500,7 +531,17 @@ classDiagram
 Циклы включений хранилище не проверяет: снимок самой себя отвергает карта при добавлении строки (`RecipeModel.add_item`).
 Карту полуфабриката находит `find_recipe()` по номенклатуре-результату, на одну позицию допускается одна карта.
 По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
-Сущность по типу (`EntityType`: номенклатура, единица измерения, карта) и коду ищет `find()` перебором коллекции этого типа.
+Сущность по типу (`EntityType`: номенклатура, группа номенклатуры, единица измерения, склад, карта) и коду ищет `find()` перебором коллекции этого типа,
+все сущности типа возвращает `entities()` (копия списка): по ним API отдаёт коллекцию.
+Сущности, ссылающиеся на сущность с заданным кодом (по `references()`), возвращает `find_referrers()`: он обходит все коллекции, которые перечисляет `_entity_collections()`. Это основа запрета удаления связанных сущностей.
+Изменяют хранилище `create`, `put`, `patch` и `delete` (их вызывают CRUD-маршруты API `/api/entities/...`). Данные — словарь в формате выгрузки,
+вложенные сущности хранилища задаются ссылкой `{"id": ...}`, `model_type` необязателен. `put` заменяет все поля,
+`patch` накладывает указанные на текущие (выгрузка сущности + данные). Сущность собирается в стороне через
+`DeserializerFactory.session(known)`, где известны все сущности хранилища, и проверяется до первого изменения:
+ссылки должны вести на сущности хранилища, код — быть свободным, наименование — уникальным. Затем состояние
+переносится на месте (`BaseEntity.replace_state`), а коллекция перестраивается, если ключ изменился. Удалить сущность
+или сменить ей код, пока на неё ссылаются, нельзя: `ReferencedEntityException`. Остальные поля у связанной сущности
+менять можно. Каскадной пересборки снимков карт при правке сущностей пока нет.
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 Если в `load(file_name=...)` указан файл, коллекции читаются из него, а настройки не нужны и флаг первого запуска
@@ -543,6 +584,12 @@ classDiagram
         +find_recipe(nomenclature) RecipeModel | None
         +find_recipe_by_name(name) RecipeModel | None
         +find(entity_type, entity_id) NamedEntity | None
+        +entities(entity_type) list~NamedEntity~
+        +find_referrers(target_id) list~NamedEntity~
+        +create(entity_type, data) NamedEntity
+        +put(entity_type, entity_id, data) NamedEntity
+        +patch(entity_type, entity_id, data) NamedEntity
+        +delete(entity_type, entity_id) None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
@@ -561,6 +608,8 @@ classDiagram
         -_items: dict~Hashable, T~
         +add(item) None
         +remove(key) None
+        +key_of(item) Hashable
+        +has_key(key) bool
     }
 
     note for UniqueCollection "Ключ уникальности задаёт функция, которую даёт модель: NamedEntity.name_key (наименование без учёта регистра), IngredientModel.nomenclature_key (id номенклатуры), RecipeModel.result_key (id результата). add принимает элемент, remove — ключ. Поддерживает итерацию и len()"
@@ -586,6 +635,7 @@ classDiagram
     class DeserializerFactory
     class ArgumentsException
     class OperationException
+    class ReferencedEntityException
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "5" UniqueCollection : коллекции
@@ -602,6 +652,7 @@ classDiagram
     RangeModel --> RangeModel : base
     UniqueCollection ..> ArgumentsException : бросает при дубликате и удалении отсутствующего ключа
     StorageManager ..> OperationException : бросает
+    StorageManager ..> ReferencedEntityException : delete, смена кода
 ```
 
 ## Отчёты
@@ -946,7 +997,7 @@ classDiagram
         -_cache: dict~UUID, BaseEntity~
         -_in_progress: set~UUID~
         -_in_session: bool
-        +session() Generator
+        +session(known) Generator
         +create(data) AbstractDeserializer
         +deserialize(data) object
         +deserialize_as(target_type, data) T
