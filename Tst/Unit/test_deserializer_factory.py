@@ -477,3 +477,19 @@ def test_session_nested_raises():
     # Действие и проверка
     with factory.session(), pytest.raises(OperationException), factory.session():
         pass
+
+
+def test_session_known_entities_are_resolved_by_id_reference():
+    """Известная сущность разворачивается из ссылки {"id": ...} в тот же объект, а после сессии кэш пуст."""
+    # Подготовка
+    factory = DeserializerFactory()
+    known = ItemStub("Соль")
+
+    # Действие
+    with factory.session([known]):
+        resolved = factory.deserialize({"id": str(known.id)})
+
+    # Проверка
+    assert resolved is known
+    assert factory._cache == {}  # pyright: ignore[reportPrivateUsage]
+

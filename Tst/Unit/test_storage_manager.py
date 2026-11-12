@@ -379,7 +379,9 @@ def test_find_recipe_by_name_unknown_name_returns_none(first_start_storage: Stor
     ("entity_type", "collection"),
     [
         (EntityType.NOMENCLATURE, "nomenclatures"),
+        (EntityType.NOMENCLATURE_GROUP, "nomenclature_groups"),
         (EntityType.RANGE, "ranges"),
+        (EntityType.WAREHOUSE, "warehouses"),
         (EntityType.RECIPE, "recipes"),
     ],
 )
