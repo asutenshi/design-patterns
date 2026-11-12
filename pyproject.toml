@@ -23,6 +23,7 @@ dev = [
     "basedpyright>=1.40.1",
     "httpx2>=2.13.1",
     "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
     "ruff>=0.16.8",
 ]
 
