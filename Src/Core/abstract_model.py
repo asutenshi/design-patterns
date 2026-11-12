@@ -40,12 +40,12 @@ class AbstractModel(ABC):
         :param kwargs: Параметры класса, передаются дальше по цепочке.
         """
         super().__init_subclass__(**kwargs)
-        AbstractModel._registry[AbstractModel._type_name(cls)] = cls
+        AbstractModel._registry[AbstractModel.type_name(cls)] = cls
 
     @property
     def model_type(self) -> str:
         """Возвращает тип модели: полное имя её класса (модуль и имя класса)."""
-        return AbstractModel._type_name(type(self))
+        return AbstractModel.type_name(type(self))
 
     @classmethod
     @abstractmethod
@@ -77,7 +77,7 @@ class AbstractModel(ABC):
         return cls
 
     @staticmethod
-    def _type_name(model_class: type) -> str:
+    def type_name(model_class: type) -> str:
         """Возвращает полное имя класса: модуль и имя класса.
 
         :param model_class: Класс модели.
