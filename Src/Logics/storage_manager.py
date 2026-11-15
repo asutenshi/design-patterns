@@ -1,5 +1,7 @@
 import json
 import uuid
+from collections.abc import Callable, Hashable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Self, cast, override
 
@@ -22,6 +24,22 @@ from Src.Models.recipe_model import RecipeModel
 from Src.Models.warehouse_model import WarehouseModel
 
 
+@dataclass(frozen=True)
+class _EntityKind:
+    """Описание типа сущности хранилища: всё, что хранилищу нужно знать о коллекции этого типа.
+
+    Из таблицы таких описаний (``StorageManager._KINDS``) хранилище строит коллекции, проверяет класс
+    добавляемых сущностей и сопоставляет коллекции с ключами файла выгрузки. Новый тип сущности
+    подключается строкой в таблице, значением в ``EntityType`` и свойством для выгрузки.
+    """
+
+    # Класс модели: сущности этого типа должны быть его экземплярами
+    model_class: type[NamedEntity]
+    # Функция ключа уникальности коллекции (наименование или результат карты)
+    key_func: Callable[[NamedEntity], Hashable]
+    # Ключ коллекции в файле выгрузки: имя свойства, под которым ConverterFactory выгружает коллекцию
+    file_key: str
+
 class StorageManager(AbstractManager):
     """Хранилище коллекций доменных моделей (Singleton).
 
@@ -40,7 +58,7 @@ class StorageManager(AbstractManager):
 
     - указан файл (``file_name``) — коллекции читаются из JSON-файла в формате выгрузки через
       ``ConverterFactory``; настройки при этом не нужны и не читаются. Какие коллекции есть в хранилище,
-      описано один раз, в ``_collections()``, а порядок их загрузки задаёт файл: модели в нём записаны
+      описано один раз, в таблице ``_KINDS``, а порядок их загрузки задаёт файл: модели в нём записаны
       целиком, поэтому порядок на результат не влияет;
     - файла нет, и в настройках стоит флаг ``is_first_start`` — коллекции наполняются начальными данными;
     - иначе коллекции остаются пустыми: чтение из БД появится вместе с SQLite.
@@ -57,25 +75,21 @@ class StorageManager(AbstractManager):
     # Единственный экземпляр этого класса
     _instance: ClassVar["StorageManager | None"] = None
 
-    # Класс модели для каждого типа сущности: по нему проверяются добавляемые сущности
-    _ENTITY_CLASSES: ClassVar[dict[EntityType, type[NamedEntity]]] = {
-        EntityType.NOMENCLATURE: NomenclatureModel,
-        EntityType.NOMENCLATURE_GROUP: NomenclatureGroupModel,
-        EntityType.RANGE: RangeModel,
-        EntityType.WAREHOUSE: WarehouseModel,
-        EntityType.RECIPE: RecipeModel,
+    # Описания типов сущностей: единственное место, где перечислены коллекции хранилища.
+    # Порядок задаёт порядок обхода коллекций (all_entities, entities по всем типам)
+    _KINDS: ClassVar[dict[EntityType, _EntityKind]] = {
+        EntityType.NOMENCLATURE: _EntityKind(NomenclatureModel, NamedEntity.name_key, "nomenclatures"),
+        EntityType.NOMENCLATURE_GROUP: _EntityKind(NomenclatureGroupModel, NamedEntity.name_key, "nomenclature_groups"),
+        EntityType.RANGE: _EntityKind(RangeModel, NamedEntity.name_key, "ranges"),
+        EntityType.WAREHOUSE: _EntityKind(WarehouseModel, NamedEntity.name_key, "warehouses"),
+        # Карта уникальна по номенклатуре-результату; в коллекцию карт попадают только RecipeModel (_validate_entity)
+        EntityType.RECIPE: _EntityKind(
+            RecipeModel, cast(Callable[[NamedEntity], Hashable], RecipeModel.result_key), "recipes"
+        ),
     }
 
-    # Единицы измерения
-    _ranges: UniqueCollection[RangeModel]
-    # Группы номенклатуры
-    _nomenclature_groups: UniqueCollection[NomenclatureGroupModel]
-    # Номенклатура
-    _nomenclatures: UniqueCollection[NomenclatureModel]
-    # Склады
-    _warehouses: UniqueCollection[WarehouseModel]
-    # Технологические карты, по одной на номенклатуру-результат
-    _recipes: UniqueCollection[RecipeModel]
+    # Коллекции сущностей по типам, строятся по _KINDS
+    _entities: dict[EntityType, UniqueCollection[NamedEntity]]
 
     # Обратный индекс ссылок: код сущности → сущности хранилища, которые на неё ссылаются
     _referrers: dict[uuid.UUID, list[NamedEntity]]
@@ -107,11 +121,7 @@ class StorageManager(AbstractManager):
         Вызывается при создании экземпляра и в load() для сброса состояния. Индекс очищается вместе
         с коллекциями: иначе в нём остались бы ссылки сущностей, которых в хранилище уже нет.
         """
-        self._ranges = UniqueCollection(NamedEntity.name_key)
-        self._nomenclature_groups = UniqueCollection(NamedEntity.name_key)
-        self._nomenclatures = UniqueCollection(NamedEntity.name_key)
-        self._warehouses = UniqueCollection(NamedEntity.name_key)
-        self._recipes = UniqueCollection(RecipeModel.result_key)
+        self._entities = {entity_type: UniqueCollection(kind.key_func) for entity_type, kind in self._KINDS.items()}
         self._referrers = {}
 
     @override
@@ -155,17 +165,11 @@ class StorageManager(AbstractManager):
         Ключи совпадают с именами свойств, под которыми ``ConverterFactory`` выгружает коллекции.
         Модели из файла добавляются через ``add()`` с этим типом: он проверяет класс модели (тип выбирает
         файл, ``model_type``, и в коллекцию единиц не должна попасть, например, группа) и записывает
-        ссылки в обратный индекс. Новая коллекция подключается строкой здесь.
+        ссылки в обратный индекс. Ключи берутся из таблицы ``_KINDS``.
 
         :return: Типы сущностей по ключам коллекций.
         """
-        return {
-            "ranges": EntityType.RANGE,
-            "nomenclature_groups": EntityType.NOMENCLATURE_GROUP,
-            "nomenclatures": EntityType.NOMENCLATURE,
-            "warehouses": EntityType.WAREHOUSE,
-            "recipes": EntityType.RECIPE,
-        }
+        return {kind.file_key: entity_type for entity_type, kind in self._KINDS.items()}
 
     def _load_from_file(self, file_name: str) -> None:
         """Наполняет коллекции из JSON-файла с выгрузкой хранилища.
@@ -271,7 +275,7 @@ class StorageManager(AbstractManager):
         ):
             self.add(EntityType.WAREHOUSE, warehouse)
 
-        catalog = NomenclatureCatalog(self._nomenclatures)
+        catalog = NomenclatureCatalog(self.nomenclatures)
         bouillon = RecipeModel.create_beef_bouillon(catalog)
         boiled_beef = RecipeModel.create_boiled_beef(catalog)
         beet_fry = RecipeModel.create_beet_fry(catalog)
@@ -287,8 +291,8 @@ class StorageManager(AbstractManager):
 
         :return: Список номенклатуры в порядке добавления.
         """
-        ranges = {item.name: item for item in self._ranges}
-        groups = {item.name: item for item in self._nomenclature_groups}
+        ranges = {item.name: item for item in self.ranges}
+        groups = {item.name: item for item in self.nomenclature_groups}
         kilogram, liter, piece = ranges["килограмм"], ranges["литр"], ranges["штука"]
         meat, dairy = groups["Мясные продукты"], groups["Молочные продукты"]
         vegetables, grocery = groups["Овощи"], groups["Бакалея"]
@@ -340,7 +344,7 @@ class StorageManager(AbstractManager):
         :param nomenclature: Искомая номенклатура-результат.
         :return: Карта или None, если карты нет (например, у сырья).
         """
-        return next((recipe for recipe in self._recipes if recipe.result is nomenclature), None)
+        return next((recipe for recipe in self.recipes if recipe.result is nomenclature), None)
 
     def find_recipe_by_name(self, name: str) -> RecipeModel | None:
         """Возвращает технологическую карту по наименованию без учёта регистра и пробелов по краям.
@@ -354,28 +358,19 @@ class StorageManager(AbstractManager):
         """
         name = CommonValidator.validate_instance(name, str, "name", "Ожидается строка")
         key = name.strip().casefold()
-        return next((recipe for recipe in self._recipes if recipe.name_key() == key), None)
+        return next((recipe for recipe in self.recipes if recipe.name_key() == key), None)
 
     def _entity_collections(self) -> dict[EntityType, UniqueCollection[NamedEntity]]:
         """Возвращает все коллекции хранилища по типам сущностей.
 
-        Состав коллекций для поиска и изменения задаётся здесь один раз: им пользуются ``find()``,
-        ``add()``, ``remove()`` и ``replace()``. Новая коллекция подключается
-        строкой здесь, значением в ``EntityType`` и классом в ``_ENTITY_CLASSES``.
-        Не путать с ``_collections()``: тот описывает загрузку из файла (ключи файла и типы сущностей).
-
-        Коллекции приводятся к ``UniqueCollection[NamedEntity]``: общий код работает с ними через базовый класс,
-        а тип добавляемой сущности проверяет ``_validate_entity()`` (класс берётся из ``_ENTITY_CLASSES``).
+        Коллекции строит ``_reset_collections()`` по таблице ``_KINDS``: ими пользуются ``find()``, ``add()``,
+        ``remove()`` и ``replace()``. Не путать с ``_collections()``: тот описывает загрузку из файла
+        (ключи файла и типы сущностей). Коллекции типизированы базовым классом ``NamedEntity``,
+        а класс добавляемой сущности проверяет ``_validate_entity()`` по ``_KINDS``.
 
         :return: Коллекции хранилища по типам сущностей.
         """
-        return {
-            EntityType.NOMENCLATURE: cast(UniqueCollection[NamedEntity], self._nomenclatures),
-            EntityType.NOMENCLATURE_GROUP: cast(UniqueCollection[NamedEntity], self._nomenclature_groups),
-            EntityType.RANGE: cast(UniqueCollection[NamedEntity], self._ranges),
-            EntityType.WAREHOUSE: cast(UniqueCollection[NamedEntity], self._warehouses),
-            EntityType.RECIPE: cast(UniqueCollection[NamedEntity], self._recipes),
-        }
+        return self._entities
 
     def find_referrers(self, target_id: uuid.UUID) -> list[NamedEntity]:
         """Возвращает сущности хранилища, которые ссылаются на сущность с указанным кодом.
@@ -437,7 +432,7 @@ class StorageManager(AbstractManager):
         :raises ArgumentsException: Если тип не EntityType.
         """
         entity_type = CommonValidator.validate_instance(entity_type, EntityType, "entity_type", "Ожидается тип сущности")
-        return self._ENTITY_CLASSES[entity_type]
+        return self._KINDS[entity_type].model_class
 
     def all_entities(self) -> list[NamedEntity]:
         """Возвращает все сущности всех коллекций хранилища в порядке обхода коллекций."""
@@ -538,25 +533,25 @@ class StorageManager(AbstractManager):
     @property
     def ranges(self) -> list[RangeModel]:
         """Возвращает копию списка единиц измерения."""
-        return list(self._ranges)
+        return cast(list[RangeModel], list(self._entities[EntityType.RANGE]))
 
     @property
     def nomenclature_groups(self) -> list[NomenclatureGroupModel]:
         """Возвращает копию списка групп номенклатуры."""
-        return list(self._nomenclature_groups)
+        return cast(list[NomenclatureGroupModel], list(self._entities[EntityType.NOMENCLATURE_GROUP]))
 
     @property
     def nomenclatures(self) -> list[NomenclatureModel]:
         """Возвращает копию списка номенклатуры."""
-        return list(self._nomenclatures)
+        return cast(list[NomenclatureModel], list(self._entities[EntityType.NOMENCLATURE]))
 
     @property
     def warehouses(self) -> list[WarehouseModel]:
         """Возвращает копию списка складов."""
-        return list(self._warehouses)
+        return cast(list[WarehouseModel], list(self._entities[EntityType.WAREHOUSE]))
 
     @property
     def recipes(self) -> list[RecipeModel]:
         """Возвращает копию списка технологических карт."""
-        return list(self._recipes)
+        return cast(list[RecipeModel], list(self._entities[EntityType.RECIPE]))
 

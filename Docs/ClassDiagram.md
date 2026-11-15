@@ -539,6 +539,12 @@ classDiagram
 Повторы ссылок (сырьё в строке карты и в основании полуфабриката) записываются один раз. Значения индекса — списки, а не множества:
 хэш сущности считается по `id`, а `replace` может сменить код ссылающейся сущности. Поэтому начальные данные
 и данные из файла тоже добавляются через `add()`, а `_reset_collections()` очищает индекс вместе с коллекциями.
+Состав хранилища описан одной таблицей `_KINDS: dict[EntityType, _EntityKind]`: для каждого типа — класс модели,
+функция ключа коллекции и ключ в файле выгрузки. Из неё `_reset_collections()` строит коллекции (`_entities`),
+`entity_class()` берёт класс для проверки, `_collections()` — ключи файла. Новый тип сущности подключается
+значением в `EntityType`, строкой в `_KINDS` и свойством для выгрузки (`ranges` и т. п.); тест сверяет `_KINDS`
+с `EntityType` и ключи файла со свойствами. Таблица лежит в хранилище, а не в моделях или `Src/Core`:
+модели не должны знать, как их хранят, а ядро — зависеть от моделей.
 Хранилище только хранит и отдаёт сущности. Меняют коллекции `add`, `remove` и `replace`, они следят лишь за целостностью
 самих коллекций: класс сущности соответствует типу (`entity_class()`), ключ не повторяется, удаляемая сущность есть.
 `replace` переносит состояние на месте (`BaseEntity.replace_state`) и перекладывает сущность под новый ключ, если
@@ -547,8 +553,8 @@ classDiagram
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 Если в `load(file_name=...)` указан файл, коллекции читаются из него, а настройки не нужны и флаг первого запуска
 не учитывается. Файл — выгрузка хранилища через `ConverterFactory` (ключи `ranges`, `nomenclature_groups`,
-`nomenclatures`, `warehouses`, `recipes`). Состав хранилища описан один раз, в `_collections()`: ключ коллекции
-и тип сущностей (`EntityType`); модели добавляются через `add()`, который проверяет класс модели и пишет ссылки в индекс. Загрузка идёт циклом по ключам файла
+`nomenclatures`, `warehouses`, `recipes`). `_collections()` выводит из `_KINDS` пары «ключ коллекции
+→ тип сущностей» (`EntityType`); модели добавляются через `add()`, который проверяет класс модели и пишет ссылки в индекс. Загрузка идёт циклом по ключам файла
 в их порядке, лишние ключи (`is_loaded`) пропускаются, отсутствующая коллекция — ошибка. Какую модель собирать,
 говорит сам файл (`model_type`). Все коллекции загружаются в одной сессии `DeserializerFactory`, поэтому
 единицы, группы и номенклатура становятся общими объектами, а не копиями, и `find_recipe()` их находит.
@@ -570,11 +576,8 @@ classDiagram
 
     class StorageManager {
         -_instance$: StorageManager | None
-        -_ranges: UniqueCollection~RangeModel~
-        -_nomenclature_groups: UniqueCollection~NomenclatureGroupModel~
-        -_nomenclatures: UniqueCollection~NomenclatureModel~
-        -_warehouses: UniqueCollection~WarehouseModel~
-        -_recipes: UniqueCollection~RecipeModel~
+        -_KINDS$: dict~EntityType, _EntityKind~
+        -_entities: dict~EntityType, UniqueCollection~NamedEntity~~
         -_referrers: dict~UUID, list~NamedEntity~~
         +ranges: list~RangeModel~
         +nomenclature_groups: list~NomenclatureGroupModel~
@@ -605,6 +608,15 @@ classDiagram
         -_unindex_references(entity) None
         -_validate_entity(entity_type, entity) NamedEntity
     }
+
+    class _EntityKind {
+        <<dataclass frozen>>
+        +model_class: type~NamedEntity~
+        +key_func: Callable~NamedEntity, Hashable~
+        +file_key: str
+    }
+
+    note for _EntityKind "Описание типа сущности хранилища. Таблица StorageManager._KINDS — единственное место, где перечислены коллекции: по ней строятся коллекции, проверяется класс сущности и сопоставляются ключи файла"
 
     note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции. Ключ коллекции карт — id результата"
 
@@ -643,6 +655,7 @@ classDiagram
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "5" UniqueCollection : коллекции
+    StorageManager --> _EntityKind : _KINDS
     StorageManager ..> SettingsManager : зависимость, параметр load(), читает is_first_start
     StorageManager --> RangeModel : ranges
     StorageManager --> NomenclatureGroupModel : nomenclature_groups

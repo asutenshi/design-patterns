@@ -460,7 +460,7 @@ def test_recipes_second_recipe_for_same_result_raises(first_start_storage: Stora
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        first_start_storage._recipes.add(duplicate)  # pyright: ignore[reportPrivateUsage]
+        first_start_storage.add(EntityType.RECIPE, duplicate)
     assert len(first_start_storage.recipes) == len(EXPECTED_RECIPES)
 
 
@@ -899,6 +899,28 @@ def test_replace_taken_name_raises_and_keeps_entity(first_start_storage: Storage
     with pytest.raises(ArgumentsException):
         first_start_storage.replace(EntityType.WAREHOUSE, first, WarehouseModel(second.name))
     assert first.name == first_name
+
+
+def test_kinds_describe_every_entity_type():
+    """Таблица описаний типов покрывает все значения EntityType: новый тип нельзя забыть описать."""
+    # Действие и проверка
+    assert set(StorageManager._KINDS) == set(EntityType)  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.parametrize("entity_type", list(EntityType), ids=lambda item: item.value)
+def test_kind_file_key_is_property_with_entities_of_its_type(
+    first_start_storage: StorageManager, entity_type: EntityType
+):
+    """Ключ коллекции в файле — имя свойства хранилища, которое отдаёт сущности этого типа (по нему идёт выгрузка)."""
+    # Подготовка
+    kind = StorageManager._KINDS[entity_type]  # pyright: ignore[reportPrivateUsage]
+
+    # Действие
+    exported = cast(list[object], getattr(first_start_storage, kind.file_key))
+
+    # Проверка
+    assert exported == first_start_storage.entities(entity_type)
+    assert all(isinstance(item, kind.model_class) for item in exported)
 
 
 def test_all_entities_returns_entities_of_every_collection(first_start_storage: StorageManager):
