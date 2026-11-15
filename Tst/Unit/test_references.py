@@ -1,8 +1,10 @@
 import uuid
+from collections.abc import Callable
 
 import pytest
 from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException
+from Src.Core.nomenclature_type import NomenclatureType
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
@@ -177,6 +179,116 @@ def test_find_referrers_unreferenced_entity_returns_empty(first_start_storage: S
     # Действие и проверка
     assert first_start_storage.find_referrers(warehouse.id) == []
     assert first_start_storage.find_referrers(uuid.uuid4()) == []
+
+
+def _new_nomenclature(storage: StorageManager, name: str) -> NomenclatureModel:
+    """Создаёт номенклатуру на группе «Овощи» и килограмме хранилища, в хранилище не добавляет."""
+    group = next(item for item in storage.nomenclature_groups if item.name == "Овощи")
+    kilogram = next(item for item in storage.ranges if item.name == "килограмм")
+    return NomenclatureModel(name, name, group, kilogram, NomenclatureType.RAW_MATERIAL, 1000)
+
+
+def _copy_with_range(nomenclature: NomenclatureModel, range_model: RangeModel) -> NomenclatureModel:
+    """Возвращает номенклатуру с теми же полями и кодом, но другой единицей измерения."""
+    state = NomenclatureModel(
+        nomenclature.name,
+        nomenclature.full_name,
+        nomenclature.group,
+        range_model,
+        nomenclature.type,
+        nomenclature.grams_per_base_unit,
+    )
+    state.id = nomenclature.id
+    return state
+
+
+def test_find_referrers_after_add_returns_new_entity(first_start_storage: StorageManager):
+    """Добавленная через add() номенклатура сразу находится среди ссылающихся на свою группу и единицу."""
+    # Подготовка
+    nomenclature = _new_nomenclature(first_start_storage, "Редис")
+
+    # Действие
+    first_start_storage.add(EntityType.NOMENCLATURE, nomenclature)
+
+    # Проверка
+    assert any(item is nomenclature for item in first_start_storage.find_referrers(nomenclature.group.id))
+    assert any(item is nomenclature for item in first_start_storage.find_referrers(nomenclature.range.id))
+
+
+def test_find_referrers_after_remove_does_not_return_entity(first_start_storage: StorageManager):
+    """Убранная номенклатура больше не числится среди ссылающихся."""
+    # Подготовка
+    nomenclature = _new_nomenclature(first_start_storage, "Редис")
+    first_start_storage.add(EntityType.NOMENCLATURE, nomenclature)
+
+    # Действие
+    first_start_storage.remove(EntityType.NOMENCLATURE, nomenclature)
+
+    # Проверка
+    assert all(item is not nomenclature for item in first_start_storage.find_referrers(nomenclature.range.id))
+
+
+def test_find_referrers_after_replace_follows_new_references(first_start_storage: StorageManager):
+    """Сменили единицу номенклатуры с килограмма на литр: ссылка переезжает в индексе на литр."""
+    # Подготовка
+    nomenclature = _new_nomenclature(first_start_storage, "Редис")
+    first_start_storage.add(EntityType.NOMENCLATURE, nomenclature)
+    kilogram = nomenclature.range
+    liter = next(item for item in first_start_storage.ranges if item.name == "литр")
+
+    # Действие
+    first_start_storage.replace(EntityType.NOMENCLATURE, nomenclature, _copy_with_range(nomenclature, liter))
+
+    # Проверка
+    assert all(item is not nomenclature for item in first_start_storage.find_referrers(kilogram.id))
+    assert any(item is nomenclature for item in first_start_storage.find_referrers(liter.id))
+
+
+def test_find_referrers_after_replace_with_new_id_keeps_and_removes_entity(first_start_storage: StorageManager):
+    """Смена кода у ссылающейся сущности не теряет её в индексе: она находится и потом убирается."""
+    # Подготовка
+    nomenclature = _new_nomenclature(first_start_storage, "Редис")
+    first_start_storage.add(EntityType.NOMENCLATURE, nomenclature)
+    state = _copy_with_range(nomenclature, nomenclature.range)
+    state.id = uuid.uuid4()
+
+    # Действие
+    first_start_storage.replace(EntityType.NOMENCLATURE, nomenclature, state)
+    found = any(item is nomenclature for item in first_start_storage.find_referrers(nomenclature.range.id))
+    first_start_storage.remove(EntityType.NOMENCLATURE, nomenclature)
+
+    # Проверка
+    assert found
+    assert all(item is not nomenclature for item in first_start_storage.find_referrers(nomenclature.range.id))
+
+
+def test_find_referrers_result_change_does_not_affect_storage(first_start_storage: StorageManager):
+    """Результат — копия: очистка списка снаружи не стирает ссылки в хранилище."""
+    # Подготовка
+    group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
+    expected = first_start_storage.find_referrers(group.id)
+
+    # Действие
+    first_start_storage.find_referrers(group.id).clear()
+
+    # Проверка
+    assert len(expected) > 0
+    assert _same_objects(list(first_start_storage.find_referrers(group.id)), list(expected))
+
+
+def test_find_referrers_after_reload_without_data_returns_empty(
+    first_start_storage: StorageManager, load_settings: Callable[..., None]
+):
+    """Повторная загрузка без начальных данных очищает индекс вместе с коллекциями."""
+    # Подготовка
+    group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
+    load_settings(False)
+
+    # Действие
+    first_start_storage.load()
+
+    # Проверка
+    assert first_start_storage.find_referrers(group.id) == []
 
 
 # Подготовка

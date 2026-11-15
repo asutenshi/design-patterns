@@ -534,7 +534,11 @@ classDiagram
 По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
 Сущность по типу (`EntityType`: номенклатура, группа номенклатуры, единица измерения, склад, карта) и коду ищет `find()` перебором коллекции этого типа,
 все сущности типа возвращает `entities()` (копия списка): по ним API отдаёт коллекцию.
-Сущности, ссылающиеся на сущность с заданным кодом (по `references()`), возвращает `find_referrers()`: он обходит все коллекции, которые перечисляет `_entity_collections()`. Это основа запрета удаления связанных сущностей.
+Сущности, ссылающиеся на сущность с заданным кодом (по `references()`), возвращает `find_referrers()`: он берёт ответ из обратного индекса `_referrers` (код цели → ссылающиеся сущности) за одно обращение к словарю и отдаёт копию списка. Это основа запрета удаления связанных сущностей.
+Индекс ведут `add`, `remove` и `replace` через `_index_references()` и `_unindex_references()`; `replace` вычёркивает старые ссылки до `replace_state` и записывает новые после.
+Повторы ссылок (сырьё в строке карты и в основании полуфабриката) записываются один раз. Значения индекса — списки, а не множества:
+хэш сущности считается по `id`, а `replace` может сменить код ссылающейся сущности. Поэтому начальные данные
+и данные из файла тоже добавляются через `add()`, а `_reset_collections()` очищает индекс вместе с коллекциями.
 Хранилище только хранит и отдаёт сущности. Меняют коллекции `add`, `remove` и `replace`, они следят лишь за целостностью
 самих коллекций: класс сущности соответствует типу (`entity_class()`), ключ не повторяется, удаляемая сущность есть.
 `replace` переносит состояние на месте (`BaseEntity.replace_state`) и перекладывает сущность под новый ключ, если
@@ -544,7 +548,7 @@ classDiagram
 Если в `load(file_name=...)` указан файл, коллекции читаются из него, а настройки не нужны и флаг первого запуска
 не учитывается. Файл — выгрузка хранилища через `ConverterFactory` (ключи `ranges`, `nomenclature_groups`,
 `nomenclatures`, `warehouses`, `recipes`). Состав хранилища описан один раз, в `_collections()`: ключ коллекции
-и функция, которая проверяет тип модели и добавляет её в коллекцию. Загрузка идёт циклом по ключам файла
+и тип сущностей (`EntityType`); модели добавляются через `add()`, который проверяет класс модели и пишет ссылки в индекс. Загрузка идёт циклом по ключам файла
 в их порядке, лишние ключи (`is_loaded`) пропускаются, отсутствующая коллекция — ошибка. Какую модель собирать,
 говорит сам файл (`model_type`). Все коллекции загружаются в одной сессии `DeserializerFactory`, поэтому
 единицы, группы и номенклатура становятся общими объектами, а не копиями, и `find_recipe()` их находит.
@@ -571,6 +575,7 @@ classDiagram
         -_nomenclatures: UniqueCollection~NomenclatureModel~
         -_warehouses: UniqueCollection~WarehouseModel~
         -_recipes: UniqueCollection~RecipeModel~
+        -_referrers: dict~UUID, list~NamedEntity~~
         +ranges: list~RangeModel~
         +nomenclature_groups: list~NomenclatureGroupModel~
         +nomenclatures: list~NomenclatureModel~
@@ -592,11 +597,12 @@ classDiagram
         -_reset_collections() None
         -_fill_first_start_data() None
         -_load_from_file(file_name) None
-        -_collections() dict~str, Callable~
-        -_adder(model_type, collection)$ Callable
+        -_collections() dict~str, EntityType~
         -_read_file(path)$ dict
-        -_load_collection(factory, key, items, add)$ None
+        -_load_collection(factory, key, items, entity_type) None
         -_create_nomenclatures() list~NomenclatureModel~
+        -_index_references(entity) None
+        -_unindex_references(entity) None
         -_validate_entity(entity_type, entity) NamedEntity
     }
 
