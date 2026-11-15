@@ -67,6 +67,9 @@ CRUD доменных сущностей (тип — `nomenclature`, `nomenclatu
 | `PATCH /api/entities/{entity_type}/{entity_id}` | Изменить часть полей | 200, 400, 404, 409 |
 | `DELETE /api/entities/{entity_type}/{entity_id}` | Удалить сущность | 204, 404, 409 |
 
+Изменяющие маршруты вызывают сервис `EntityService` (паттерн Service Layer): он проверяет правила (ссылки,
+уникальность кода, запрет удалять связанные сущности), а `StorageManager` только хранит и отдаёт сущности.
+
 Описание API — [`Docs/openapi.yaml`](Docs/openapi.yaml), его же по маршрутам строит FastAPI для Swagger UI.
 Тест следит, чтобы файл не устарел; после изменения маршрутов он обновляется так:
 `UPDATE_EXAMPLES=1 uv run pytest Tst/Integration/test_openapi_spec.py`.

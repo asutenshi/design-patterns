@@ -297,10 +297,11 @@ classDiagram
         +find(entity_type, entity_id) NamedEntity | None
         +entities(entity_type) list~NamedEntity~
         +find_referrers(target_id) list~NamedEntity~
-        +create(entity_type, data) NamedEntity
-        +put(entity_type, entity_id, data) NamedEntity
-        +patch(entity_type, entity_id, data) NamedEntity
-        +delete(entity_type, entity_id) None
+        +entity_class(entity_type) type~NamedEntity~
+        +all_entities() list~NamedEntity~
+        +add(entity_type, entity) None
+        +remove(entity_type, entity) None
+        +replace(entity_type, entity, state) None
     }
 
     note for StorageManager "Одна карта на номенклатуру-результат. Включение снимка самой себя отвергает карта при добавлении строки, хранилище его не проверяет"
@@ -374,7 +375,7 @@ classDiagram
         +referrers: tuple~str~
     }
 
-    note for ReferencedEntityException "На сущность есть ссылки, удалять её или менять код нельзя (п. 3 домашнего задания). Описания ссылающихся сущностей — строки, чтобы исключения не зависели от моделей. Бросает StorageManager в delete, put и patch по результату find_referrers()"
+    note for ReferencedEntityException "На сущность есть ссылки, удалять её или менять код нельзя (п. 3 домашнего задания). Описания ссылающихся сущностей — строки, чтобы исключения не зависели от моделей. Бросает EntityService в delete, put и patch по результату StorageManager.find_referrers()"
 
     class Exception {
         <<built-in>>
@@ -534,14 +535,10 @@ classDiagram
 Сущность по типу (`EntityType`: номенклатура, группа номенклатуры, единица измерения, склад, карта) и коду ищет `find()` перебором коллекции этого типа,
 все сущности типа возвращает `entities()` (копия списка): по ним API отдаёт коллекцию.
 Сущности, ссылающиеся на сущность с заданным кодом (по `references()`), возвращает `find_referrers()`: он обходит все коллекции, которые перечисляет `_entity_collections()`. Это основа запрета удаления связанных сущностей.
-Изменяют хранилище `create`, `put`, `patch` и `delete` (их вызывают CRUD-маршруты API `/api/entities/...`). Данные — словарь в формате выгрузки,
-вложенные сущности хранилища задаются ссылкой `{"id": ...}`, `model_type` необязателен. `put` заменяет все поля,
-`patch` накладывает указанные на текущие (выгрузка сущности + данные). Сущность собирается в стороне через
-`DeserializerFactory.session(known)`, где известны все сущности хранилища, и проверяется до первого изменения:
-ссылки должны вести на сущности хранилища, код — быть свободным, наименование — уникальным. Затем состояние
-переносится на месте (`BaseEntity.replace_state`), а коллекция перестраивается, если ключ изменился. Удалить сущность
-или сменить ей код, пока на неё ссылаются, нельзя: `ReferencedEntityException`. Остальные поля у связанной сущности
-менять можно. Каскадной пересборки снимков карт при правке сущностей пока нет.
+Хранилище только хранит и отдаёт сущности. Меняют коллекции `add`, `remove` и `replace`, они следят лишь за целостностью
+самих коллекций: класс сущности соответствует типу (`entity_class()`), ключ не повторяется, удаляемая сущность есть.
+`replace` переносит состояние на месте (`BaseEntity.replace_state`) и перекладывает сущность под новый ключ, если
+наименование изменилось. Сценарии создания, изменения и удаления с бизнес-правилами выполняет `EntityService` (ниже).
 Хранилище зависит от менеджера настроек: `load(settings_manager)` принимает его параметром, по умолчанию берёт
 единственный `SettingsManager`. Настройки должны быть загружены до `StorageManager.load()`, сам `load()` их не загружает.
 Если в `load(file_name=...)` указан файл, коллекции читаются из него, а настройки не нужны и флаг первого запуска
@@ -586,10 +583,11 @@ classDiagram
         +find(entity_type, entity_id) NamedEntity | None
         +entities(entity_type) list~NamedEntity~
         +find_referrers(target_id) list~NamedEntity~
-        +create(entity_type, data) NamedEntity
-        +put(entity_type, entity_id, data) NamedEntity
-        +patch(entity_type, entity_id, data) NamedEntity
-        +delete(entity_type, entity_id) None
+        +entity_class(entity_type) type~NamedEntity~
+        +all_entities() list~NamedEntity~
+        +add(entity_type, entity) None
+        +remove(entity_type, entity) None
+        +replace(entity_type, entity, state) None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
@@ -599,6 +597,7 @@ classDiagram
         -_read_file(path)$ dict
         -_load_collection(factory, key, items, add)$ None
         -_create_nomenclatures() list~NomenclatureModel~
+        -_validate_entity(entity_type, entity) NamedEntity
     }
 
     note for StorageManager "Singleton: __new__ создаёт экземпляр один раз и вызывает _initialize(). Свойства возвращают копии списков. load() каждый раз пересоздаёт коллекции. Ключ коллекции карт — id результата"
@@ -635,7 +634,6 @@ classDiagram
     class DeserializerFactory
     class ArgumentsException
     class OperationException
-    class ReferencedEntityException
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "5" UniqueCollection : коллекции
@@ -652,7 +650,62 @@ classDiagram
     RangeModel --> RangeModel : base
     UniqueCollection ..> ArgumentsException : бросает при дубликате и удалении отсутствующего ключа
     StorageManager ..> OperationException : бросает
-    StorageManager ..> ReferencedEntityException : delete, смена кода
+```
+
+### EntityService
+
+Сервис доменных сущностей (паттерн Service Layer, `Src/Logics/entity_service.py`): сценарии `create`, `put`,
+`patch` и `delete`, которые вызывают CRUD-маршруты API `/api/entities/...`. Сервис решает, можно ли выполнить
+операцию, а хранилище только исполняет: сервис обращается к нему через публичные методы и не трогает коллекции.
+Хранилище сервис получает в конструкторе, по умолчанию берёт единственный `StorageManager`.
+Данные — словарь в формате выгрузки, вложенные сущности хранилища задаются ссылкой `{"id": ...}`, `model_type`
+необязателен. `put` заменяет все поля, `patch` накладывает указанные на текущие (выгрузка сущности + данные).
+Сущность собирается в стороне через `DeserializerFactory.session(known)`, где известны все сущности хранилища,
+и проверяется до первого изменения: ссылки должны вести на сущности хранилища, код — быть свободным во всём
+хранилище. Удалить сущность или сменить ей код, пока на неё ссылаются (`StorageManager.find_referrers()`), нельзя:
+`ReferencedEntityException`. Остальные поля у связанной сущности менять можно. Каскадной пересборки снимков карт
+при правке сущностей пока нет.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class EntityService {
+        -_storage: StorageManager
+        +__init__(storage)
+        +create(entity_type, data) NamedEntity
+        +put(entity_type, entity_id, data) NamedEntity
+        +patch(entity_type, entity_id, data) NamedEntity
+        +delete(entity_type, entity_id) None
+        -_get(entity_type, entity_id) NamedEntity
+        -_update(entity_type, entity_id, data, merge) NamedEntity
+        -_build_entity(entity_type, data, exclude) NamedEntity
+        -_ensure_id_is_free(entity) None
+        -_ensure_not_referenced(entity) None
+        -_describe(entity) str
+    }
+
+    class StorageManager {
+        +find(entity_type, entity_id) NamedEntity | None
+        +entities(entity_type) list~NamedEntity~
+        +find_referrers(target_id) list~NamedEntity~
+        +entity_class(entity_type) type~NamedEntity~
+        +all_entities() list~NamedEntity~
+        +add(entity_type, entity) None
+        +remove(entity_type, entity) None
+        +replace(entity_type, entity, state) None
+    }
+
+    class DeserializerFactory
+    class ConverterFactory
+    class ArgumentsException
+    class ReferencedEntityException
+
+    EntityService --> StorageManager : публичные методы
+    EntityService ..> DeserializerFactory : собирает сущность из данных
+    EntityService ..> ConverterFactory : patch — текущие поля
+    EntityService ..> ArgumentsException : некорректные данные, занятый код
+    EntityService ..> ReferencedEntityException : delete, смена кода
 ```
 
 ## Отчёты

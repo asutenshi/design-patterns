@@ -26,6 +26,7 @@ from Src.Core.exception import (
 from Src.Core.named_entity import NamedEntity
 from Src.Core.response_format import ResponseFormat
 from Src.Logics.converter_factory import ConverterFactory
+from Src.Logics.entity_service import EntityService
 from Src.Logics.report_factory import ReportFactory
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
@@ -66,6 +67,11 @@ app = FastAPI(
 def get_storage() -> StorageManager:
     """Зависимость маршрутов: хранилище доменных моделей."""
     return StorageManager()
+
+
+def get_entity_service(storage: Annotated[StorageManager, Depends(get_storage)]) -> EntityService:
+    """Зависимость маршрутов: сервис доменных сущностей поверх хранилища приложения."""
+    return EntityService(storage)
 
 
 def get_report_factory() -> AbstractReportFactory:
@@ -314,7 +320,7 @@ def get_entity(
     responses=_INVALID_DATA_RESPONSE,
 )
 def create_entity(
-    entity_type: EntityTypePath, data: EntityBody, storage: Annotated[StorageManager, Depends(get_storage)]
+    entity_type: EntityTypePath, data: EntityBody, service: Annotated[EntityService, Depends(get_entity_service)]
 ) -> dict[str, object]:
     """Создаёт сущность указанного типа.
 
@@ -322,10 +328,10 @@ def create_entity(
 
     :param entity_type: Тип сущности.
     :param data: Поля сущности.
-    :param storage: Хранилище сущностей.
+    :param service: Сервис доменных сущностей.
     :return: Созданная сущность в формате выгрузки.
     """
-    return _to_json(storage.create(entity_type, data))
+    return _to_json(service.create(entity_type, data))
 
 
 @app.put(
@@ -339,6 +345,7 @@ def put_entity(
     entity_id: EntityIdPath,
     data: EntityBody,
     storage: Annotated[StorageManager, Depends(get_storage)],
+    service: Annotated[EntityService, Depends(get_entity_service)],
 ) -> dict[str, object]:
     """Полностью заменяет поля сущности: поля, которых нет в данных, не сохраняются.
 
@@ -348,12 +355,13 @@ def put_entity(
     :param entity_type: Тип сущности.
     :param entity_id: Текущий код сущности.
     :param data: Все поля сущности.
-    :param storage: Хранилище сущностей.
+    :param storage: Хранилище, в котором проверяется, что сущность есть.
+    :param service: Сервис доменных сущностей.
     :return: Изменённая сущность в формате выгрузки.
     :raises HTTPException: 404, если сущности нет.
     """
     _ = _find_entity(storage, entity_type, entity_id)
-    return _to_json(storage.put(entity_type, entity_id, data))
+    return _to_json(service.put(entity_type, entity_id, data))
 
 
 @app.patch(
@@ -367,6 +375,7 @@ def patch_entity(
     entity_id: EntityIdPath,
     data: EntityBody,
     storage: Annotated[StorageManager, Depends(get_storage)],
+    service: Annotated[EntityService, Depends(get_entity_service)],
 ) -> dict[str, object]:
     """Изменяет только указанные поля сущности, остальные сохраняются.
 
@@ -375,12 +384,13 @@ def patch_entity(
     :param entity_type: Тип сущности.
     :param entity_id: Текущий код сущности.
     :param data: Изменяемые поля сущности.
-    :param storage: Хранилище сущностей.
+    :param storage: Хранилище, в котором проверяется, что сущность есть.
+    :param service: Сервис доменных сущностей.
     :return: Изменённая сущность в формате выгрузки.
     :raises HTTPException: 404, если сущности нет.
     """
     _ = _find_entity(storage, entity_type, entity_id)
-    return _to_json(storage.patch(entity_type, entity_id, data))
+    return _to_json(service.patch(entity_type, entity_id, data))
 
 
 @app.delete(
@@ -391,17 +401,21 @@ def patch_entity(
     responses={**_NOT_FOUND_RESPONSE, **_REFERENCED_RESPONSE},
 )
 def delete_entity(
-    entity_type: EntityTypePath, entity_id: EntityIdPath, storage: Annotated[StorageManager, Depends(get_storage)]
+    entity_type: EntityTypePath,
+    entity_id: EntityIdPath,
+    storage: Annotated[StorageManager, Depends(get_storage)],
+    service: Annotated[EntityService, Depends(get_entity_service)],
 ) -> None:
     """Удаляет сущность, если на неё никто не ссылается.
 
     :param entity_type: Тип сущности.
     :param entity_id: Код сущности.
-    :param storage: Хранилище сущностей.
+    :param storage: Хранилище, в котором проверяется, что сущность есть.
+    :param service: Сервис доменных сущностей.
     :raises HTTPException: 404, если сущности нет.
     """
     _ = _find_entity(storage, entity_type, entity_id)
-    storage.delete(entity_type, entity_id)
+    service.delete(entity_type, entity_id)
 
 
 if __name__ == "__main__":

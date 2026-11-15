@@ -213,7 +213,7 @@ paths:
 
         :param entity_type: Тип сущности.
         :param data: Поля сущности.
-        :param storage: Хранилище сущностей.
+        :param service: Сервис доменных сущностей.
         :return: Созданная сущность в формате выгрузки.
       operationId: create_entity_api_entities__entity_type__post
       parameters:
@@ -337,7 +337,8 @@ paths:
         :param entity_type: Тип сущности.
         :param entity_id: Текущий код сущности.
         :param data: Все поля сущности.
-        :param storage: Хранилище сущностей.
+        :param storage: Хранилище, в котором проверяется, что сущность есть.
+        :param service: Сервис доменных сущностей.
         :return: Изменённая сущность в формате выгрузки.
         :raises HTTPException: 404, если сущности нет.
       operationId: put_entity_api_entities__entity_type___entity_id__put
@@ -426,7 +427,8 @@ paths:
         :param entity_type: Тип сущности.
         :param entity_id: Текущий код сущности.
         :param data: Изменяемые поля сущности.
-        :param storage: Хранилище сущностей.
+        :param storage: Хранилище, в котором проверяется, что сущность есть.
+        :param service: Сервис доменных сущностей.
         :return: Изменённая сущность в формате выгрузки.
         :raises HTTPException: 404, если сущности нет.
       operationId: patch_entity_api_entities__entity_type___entity_id__patch
@@ -512,7 +514,8 @@ paths:
 
         :param entity_type: Тип сущности.
         :param entity_id: Код сущности.
-        :param storage: Хранилище сущностей.
+        :param storage: Хранилище, в котором проверяется, что сущность есть.
+        :param service: Сервис доменных сущностей.
         :raises HTTPException: 404, если сущности нет.
       operationId: delete_entity_api_entities__entity_type___entity_id__delete
       parameters:

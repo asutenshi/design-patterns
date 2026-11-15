@@ -6,10 +6,17 @@ from Src.Core.base_entity import BaseEntity
 from Src.Core.entity_type import EntityType
 from Src.Core.exception import ArgumentsException, ReferencedEntityException
 from Src.Logics.converter_factory import ConverterFactory
+from Src.Logics.entity_service import EntityService
 from Src.Logics.storage_manager import StorageManager
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
 from Src.Models.recipe_model import RecipeModel
+
+
+@pytest.fixture
+def service(first_start_storage: StorageManager) -> EntityService:
+    """Сервис сущностей поверх хранилища, загруженного при первом запуске."""
+    return EntityService(first_start_storage)
 
 
 def _ref(entity: BaseEntity) -> dict[str, str]:
@@ -54,13 +61,15 @@ _COLLECTION = {
 # ---------------------------------------------------------------------------
 
 
-def test_create_nomenclature_links_to_stored_group_and_range_and_is_found(first_start_storage: StorageManager):
+def test_create_nomenclature_links_to_stored_group_and_range_and_is_found(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Созданная номенклатура ссылается на те же объекты группы и единицы, лежит в хранилище и находится по коду."""
     # Подготовка
     data = _nomenclature_data(first_start_storage)
 
     # Действие
-    created = cast(NomenclatureModel, first_start_storage.create(EntityType.NOMENCLATURE, data))
+    created = cast(NomenclatureModel, service.create(EntityType.NOMENCLATURE, data))
 
     # Проверка
     assert created.group is next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
@@ -70,31 +79,33 @@ def test_create_nomenclature_links_to_stored_group_and_range_and_is_found(first_
 
 
 @pytest.mark.parametrize("entity_type", [EntityType.WAREHOUSE, EntityType.NOMENCLATURE_GROUP])
-def test_create_simple_entity_is_added_to_collection(first_start_storage: StorageManager, entity_type: EntityType):
+def test_create_simple_entity_is_added_to_collection(
+    first_start_storage: StorageManager, service: EntityService, entity_type: EntityType
+):
     """Склад и группа создаются по одному наименованию."""
     # Действие
-    created = first_start_storage.create(entity_type, {"name": "Новая запись"})
+    created = service.create(entity_type, {"name": "Новая запись"})
 
     # Проверка
     assert first_start_storage.find(entity_type, created.id) is created
 
 
-def test_create_with_given_id_uses_it(first_start_storage: StorageManager):
+def test_create_with_given_id_uses_it(first_start_storage: StorageManager, service: EntityService):
     """Код из данных становится кодом сущности."""
     # Подготовка
     new_id = uuid.uuid4()
 
     # Действие
-    created = first_start_storage.create(EntityType.WAREHOUSE, {"id": str(new_id), "name": "Склад с кодом"})
+    created = service.create(EntityType.WAREHOUSE, {"id": str(new_id), "name": "Склад с кодом"})
 
     # Проверка
     assert created.id == new_id
 
 
-def test_create_accepts_matching_model_type(first_start_storage: StorageManager):
+def test_create_accepts_matching_model_type(first_start_storage: StorageManager, service: EntityService):
     """Совпадающий model_type допускается."""
     # Действие
-    created = first_start_storage.create(
+    created = service.create(
         EntityType.WAREHOUSE, {"model_type": "Src.Models.warehouse_model.WarehouseModel", "name": "Склад"}
     )
 
@@ -115,7 +126,7 @@ def test_create_accepts_matching_model_type(first_start_storage: StorageManager)
     ids=["wrong_model_type", "no_name", "blank_name", "not_dict", "unknown_reference"],
 )
 def test_create_invalid_data_raises_arguments_exception_and_keeps_storage(
-    first_start_storage: StorageManager, entity_type: EntityType, data: object
+    first_start_storage: StorageManager, service: EntityService, entity_type: EntityType, data: object
 ):
     """Некорректные данные отвергаются ArgumentsException, хранилище не меняется."""
     # Подготовка
@@ -123,11 +134,11 @@ def test_create_invalid_data_raises_arguments_exception_and_keeps_storage(
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.create(entity_type, data)  # pyright: ignore[reportArgumentType]
+        _ = service.create(entity_type, data)  # pyright: ignore[reportArgumentType]
     assert _snapshot(first_start_storage) == before
 
 
-def test_create_duplicate_name_raises_arguments_exception(first_start_storage: StorageManager):
+def test_create_duplicate_name_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Наименование, которое уже есть в коллекции, отвергается (без учёта регистра)."""
     # Подготовка
     existing = first_start_storage.warehouses[0]
@@ -135,12 +146,14 @@ def test_create_duplicate_name_raises_arguments_exception(first_start_storage: S
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.create(EntityType.WAREHOUSE, {"name": existing.name.upper()})
+        _ = service.create(EntityType.WAREHOUSE, {"name": existing.name.upper()})
     assert _snapshot(first_start_storage) == before
 
 
 @pytest.mark.parametrize("other_type", [EntityType.WAREHOUSE, EntityType.NOMENCLATURE_GROUP])
-def test_create_taken_id_raises_arguments_exception(first_start_storage: StorageManager, other_type: EntityType):
+def test_create_taken_id_raises_arguments_exception(
+    first_start_storage: StorageManager, service: EntityService, other_type: EntityType
+):
     """Код, который уже есть у любой сущности хранилища, занять нельзя."""
     # Подготовка
     taken = first_start_storage.warehouses[0]
@@ -148,15 +161,17 @@ def test_create_taken_id_raises_arguments_exception(first_start_storage: Storage
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.create(other_type, {"id": str(taken.id), "name": "Другая запись"})
+        _ = service.create(other_type, {"id": str(taken.id), "name": "Другая запись"})
     assert _snapshot(first_start_storage) == before
 
 
-def test_create_invalid_entity_type_raises_arguments_exception(first_start_storage: StorageManager):
+def test_create_invalid_entity_type_raises_arguments_exception(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Тип не из EntityType отвергается."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.create("warehouse", {"name": "Склад"})  # pyright: ignore[reportArgumentType]
+        _ = service.create("warehouse", {"name": "Склад"})  # pyright: ignore[reportArgumentType]
 
 
 # ---------------------------------------------------------------------------
@@ -164,14 +179,14 @@ def test_create_invalid_entity_type_raises_arguments_exception(first_start_stora
 # ---------------------------------------------------------------------------
 
 
-def test_put_replaces_fields_in_place_and_referrers_see_it(first_start_storage: StorageManager):
+def test_put_replaces_fields_in_place_and_referrers_see_it(first_start_storage: StorageManager, service: EntityService):
     """Группа, на которую ссылаются, переименовывается на месте: номенклатура видит новое наименование."""
     # Подготовка
     group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
     beet = next(item for item in first_start_storage.nomenclatures if item.name == "Свёкла")
 
     # Действие
-    result = first_start_storage.put(EntityType.NOMENCLATURE_GROUP, group.id, {"name": "Овощи и зелень"})
+    result = service.put(EntityType.NOMENCLATURE_GROUP, group.id, {"name": "Овощи и зелень"})
 
     # Проверка
     assert result is group
@@ -180,36 +195,38 @@ def test_put_replaces_fields_in_place_and_referrers_see_it(first_start_storage: 
     assert beet.group.name == "Овощи и зелень"
 
 
-def test_put_without_id_keeps_id(first_start_storage: StorageManager):
+def test_put_without_id_keeps_id(first_start_storage: StorageManager, service: EntityService):
     """Если в данных нет id, код сущности остаётся прежним."""
     # Подготовка
     warehouse = first_start_storage.warehouses[0]
     old_id = warehouse.id
 
     # Действие
-    _ = first_start_storage.put(EntityType.WAREHOUSE, old_id, {"name": "Переименованный склад"})
+    _ = service.put(EntityType.WAREHOUSE, old_id, {"name": "Переименованный склад"})
 
     # Проверка
     assert warehouse.id == old_id
     assert first_start_storage.find(EntityType.WAREHOUSE, old_id) is warehouse
 
 
-def test_put_renamed_entity_is_reachable_by_new_name_and_old_name_is_free(first_start_storage: StorageManager):
+def test_put_renamed_entity_is_reachable_by_new_name_and_old_name_is_free(
+    first_start_storage: StorageManager, service: EntityService
+):
     """После переименования старое наименование освобождается, а новое занято."""
     # Подготовка
     warehouse = first_start_storage.warehouses[0]
     old_name = warehouse.name
 
     # Действие
-    _ = first_start_storage.put(EntityType.WAREHOUSE, warehouse.id, {"name": "Новое имя"})
+    _ = service.put(EntityType.WAREHOUSE, warehouse.id, {"name": "Новое имя"})
 
     # Проверка
-    _ = first_start_storage.create(EntityType.WAREHOUSE, {"name": old_name})
+    _ = service.create(EntityType.WAREHOUSE, {"name": old_name})
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.create(EntityType.WAREHOUSE, {"name": "новое ИМЯ"})
+        _ = service.create(EntityType.WAREHOUSE, {"name": "новое ИМЯ"})
 
 
-def test_put_same_name_keeps_collection_order(first_start_storage: StorageManager):
+def test_put_same_name_keeps_collection_order(first_start_storage: StorageManager, service: EntityService):
     """Правка без смены наименования не меняет порядок элементов."""
     # Подготовка
     names_before = [item.name for item in first_start_storage.nomenclatures]
@@ -217,13 +234,13 @@ def test_put_same_name_keeps_collection_order(first_start_storage: StorageManage
     data = _nomenclature_data(first_start_storage, "Свёкла")
 
     # Действие
-    _ = first_start_storage.put(EntityType.NOMENCLATURE, beet.id, data)
+    _ = service.put(EntityType.NOMENCLATURE, beet.id, data)
 
     # Проверка
     assert [item.name for item in first_start_storage.nomenclatures] == names_before
 
 
-def test_put_unreferenced_entity_changes_id(first_start_storage: StorageManager):
+def test_put_unreferenced_entity_changes_id(first_start_storage: StorageManager, service: EntityService):
     """Код сущности, на которую никто не ссылается, можно заменить."""
     # Подготовка
     warehouse = first_start_storage.warehouses[0]
@@ -231,7 +248,7 @@ def test_put_unreferenced_entity_changes_id(first_start_storage: StorageManager)
     new_id = uuid.uuid4()
 
     # Действие
-    _ = first_start_storage.put(EntityType.WAREHOUSE, old_id, {"id": str(new_id), "name": warehouse.name})
+    _ = service.put(EntityType.WAREHOUSE, old_id, {"id": str(new_id), "name": warehouse.name})
 
     # Проверка
     assert warehouse.id == new_id
@@ -239,7 +256,9 @@ def test_put_unreferenced_entity_changes_id(first_start_storage: StorageManager)
     assert first_start_storage.find(EntityType.WAREHOUSE, new_id) is warehouse
 
 
-def test_put_referenced_entity_new_id_raises_referenced_entity_exception(first_start_storage: StorageManager):
+def test_put_referenced_entity_new_id_raises_referenced_entity_exception(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Код группы, на которую ссылается номенклатура, менять нельзя: исключение называет ссылающихся."""
     # Подготовка
     group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
@@ -248,7 +267,7 @@ def test_put_referenced_entity_new_id_raises_referenced_entity_exception(first_s
 
     # Действие
     with pytest.raises(ReferencedEntityException) as exc_info:
-        _ = first_start_storage.put(EntityType.NOMENCLATURE_GROUP, old_id, {"id": str(uuid.uuid4()), "name": "Другое"})
+        _ = service.put(EntityType.NOMENCLATURE_GROUP, old_id, {"id": str(uuid.uuid4()), "name": "Другое"})
 
     # Проверка
     assert exc_info.value.target_id == old_id
@@ -257,7 +276,7 @@ def test_put_referenced_entity_new_id_raises_referenced_entity_exception(first_s
     assert _snapshot(first_start_storage) == before
 
 
-def test_put_taken_id_raises_arguments_exception(first_start_storage: StorageManager):
+def test_put_taken_id_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Новый код, занятый другой сущностью, отвергается, и та сущность не затрагивается."""
     # Подготовка
     first, second = first_start_storage.warehouses
@@ -265,11 +284,13 @@ def test_put_taken_id_raises_arguments_exception(first_start_storage: StorageMan
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.put(EntityType.WAREHOUSE, first.id, {"id": str(second.id), "name": first.name})
+        _ = service.put(EntityType.WAREHOUSE, first.id, {"id": str(second.id), "name": first.name})
     assert _snapshot(first_start_storage) == before
 
 
-def test_put_duplicate_name_raises_arguments_exception_and_keeps_entity(first_start_storage: StorageManager):
+def test_put_duplicate_name_raises_arguments_exception_and_keeps_entity(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Наименование другой сущности занять нельзя, сущность не меняется."""
     # Подготовка
     first, second = first_start_storage.warehouses
@@ -278,12 +299,14 @@ def test_put_duplicate_name_raises_arguments_exception_and_keeps_entity(first_st
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.put(EntityType.WAREHOUSE, first.id, {"name": second.name})
+        _ = service.put(EntityType.WAREHOUSE, first.id, {"name": second.name})
     assert first.name == first_name
     assert _snapshot(first_start_storage) == before
 
 
-def test_put_missing_required_field_raises_arguments_exception_and_keeps_entity(first_start_storage: StorageManager):
+def test_put_missing_required_field_raises_arguments_exception_and_keeps_entity(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Put заменяет все поля: без обязательного поля номенклатура не собирается, а старая не меняется."""
     # Подготовка
     beet = next(item for item in first_start_storage.nomenclatures if item.name == "Свёкла")
@@ -291,18 +314,18 @@ def test_put_missing_required_field_raises_arguments_exception_and_keeps_entity(
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.put(EntityType.NOMENCLATURE, beet.id, {"name": "Свёкла"})
+        _ = service.put(EntityType.NOMENCLATURE, beet.id, {"name": "Свёкла"})
     assert beet.full_name == old_full_name
 
 
-def test_put_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager):
+def test_put_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Сущности с таким кодом нет."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.put(EntityType.WAREHOUSE, uuid.uuid4(), {"name": "Склад"})
+        _ = service.put(EntityType.WAREHOUSE, uuid.uuid4(), {"name": "Склад"})
 
 
-def test_put_recipe_name_keeps_result_key(first_start_storage: StorageManager):
+def test_put_recipe_name_keeps_result_key(first_start_storage: StorageManager, service: EntityService):
     """Карту можно переименовать: она остаётся единственной картой своего результата."""
     # Подготовка
     recipe = next(item for item in first_start_storage.recipes if item.name == "Борщ с говядиной")
@@ -310,7 +333,7 @@ def test_put_recipe_name_keeps_result_key(first_start_storage: StorageManager):
     data["name"] = "Борщ украинский"
 
     # Действие
-    result = cast(RecipeModel, first_start_storage.put(EntityType.RECIPE, recipe.id, data))
+    result = cast(RecipeModel, service.put(EntityType.RECIPE, recipe.id, data))
 
     # Проверка
     assert result is recipe
@@ -324,14 +347,14 @@ def test_put_recipe_name_keeps_result_key(first_start_storage: StorageManager):
 # ---------------------------------------------------------------------------
 
 
-def test_patch_changes_only_given_fields(first_start_storage: StorageManager):
+def test_patch_changes_only_given_fields(first_start_storage: StorageManager, service: EntityService):
     """Патч меняет указанные поля, остальные остаются, ссылки сохраняют тождество объектов."""
     # Подготовка
     beet = next(item for item in first_start_storage.nomenclatures if item.name == "Свёкла")
     group, unit, full_name = beet.group, beet.range, beet.full_name
 
     # Действие
-    result = first_start_storage.patch(EntityType.NOMENCLATURE, beet.id, {"grams_per_base_unit": 7})
+    result = service.patch(EntityType.NOMENCLATURE, beet.id, {"grams_per_base_unit": 7})
 
     # Проверка
     assert result is beet
@@ -341,20 +364,24 @@ def test_patch_changes_only_given_fields(first_start_storage: StorageManager):
     assert beet.range is unit
 
 
-def test_patch_reference_field_switches_to_other_stored_entity(first_start_storage: StorageManager):
+def test_patch_reference_field_switches_to_other_stored_entity(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Ссылочное поле можно перенаправить на другую сущность хранилища."""
     # Подготовка
     beet = next(item for item in first_start_storage.nomenclatures if item.name == "Свёкла")
     meat = next(item for item in first_start_storage.nomenclature_groups if item.name == "Мясные продукты")
 
     # Действие
-    _ = first_start_storage.patch(EntityType.NOMENCLATURE, beet.id, {"group": _ref(meat)})
+    _ = service.patch(EntityType.NOMENCLATURE, beet.id, {"group": _ref(meat)})
 
     # Проверка
     assert beet.group is meat
 
 
-def test_patch_unknown_reference_raises_arguments_exception_and_keeps_entity(first_start_storage: StorageManager):
+def test_patch_unknown_reference_raises_arguments_exception_and_keeps_entity(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Ссылка на несуществующую группу отвергается."""
     # Подготовка
     beet = next(item for item in first_start_storage.nomenclatures if item.name == "Свёкла")
@@ -362,31 +389,31 @@ def test_patch_unknown_reference_raises_arguments_exception_and_keeps_entity(fir
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.patch(EntityType.NOMENCLATURE, beet.id, {"group": {"id": str(uuid.uuid4())}})
+        _ = service.patch(EntityType.NOMENCLATURE, beet.id, {"group": {"id": str(uuid.uuid4())}})
     assert beet.group is group
 
 
-def test_patch_derived_range_keeps_base(first_start_storage: StorageManager):
+def test_patch_derived_range_keeps_base(first_start_storage: StorageManager, service: EntityService):
     """Правка производной единицы сохраняет ссылку на ту же базовую единицу."""
     # Подготовка
     kilogram = next(item for item in first_start_storage.ranges if item.name == "килограмм")
     base = kilogram.base
 
     # Действие
-    _ = first_start_storage.patch(EntityType.RANGE, kilogram.id, {"name": "кг"})
+    _ = service.patch(EntityType.RANGE, kilogram.id, {"name": "кг"})
 
     # Проверка
     assert kilogram.name == "кг"
     assert kilogram.base is base
 
 
-def test_patch_base_range_keeps_self_reference(first_start_storage: StorageManager):
+def test_patch_base_range_keeps_self_reference(first_start_storage: StorageManager, service: EntityService):
     """Базовая единица после правки по-прежнему ссылается на себя, а не на временный объект."""
     # Подготовка
     gram = next(item for item in first_start_storage.ranges if item.name == "грамм")
 
     # Действие
-    result = cast(RangeModel, first_start_storage.patch(EntityType.RANGE, gram.id, {"name": "г"}))
+    result = cast(RangeModel, service.patch(EntityType.RANGE, gram.id, {"name": "г"}))
 
     # Проверка
     assert result is gram
@@ -394,7 +421,9 @@ def test_patch_base_range_keeps_self_reference(first_start_storage: StorageManag
     assert gram.is_base
 
 
-def test_patch_referenced_entity_id_raises_referenced_entity_exception(first_start_storage: StorageManager):
+def test_patch_referenced_entity_id_raises_referenced_entity_exception(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Сменить код номенклатуры, которая нужна карте, нельзя."""
     # Подготовка
     recipe = first_start_storage.recipes[0]
@@ -402,29 +431,31 @@ def test_patch_referenced_entity_id_raises_referenced_entity_exception(first_sta
 
     # Действие
     with pytest.raises(ReferencedEntityException):
-        _ = first_start_storage.patch(EntityType.NOMENCLATURE, result_id, {"id": str(uuid.uuid4())})
+        _ = service.patch(EntityType.NOMENCLATURE, result_id, {"id": str(uuid.uuid4())})
 
     # Проверка
     assert recipe.result.id == result_id
 
 
-def test_patch_id_to_same_value_is_allowed_for_referenced_entity(first_start_storage: StorageManager):
+def test_patch_id_to_same_value_is_allowed_for_referenced_entity(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Код, равный текущему, не считается сменой кода, и сущность, на которую ссылаются, правится."""
     # Подготовка
     group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
 
     # Действие
-    _ = first_start_storage.patch(EntityType.NOMENCLATURE_GROUP, group.id, {"id": str(group.id), "name": "Овощи 2"})
+    _ = service.patch(EntityType.NOMENCLATURE_GROUP, group.id, {"id": str(group.id), "name": "Овощи 2"})
 
     # Проверка
     assert group.name == "Овощи 2"
 
 
-def test_patch_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager):
+def test_patch_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Сущности с таким кодом нет."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        _ = first_start_storage.patch(EntityType.WAREHOUSE, uuid.uuid4(), {"name": "Склад"})
+        _ = service.patch(EntityType.WAREHOUSE, uuid.uuid4(), {"name": "Склад"})
 
 
 # ---------------------------------------------------------------------------
@@ -432,21 +463,21 @@ def test_patch_unknown_entity_raises_arguments_exception(first_start_storage: St
 # ---------------------------------------------------------------------------
 
 
-def test_delete_unreferenced_entity_removes_it(first_start_storage: StorageManager):
+def test_delete_unreferenced_entity_removes_it(first_start_storage: StorageManager, service: EntityService):
     """Склад, на который никто не ссылается, удаляется и больше не находится; наименование освобождается."""
     # Подготовка
     warehouse = first_start_storage.warehouses[0]
 
     # Действие
-    first_start_storage.delete(EntityType.WAREHOUSE, warehouse.id)
+    service.delete(EntityType.WAREHOUSE, warehouse.id)
 
     # Проверка
     assert first_start_storage.find(EntityType.WAREHOUSE, warehouse.id) is None
     assert warehouse not in first_start_storage.warehouses
-    _ = first_start_storage.create(EntityType.WAREHOUSE, {"name": warehouse.name})
+    _ = service.create(EntityType.WAREHOUSE, {"name": warehouse.name})
 
 
-def test_delete_referenced_entity_raises_and_keeps_it(first_start_storage: StorageManager):
+def test_delete_referenced_entity_raises_and_keeps_it(first_start_storage: StorageManager, service: EntityService):
     """Группа, на которую ссылается номенклатура, не удаляется; в исключении есть ссылающиеся."""
     # Подготовка
     group = next(item for item in first_start_storage.nomenclature_groups if item.name == "Овощи")
@@ -454,7 +485,7 @@ def test_delete_referenced_entity_raises_and_keeps_it(first_start_storage: Stora
 
     # Действие
     with pytest.raises(ReferencedEntityException) as exc_info:
-        first_start_storage.delete(EntityType.NOMENCLATURE_GROUP, group.id)
+        service.delete(EntityType.NOMENCLATURE_GROUP, group.id)
 
     # Проверка
     assert exc_info.value.target_id == group.id
@@ -462,7 +493,9 @@ def test_delete_referenced_entity_raises_and_keeps_it(first_start_storage: Stora
     assert _snapshot(first_start_storage) == before
 
 
-def test_delete_recipe_result_is_blocked_but_recipe_itself_can_be_deleted(first_start_storage: StorageManager):
+def test_delete_recipe_result_is_blocked_but_recipe_itself_can_be_deleted(
+    first_start_storage: StorageManager, service: EntityService
+):
     """Номенклатуру-результат удалить нельзя, пока есть её карта; саму карту можно, после этого результат свободен."""
     # Подготовка
     recipe = next(item for item in first_start_storage.recipes if item.name == "Борщ с говядиной")
@@ -470,50 +503,50 @@ def test_delete_recipe_result_is_blocked_but_recipe_itself_can_be_deleted(first_
 
     # Действие и проверка
     with pytest.raises(ReferencedEntityException):
-        first_start_storage.delete(EntityType.NOMENCLATURE, result.id)
-    first_start_storage.delete(EntityType.RECIPE, recipe.id)
-    first_start_storage.delete(EntityType.NOMENCLATURE, result.id)
+        service.delete(EntityType.NOMENCLATURE, result.id)
+    service.delete(EntityType.RECIPE, recipe.id)
+    service.delete(EntityType.NOMENCLATURE, result.id)
     assert first_start_storage.find(EntityType.NOMENCLATURE, result.id) is None
 
 
-def test_delete_base_range_with_derived_is_blocked(first_start_storage: StorageManager):
+def test_delete_base_range_with_derived_is_blocked(first_start_storage: StorageManager, service: EntityService):
     """Грамм нельзя удалить, пока на него ссылается килограмм; сама самоссылка базовой единицы не мешает."""
     # Подготовка
     gram = next(item for item in first_start_storage.ranges if item.name == "грамм")
 
     # Действие и проверка
     with pytest.raises(ReferencedEntityException):
-        first_start_storage.delete(EntityType.RANGE, gram.id)
+        service.delete(EntityType.RANGE, gram.id)
 
 
-def test_delete_after_referrer_removed_succeeds(first_start_storage: StorageManager):
+def test_delete_after_referrer_removed_succeeds(first_start_storage: StorageManager, service: EntityService):
     """Созданная группа удаляется, пока на неё не сослались; после создания номенклатуры с ней — нельзя."""
     # Подготовка
-    group = first_start_storage.create(EntityType.NOMENCLATURE_GROUP, {"name": "Временная"})
+    group = service.create(EntityType.NOMENCLATURE_GROUP, {"name": "Временная"})
     data = _nomenclature_data(first_start_storage)
     data["group"] = _ref(group)
-    item = first_start_storage.create(EntityType.NOMENCLATURE, data)
+    item = service.create(EntityType.NOMENCLATURE, data)
 
     # Действие и проверка
     with pytest.raises(ReferencedEntityException):
-        first_start_storage.delete(EntityType.NOMENCLATURE_GROUP, group.id)
-    first_start_storage.delete(EntityType.NOMENCLATURE, item.id)
-    first_start_storage.delete(EntityType.NOMENCLATURE_GROUP, group.id)
+        service.delete(EntityType.NOMENCLATURE_GROUP, group.id)
+    service.delete(EntityType.NOMENCLATURE, item.id)
+    service.delete(EntityType.NOMENCLATURE_GROUP, group.id)
     assert first_start_storage.find(EntityType.NOMENCLATURE_GROUP, group.id) is None
 
 
-def test_delete_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager):
+def test_delete_unknown_entity_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Сущности с таким кодом нет."""
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        first_start_storage.delete(EntityType.WAREHOUSE, uuid.uuid4())
+        service.delete(EntityType.WAREHOUSE, uuid.uuid4())
 
 
-def test_delete_other_type_id_raises_arguments_exception(first_start_storage: StorageManager):
+def test_delete_other_type_id_raises_arguments_exception(first_start_storage: StorageManager, service: EntityService):
     """Код склада не находит сущность в коллекции групп."""
     # Подготовка
     warehouse = first_start_storage.warehouses[0]
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        first_start_storage.delete(EntityType.NOMENCLATURE_GROUP, warehouse.id)
+        service.delete(EntityType.NOMENCLATURE_GROUP, warehouse.id)
