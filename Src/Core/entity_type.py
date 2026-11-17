@@ -9,7 +9,11 @@ class EntityType(Enum):
 
     # Номенклатура
     NOMENCLATURE = "nomenclature"
+    # Группа номенклатуры
+    NOMENCLATURE_GROUP = "nomenclature_group"
     # Единица измерения
     RANGE = "range"
+    # Склад
+    WAREHOUSE = "warehouse"
     # Технологическая карта
     RECIPE = "recipe"

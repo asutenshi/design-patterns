@@ -107,12 +107,13 @@ sequenceDiagram
         St-->>K: OperationException, is_loaded остаётся False
     else настройки есть
         Se-->>St: SettingsModel
-        St->>St: _reset_collections() создаёт пустые коллекции
+        St->>St: _reset_collections() создаёт пустые коллекции и индекс ссылок
         alt is_first_start = False
             St->>St: is_loaded = True
             St-->>K: загрузка завершена, коллекции пусты
         else is_first_start = True
             St->>St: _fill_first_start_data()
+            Note over St,C: сущности добавляются через StorageManager.add(): он проверяет класс и пишет ссылки в индекс
             St->>M: фабрики единиц: create_kilogram (с граммом), create_liter (с миллилитром), create_piece
             St->>C: add() для 5 единиц
             St->>M: фабрики групп: мясные, молочные, овощи, бакалея, полуфабрикаты, блюда, упаковка
@@ -163,7 +164,7 @@ sequenceDiagram
     K->>St: load(file_name=путь)
     St->>St: is_loaded = False, _reset_collections()
     St->>St: _read_file(путь): JSON-объект
-    St->>St: _collections(): ключ → функция добавления, проверка, что все ключи есть в файле
+    St->>St: _collections(): ключ → тип сущности, проверка, что все ключи есть в файле
     St->>F: session() открывает сессию, кэш общий
     loop ключи файла в их порядке (лишние, например is_loaded, пропускаются)
         loop для каждого элемента коллекции
@@ -182,7 +183,7 @@ sequenceDiagram
                 D-->>F: модель
             end
             F-->>St: модель
-            St->>C: add(модель) после проверки типа коллекции
+            St->>C: StorageManager.add(тип, модель): проверка класса, добавление, запись ссылок в индекс
         end
     end
     St->>F: выход из сессии очищает кэш

@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from typing import Self, cast, override
 
 from Src.Core.abstract_model import AbstractModel
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.unique_collection import UniqueCollection
@@ -230,3 +231,13 @@ class IngredientModel(AbstractModel):
         :return: True, если номенклатура совпадает с номенклатурой узла или есть в его основании.
         """
         return self._nomenclature == nomenclature or any(ingredient.contains(nomenclature) for ingredient in self._base)
+
+    def references(self) -> list[BaseEntity]:
+        """Возвращает номенклатуру строки и номенклатуру всех строк её основания на любой глубине.
+
+        :return: Номенклатура строки, затем номенклатура строк основания.
+        """
+        refs: list[BaseEntity] = [self._nomenclature]
+        for ingredient in self._base:
+            refs += ingredient.references()
+        return refs

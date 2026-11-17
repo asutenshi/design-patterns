@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from types import NoneType
 
@@ -62,21 +62,27 @@ class DeserializerFactory:
         }
 
     @contextmanager
-    def session(self) -> Generator[None]:
+    def session(self, known: Iterable[BaseEntity] = ()) -> Generator[None]:
         """Открывает сессию загрузки: модели, собранные в ней, общие для всех вызовов ``deserialize``.
 
         Применяется, когда одна модель встречается в разных частях данных. Например, единица измерения
         есть и в коллекции единиц, и внутри каждой номенклатуры, и это должен быть один объект.
         Без сессии каждый ``deserialize`` собирал бы свои копии.
 
+        Известные сущности кладутся в кэш сразу: ссылка ``{"id": ...}`` на них разворачивается в тот же объект.
+        Так данные из API ссылаются на сущности хранилища, которых в самих данных нет. Если в данных есть
+        словарь с идентификатором известной сущности, возвращается она сама, остальные поля словаря игнорируются.
+
         При выходе из сессии кэш очищается, в том числе если внутри возникла ошибка.
 
+        :param known: Сущности, которые уже существуют и на которые могут ссылаться данные.
         :raises OperationException: Если сессия уже открыта: вложенная очистила бы кэш внешней раньше времени.
         """
         if self._in_session:
             raise OperationException("Сессия десериализации уже открыта")
 
         self._in_session = True
+        self._cache.update({entity.id: entity for entity in known})
         try:
             yield
         finally:

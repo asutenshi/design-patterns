@@ -2,6 +2,7 @@ import uuid
 from collections.abc import Iterable
 from typing import ClassVar, Self, cast, override
 
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Core.named_entity import NamedEntity
@@ -431,3 +432,14 @@ class RecipeModel(NamedEntity):
                 IngredientModel(catalog.get("Контейнер для супа 500 мл"), 1),
             ],
         )
+
+    @override
+    def references(self) -> list[BaseEntity]:
+        """Возвращает результат карты и номенклатуру всех строк состава, включая основания.
+
+        :return: Номенклатура-результат, затем номенклатура строк состава.
+        """
+        refs: list[BaseEntity] = [self._result]
+        for ingredient in self._items:
+            refs += ingredient.references()
+        return refs

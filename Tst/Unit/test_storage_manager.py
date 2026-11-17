@@ -14,6 +14,7 @@ from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.recipe_model import RecipeModel
+from Src.Models.warehouse_model import WarehouseModel
 
 # Начальные данные, которые создаются при первом запуске
 EXPECTED_RANGES = ["грамм", "килограмм", "миллилитр", "литр", "штука"]
@@ -379,7 +380,9 @@ def test_find_recipe_by_name_unknown_name_returns_none(first_start_storage: Stor
     ("entity_type", "collection"),
     [
         (EntityType.NOMENCLATURE, "nomenclatures"),
+        (EntityType.NOMENCLATURE_GROUP, "nomenclature_groups"),
         (EntityType.RANGE, "ranges"),
+        (EntityType.WAREHOUSE, "warehouses"),
         (EntityType.RECIPE, "recipes"),
     ],
 )
@@ -457,7 +460,7 @@ def test_recipes_second_recipe_for_same_result_raises(first_start_storage: Stora
 
     # Действие и проверка
     with pytest.raises(ArgumentsException):
-        first_start_storage._recipes.add(duplicate)  # pyright: ignore[reportPrivateUsage]
+        first_start_storage.add(EntityType.RECIPE, duplicate)
     assert len(first_start_storage.recipes) == len(EXPECTED_RECIPES)
 
 
@@ -811,3 +814,122 @@ def test_load_file_unknown_model_type_raises(tmp_path: Path):
     # Действие и проверка
     with pytest.raises(OperationException):
         StorageManager().load(file_name=_write_storage_file(tmp_path, nomenclature_groups=[group]))
+
+
+# ---------------------------------------------------------------------------
+# add / remove / replace: изменение коллекций без бизнес-правил
+# ---------------------------------------------------------------------------
+
+
+def test_add_entity_of_its_type_is_found(first_start_storage: StorageManager):
+    """Склад, добавленный в коллекцию складов, находится по коду."""
+    # Подготовка
+    warehouse = WarehouseModel("Склад №3")
+
+    # Действие
+    first_start_storage.add(EntityType.WAREHOUSE, warehouse)
+
+    # Проверка
+    assert first_start_storage.find(EntityType.WAREHOUSE, warehouse.id) is warehouse
+
+
+def test_add_entity_of_other_type_raises_and_keeps_collection(first_start_storage: StorageManager):
+    """Склад нельзя положить в коллекцию единиц измерения: класс сущности не соответствует типу."""
+    # Подготовка
+    warehouse = WarehouseModel("Склад №3")
+    before = first_start_storage.ranges
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        first_start_storage.add(EntityType.RANGE, warehouse)
+    assert first_start_storage.ranges == before
+
+
+def test_add_duplicate_name_raises_arguments_exception(first_start_storage: StorageManager):
+    """Ключ коллекции (наименование) не повторяется."""
+    # Подготовка
+    duplicate = WarehouseModel(first_start_storage.warehouses[0].name)
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        first_start_storage.add(EntityType.WAREHOUSE, duplicate)
+
+
+def test_remove_stored_entity_is_not_found(first_start_storage: StorageManager):
+    """Убранная сущность больше не находится. Ссылки хранилище не проверяет: это задача EntityService."""
+    # Подготовка
+    warehouse = first_start_storage.warehouses[0]
+
+    # Действие
+    first_start_storage.remove(EntityType.WAREHOUSE, warehouse)
+
+    # Проверка
+    assert first_start_storage.find(EntityType.WAREHOUSE, warehouse.id) is None
+
+
+def test_remove_missing_entity_raises_arguments_exception(first_start_storage: StorageManager):
+    """Сущность, которой нет в коллекции, убрать нельзя."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        first_start_storage.remove(EntityType.WAREHOUSE, WarehouseModel("Несуществующий склад"))
+
+
+def test_replace_new_name_moves_entity_under_new_key(first_start_storage: StorageManager):
+    """Сущность получает состояние другой и остаётся тем же объектом; старое наименование освобождается."""
+    # Подготовка
+    warehouse = first_start_storage.warehouses[0]
+    old_name = warehouse.name
+
+    # Действие
+    first_start_storage.replace(EntityType.WAREHOUSE, warehouse, WarehouseModel("Новое имя"))
+
+    # Проверка
+    assert warehouse.name == "Новое имя"
+    assert warehouse in first_start_storage.warehouses
+    first_start_storage.add(EntityType.WAREHOUSE, WarehouseModel(old_name))
+
+
+def test_replace_taken_name_raises_and_keeps_entity(first_start_storage: StorageManager):
+    """Наименование другой сущности занять нельзя, сущность не меняется."""
+    # Подготовка
+    first, second = first_start_storage.warehouses
+    first_name = first.name
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        first_start_storage.replace(EntityType.WAREHOUSE, first, WarehouseModel(second.name))
+    assert first.name == first_name
+
+
+def test_kinds_describe_every_entity_type():
+    """Таблица описаний типов покрывает все значения EntityType: новый тип нельзя забыть описать."""
+    # Действие и проверка
+    assert set(StorageManager._KINDS) == set(EntityType)  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.parametrize("entity_type", list(EntityType), ids=lambda item: item.value)
+def test_kind_file_key_is_property_with_entities_of_its_type(
+    first_start_storage: StorageManager, entity_type: EntityType
+):
+    """Ключ коллекции в файле — имя свойства хранилища, которое отдаёт сущности этого типа (по нему идёт выгрузка)."""
+    # Подготовка
+    kind = StorageManager._KINDS[entity_type]  # pyright: ignore[reportPrivateUsage]
+
+    # Действие
+    exported = cast(list[object], getattr(first_start_storage, kind.file_key))
+
+    # Проверка
+    assert exported == first_start_storage.entities(entity_type)
+    assert all(isinstance(item, kind.model_class) for item in exported)
+
+
+def test_all_entities_returns_entities_of_every_collection(first_start_storage: StorageManager):
+    """Все сущности хранилища — это сущности всех коллекций."""
+    # Подготовка
+    expected = [entity for entity_type in EntityType for entity in first_start_storage.entities(entity_type)]
+
+    # Действие
+    result = first_start_storage.all_entities()
+
+    # Проверка
+    assert sorted(entity.id for entity in result) == sorted(entity.id for entity in expected)

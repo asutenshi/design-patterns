@@ -7,8 +7,8 @@ from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.abstract_model import AbstractModel
 from Src.Core.common import Common
 from Src.Core.exception import ArgumentsException, OperationException
-from Src.Core.ownership_form import OwnershipForm
 from Src.Core.response_format import ResponseFormat
+from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
@@ -21,6 +21,9 @@ class SettingsManager(AbstractFileManager):
     Если файл не читается (нет файла, не JSON, не UTF-8, корень не объект), берутся настройки
     по умолчанию, а отсутствующий файл создаётся с ними. Некорректные данные в прочитанном файле
     подменой не маскируются: convert() бросает OperationException.
+
+    Модель из данных собирает общий механизм десериализации (``DeserializerFactory``), тот же, что
+    загружает хранилище из файла. Служебный ``model_type`` в файле настроек не обязателен.
     """
 
     # Единственный экземпляр этого класса
@@ -128,52 +131,41 @@ class SettingsManager(AbstractFileManager):
             _logger.warning("Не удалось создать файл настроек %s: %s", path, ex)
 
     @staticmethod
-    def _values(model: type, data: dict[str, Any], optional: tuple[str, ...] = ()) -> dict[str, Any]:
-        """Берёт из data значения полей модели по совпадению имён.
+    def _typed(data: dict[str, object]) -> dict[str, object]:
+        """Подставляет в данные тип модели (``model_type``) настроек и карточки организации.
 
-        Служебные id и model_type пропускаются: их нет в файле, а конструкторы моделей их не принимают.
-        Вложенные объекты и значения, требующие преобразования (перечисления), вызывающий
-        подменяет сам.
+        Общий десериализатор выбирает модель по ``model_type``, а в файле настроек, который правит человек,
+        этого служебного поля нет. Тип, уже указанный в файле, не заменяется: неверный отвергнет
+        ``deserialize_as`` или конструктор настроек. Исходный словарь не меняется.
 
-        :param model: Класс модели, чьи поля нужны.
         :param data: Данные из файла.
-        :param optional: Поля, которых в data может не быть: модель подставит значение по умолчанию.
-        :return: Значения полей модели по именам.
-        :raises KeyError: Если в data нет обязательного поля, в ошибке его имя.
-        :raises TypeError: Если data не словарь.
+        :return: Копия данных с ``model_type`` у корня и у организации, если она словарь.
         """
-        return {
-            field: data[field]
-            for field in Common.get_fields(model, exclude=("id", AbstractModel.TYPE_FIELD))
-            if field in data or field not in optional
-        }
+        typed: dict[str, object] = {AbstractModel.TYPE_FIELD: AbstractModel.type_name(SettingsModel), **data}
+        organization = typed.get("organization")
+        if isinstance(organization, dict):
+            typed["organization"] = {
+                AbstractModel.TYPE_FIELD: AbstractModel.type_name(OrganizationModel),
+                **cast(dict[str, object], organization),
+            }
+        return typed
 
     @override
     def convert(self) -> None:
-        """Собирает SettingsModel из прочитанных данных.
+        """Собирает SettingsModel из прочитанных данных общим механизмом десериализации.
 
+        Данные собирает ``DeserializerFactory``, как и выгрузку хранилища: модели создают себя сами
+        фабричным методом ``from_dict``, поэтому правила полей (обязательные, значения по умолчанию
+        ``is_first_start`` и ``response_format``, перечисления) описаны один раз, в моделях.
         Модель присваивается только целиком: при ошибке прежние настройки не затираются
         наполовину собранными.
 
-        Необязательные ``is_first_start`` и ``response_format`` при отсутствии берутся
-        из значений модели по умолчанию.
-
-        :raises OperationException: Если нет обязательного ключа, значение имеет
-            неверный тип, неизвестно перечислению или не проходит проверку модели.
+        :raises OperationException: Если нет обязательного поля, значение имеет неверный тип,
+            неизвестно перечислению или не проходит проверку модели.
         """
         try:
-            values = self._values(OrganizationModel, self._data["organization"])
-            values["ownership_form"] = OwnershipForm(values["ownership_form"])
-            organization = OrganizationModel(**values)
-
-            values = self._values(SettingsModel, self._data, optional=("is_first_start", "response_format"))
-            values["organization"] = organization
-            if "response_format" in values:
-                values["response_format"] = ResponseFormat(values["response_format"])
-            self._settings = SettingsModel(**values)
-        except KeyError as ex:
-            raise OperationException(f"В настройках нет обязательного поля {ex}") from ex
-        except (TypeError, ValueError, ArgumentsException) as ex:
+            self._settings = DeserializerFactory().deserialize_as(SettingsModel, self._typed(self._data))
+        except ArgumentsException as ex:
             raise OperationException(f"Некорректные настройки: {ex}") from ex
 
     @property

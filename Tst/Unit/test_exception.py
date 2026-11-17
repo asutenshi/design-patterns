@@ -1,8 +1,14 @@
+import uuid
 from abc import ABC
 from typing import override
 
 import pytest
-from Src.Core.exception import ArgumentsException, OperationException, ProjectException
+from Src.Core.exception import (
+    ArgumentsException,
+    OperationException,
+    ProjectException,
+    ReferencedEntityException,
+)
 
 
 class _TitledException(ProjectException):
@@ -239,6 +245,61 @@ def test_init_operation_exception_is_project_exception():
 
     # Проверка
     assert isinstance(exception, ProjectException)
+
+
+# ---------------------------------------------------------------------------
+# ReferencedEntityException
+# ---------------------------------------------------------------------------
+
+
+def test_str_referenced_entity_exception_contains_title_target_and_referrers_in_order():
+    """Текст: заголовок, пояснение с кодом цели и ссылающимися сущностями, трассировка."""
+    # Подготовка
+    target_id = uuid.uuid4()
+    exception = ReferencedEntityException(target_id, ["nomenclature: Свёкла", "recipe: Борщ"], "трассировка")
+
+    # Действие
+    lines = str(exception).split("\n")
+
+    # Проверка
+    assert lines == [
+        "Ошибка. Сущность используется другими сущностями!",
+        f"На сущность {target_id} ссылаются: nomenclature: Свёкла; recipe: Борщ",
+        "трассировка",
+    ]
+
+
+def test_init_referenced_entity_exception_exposes_target_and_referrers():
+    """Код цели и описания ссылающихся сущностей доступны вызывающему коду, описания копируются в кортеж."""
+    # Подготовка
+    target_id = uuid.uuid4()
+    referrers = ["  nomenclature: Свёкла ", "recipe: Борщ"]
+
+    # Действие
+    exception = ReferencedEntityException(target_id, referrers)
+    referrers.append("позже")
+
+    # Проверка
+    assert exception.target_id == target_id
+    assert exception.referrers == ("nomenclature: Свёкла", "recipe: Борщ")
+
+
+def test_init_referenced_entity_exception_is_project_exception():
+    """ReferencedEntityException наследуется от ProjectException и не связано с остальными исключениями."""
+    # Подготовка
+    exception = ReferencedEntityException(uuid.uuid4(), ["recipe: Борщ"])
+
+    # Действие и проверка
+    assert isinstance(exception, ProjectException)
+    assert not isinstance(exception, ArgumentsException)
+    assert not isinstance(exception, OperationException)
+
+
+def test_except_project_exception_catches_referenced_entity_exception():
+    """ReferencedEntityException ловится через except ProjectException."""
+    # Действие и проверка
+    with pytest.raises(ProjectException):
+        raise ReferencedEntityException(uuid.uuid4(), ["recipe: Борщ"])
 
 
 # ---------------------------------------------------------------------------

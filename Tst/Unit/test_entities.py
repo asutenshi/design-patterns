@@ -202,3 +202,62 @@ def test_hash_entity_as_dict_key_found_by_equal_entity():
 
     # Проверка
     assert result == "value"
+
+
+class _StatefulStub(BaseEntity):
+    """Сущность с полями для проверки replace_state."""
+
+    value: int
+    peer: "_StatefulStub | None"
+
+    def __init__(self, value: int = 0, peer: "_StatefulStub | None" = None) -> None:
+        super().__init__()
+        self.value = value
+        self.peer = peer
+
+    @classmethod
+    @override
+    def from_dict(cls, data: dict[str, object]) -> Self:
+        """Создаёт сущность без полей."""
+        return cls()
+
+
+def test_replace_state_copies_fields_and_id_keeping_identity():
+    """Поля и идентификатор берутся у другой сущности, а сам объект остаётся прежним."""
+    # Подготовка
+    target = _StatefulStub(1)
+    other = _StatefulStub(2)
+    original = target
+
+    # Действие
+    target.replace_state(other)
+
+    # Проверка
+    assert target is original
+    assert target.value == 2
+    assert target.id == other.id
+
+
+def test_replace_state_self_reference_of_other_points_to_target():
+    """Ссылка новой сущности на саму себя (как у базовой единицы) превращается в ссылку на целевую."""
+    # Подготовка
+    target = _StatefulStub(1)
+    other = _StatefulStub(2)
+    other.peer = other
+
+    # Действие
+    target.replace_state(other)
+
+    # Проверка
+    assert target.peer is target
+
+
+def test_replace_state_other_type_raises_arguments_exception():
+    """Состояние сущности другого типа не принимается."""
+    # Подготовка
+    target = _StatefulStub()
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        target.replace_state(EntityStub())  # pyright: ignore[reportArgumentType]
+

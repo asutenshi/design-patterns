@@ -121,6 +121,22 @@ def test_load_file_exported_first_start_keeps_order_and_ids(
     assert [item.id for item in getattr(first_start_storage, collection)] == before
 
 
+def test_load_file_exported_first_start_fills_referrers_index(first_start_storage: StorageManager, tmp_path: Path):
+    """После загрузки из файла индекс ссылок заполнен: на группу ссылается вся её номенклатура."""
+    # Подготовка
+    file_name = _export(first_start_storage, tmp_path / "storage.json")
+
+    # Действие
+    first_start_storage.load(file_name=file_name)
+
+    # Проверка
+    for group in first_start_storage.nomenclature_groups:
+        expected = [item for item in first_start_storage.nomenclatures if item.group is group]
+        referrers = [item for item in first_start_storage.find_referrers(group.id) if item in expected]
+        assert len(referrers) == len(expected)
+    assert any(first_start_storage.find_referrers(group.id) for group in first_start_storage.nomenclature_groups)
+
+
 def test_load_file_exported_first_start_shares_objects_between_collections(
     first_start_storage: StorageManager, tmp_path: Path
 ):
