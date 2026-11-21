@@ -548,6 +548,152 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/filter/{entity_type}:
+    post:
+      tags:
+      - Фильтрация
+      summary: Отбор сущностей типа по условиям
+      description: |-
+        Возвращает сущности указанного типа, которые прошли все условия фильтра.
+
+        Отбор выполняет ``Prototype``: один прототип на любой тип сущности.
+
+        :param entity_type: Тип сущности.
+        :param data: Условия фильтра в формате ``FilterDto``.
+        :param storage: Хранилище сущностей.
+        :return: Отобранные сущности в формате выгрузки, в порядке добавления.
+      operationId: filter_entities_api_filter__entity_type__post
+      parameters:
+      - name: entity_type
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EntityType'
+          description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+        description: 'Тип сущности: номенклатура, группа номенклатуры, единица измерения, склад или рецепт'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: 'Условия ``filters``: путь к полю через точку (``field_name``), способ сравнения ``EQUALS`` или
+                ``LIKE`` (``filter_type``) и значение (``value``). Модель проходит фильтр, если выполнены все условия; условие
+                выполнено, если совпало хотя бы одно значение по пути. Пустой список пропускает всё.'
+              title: Data
+            examples:
+              name_like:
+                summary: Вхождение строки в наименование
+                value:
+                  filters:
+                  - field_name: name
+                    filter_type: LIKE
+                    value: Говядина
+              nested_equals:
+                summary: Полное совпадение во вложенной модели
+                description: 'Путь через точку: номенклатура, у которой базовая единица — грамм.'
+                value:
+                  filters:
+                  - field_name: range.base.name
+                    filter_type: EQUALS
+                    value: грамм
+              collection:
+                summary: Поиск в коллекции
+                description: 'Для рецептов: карты, в составе которых есть картофель.'
+                value:
+                  filters:
+                  - field_name: items.nomenclature.name
+                    filter_type: EQUALS
+                    value: Картофель
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Filter Entities Api Filter  Entity Type  Post
+        '400':
+          description: Некорректное тело запроса, неизвестный способ сравнения или недоступное поле в пути
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/turnover:
+    post:
+      tags:
+      - Отчёты
+      - Фильтрация
+      summary: Оборотно-сальдовая ведомость с фильтром
+      description: |-
+        Строит ОСВ: строка на пару «номенклатура + склад», количества в базовой единице номенклатуры.
+
+        Записи журнала отбирает ``Prototype`` по условиям запроса. Записи до начала периода дают остаток
+        на начало, записи периода — приход и расход, записи после конца не учитываются.
+
+        :param data: Период и условия отбора в формате ``TurnoverRequestDto``.
+        :param service: Сервис ОСВ.
+        :return: Период и строки ОСВ: начало, приход, расход, конец.
+      operationId: get_turnover_api_turnover_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Data
+              description: 'Период ``start`` и ``end`` в формате ``ГГГГ-ММ-ДД``, обе границы включительно и необязательны:
+                без ``start`` — с первой отобранной записи, без ``end`` — по сегодняшний день. ``filters`` — условия отбора
+                записей журнала в том же формате, что у фильтра сущностей (например, ``nomenclature.name`` или ``warehouse.name``).'
+            examples:
+              october:
+                summary: ОСВ за октябрь по всем записям
+                value:
+                  start: '2026-10-01'
+                  end: '2026-10-31'
+                  filters: []
+              warehouse:
+                summary: ОСВ за октябрь по одному складу
+                value:
+                  start: '2026-10-01'
+                  end: '2026-10-31'
+                  filters:
+                  - field_name: warehouse.name
+                    filter_type: EQUALS
+                    value: Склад ресторана
+              no_period:
+                summary: ОСВ с первой записи по сегодняшний день
+                value:
+                  filters:
+                  - field_name: nomenclature.name
+                    filter_type: EQUALS
+                    value: Говядина
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Turnover Api Turnover Post
+        '400':
+          description: Некорректное тело запроса, неизвестный способ сравнения или недоступное поле в пути
+        '500':
+          description: 'Единицу номенклатуры сменили после проведения записей: количества не сложить'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     EntityType:
@@ -616,3 +762,5 @@ tags:
   description: Отчёты по сущностям в разных форматах
 - name: Сущности
   description: Создание, чтение, изменение и удаление доменных сущностей
+- name: Фильтрация
+  description: Отбор сущностей и записей журнала по условиям (шаблон «Прототип»)
