@@ -2,10 +2,12 @@ import json
 import uuid
 from collections.abc import Callable, Hashable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import ClassVar, Self, cast, override
 
 from Src.Core.abstract_manager import AbstractManager
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.entity_type import EntityType
 from Src.Core.exception import (
@@ -21,6 +23,7 @@ from Src.Models.nomenclature_group_model import NomenclatureGroupModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
 from Src.Models.recipe_model import RecipeModel
+from Src.Models.transaction_model import TransactionModel
 from Src.Models.warehouse_model import WarehouseModel
 
 
@@ -49,6 +52,9 @@ class StorageManager(AbstractManager):
     Сущность по типу и коду находит ``find()``, сущности, ссылающиеся на сущность с заданным кодом, —
     ``find_referrers()``: для него хранилище ведёт обратный индекс ссылок, поэтому все сущности попадают
     в коллекции только через ``add()``.
+
+    Отдельно от коллекций хранилище ведёт журнал складских операций (``transactions``): он только дописывается
+    через ``add_transaction()`` и не входит в ``_KINDS``, поэтому CRUD API на записи журнала не распространяется.
 
     Хранилище только хранит и отдаёт сущности: ``add``, ``remove`` и ``replace`` меняют коллекции и следят
     за их целостностью (класс сущности соответствует типу, ключ не повторяется). Сценарии создания, изменения
@@ -92,7 +98,13 @@ class StorageManager(AbstractManager):
     _entities: dict[EntityType, UniqueCollection[NamedEntity]]
 
     # Обратный индекс ссылок: код сущности → сущности хранилища, которые на неё ссылаются
-    _referrers: dict[uuid.UUID, list[NamedEntity]]
+    _referrers: dict[uuid.UUID, list[BaseEntity]]
+
+    # Ключ журнала складских операций в файле выгрузки: имя свойства transactions
+    _TRANSACTIONS_FILE_KEY: ClassVar[str] = "transactions"
+
+    # Журнал складских операций в порядке проведения
+    _transactions: list[TransactionModel]
 
     def __new__(cls) -> Self:
         """Возвращает единственный экземпляр класса, при первом обращении создаёт его.
@@ -116,12 +128,13 @@ class StorageManager(AbstractManager):
         self._reset_collections()
 
     def _reset_collections(self) -> None:
-        """Создаёт пустые коллекции сущностей и пустой обратный индекс ссылок.
+        """Создаёт пустые коллекции сущностей, пустой журнал и пустой обратный индекс ссылок.
 
         Вызывается при создании экземпляра и в load() для сброса состояния. Индекс очищается вместе
         с коллекциями: иначе в нём остались бы ссылки сущностей, которых в хранилище уже нет.
         """
         self._entities = {entity_type: UniqueCollection(kind.key_func) for entity_type, kind in self._KINDS.items()}
+        self._transactions = []
         self._referrers = {}
 
     @override
@@ -178,7 +191,8 @@ class StorageManager(AbstractManager):
         Модель, которая встречается в файле много раз (в своей коллекции и внутри других моделей), собирается
         при первой встрече и дальше берётся из кэша. Поэтому порядок коллекций не важен, а единица измерения,
         группа и номенклатура становятся одним объектом. Это важно для ``find_recipe``, который сравнивает
-        номенклатуры по тождеству. Лишние ключи файла (``is_loaded``) игнорируются.
+        номенклатуры по тождеству. Лишние ключи файла (``is_loaded``) игнорируются. Журнал складских операций
+        (``transactions``) необязателен: в выгрузках, сделанных до появления журнала, его нет.
 
         :param file_name: Путь к файлу.
         :raises OperationException: Если файл недоступен, не является выгрузкой хранилища, в нём нет
@@ -198,6 +212,8 @@ class StorageManager(AbstractManager):
                     entity_type = collections.get(key)
                     if entity_type is not None:
                         self._load_collection(factory, key, items, entity_type)
+                    elif key == self._TRANSACTIONS_FILE_KEY:
+                        self._load_transactions(factory, items)
         except ArgumentsException as ex:
             self._reset_collections()
             raise OperationException(f"Не удалось загрузить хранилище из файла {path}: {ex}") from ex
@@ -241,6 +257,23 @@ class StorageManager(AbstractManager):
             )
             self.add(entity_type, model)
 
+    def _load_transactions(self, factory: DeserializerFactory, items: object) -> None:
+        """Десериализует журнал складских операций из данных файла и проводит записи через ``add_transaction()``.
+
+        :param factory: Фабрика десериализаторов с открытой сессией.
+        :param items: Данные журнала из файла.
+        :raises OperationException: Если в данных ссылка на неизвестную модель.
+        :raises ArgumentsException: Если журнал не список или запись некорректна.
+        """
+        key = self._TRANSACTIONS_FILE_KEY
+        models = cast(list[object], CommonValidator.validate_instance(items, list, key, "Ожидается список"))
+        for item in models:
+            self.add_transaction(
+                CommonValidator.validate_instance(
+                    factory.deserialize(item), TransactionModel, key, "Ожидается запись журнала"
+                )
+            )
+
     def _fill_first_start_data(self) -> None:
         """Наполняет коллекции начальными данными.
 
@@ -282,6 +315,9 @@ class StorageManager(AbstractManager):
         borscht = RecipeModel.create_borscht(catalog, bouillon, boiled_beef, beet_fry)
         for recipe in (bouillon, boiled_beef, beet_fry, borscht):
             self.add(EntityType.RECIPE, recipe)
+
+        for transaction in self._create_transactions():
+            self.add_transaction(transaction)
 
     def _create_nomenclatures(self) -> list[NomenclatureModel]:
         """Создаёт начальную номенклатуру на основе уже заполненных единиц и групп.
@@ -338,6 +374,35 @@ class StorageManager(AbstractManager):
             NomenclatureModel.create_dish("Борщ с говядиной", "Борщ с говядиной, порция 500 г", dishes, piece, 500),
         ]
 
+    def _create_transactions(self) -> list[TransactionModel]:
+        """Создаёт начальные записи журнала на основе уже заполненных единиц, номенклатуры и складов.
+
+        Записи покрывают сентябрь — ноябрь 2026, чтобы ОСВ за октябрь имела остаток на начало и записи
+        после конца периода. Говядина приходит в килограммах и расходуется в граммах: так видно пересчёт
+        в базовую единицу.
+
+        :return: Список записей в порядке проведения.
+        """
+        ranges = {item.name: item for item in self.ranges}
+        nomenclatures = {item.name: item for item in self.nomenclatures}
+        warehouses = {item.name: item for item in self.warehouses}
+        gram, kilogram = ranges["грамм"], ranges["килограмм"]
+        milliliter, liter = ranges["миллилитр"], ranges["литр"]
+        beef, potato, milk = nomenclatures["Говядина"], nomenclatures["Картофель"], nomenclatures["Молоко"]
+        restaurant, workshop = warehouses["Склад ресторана"], warehouses["Склад производственного цеха"]
+
+        return [
+            TransactionModel(beef, restaurant, kilogram, 5, datetime(2026, 9, 1, 10, 0)),
+            TransactionModel(beef, restaurant, gram, -2000, datetime(2026, 9, 10, 18, 30)),
+            TransactionModel(milk, workshop, liter, 5, datetime(2026, 10, 3, 9, 0)),
+            TransactionModel(beef, restaurant, kilogram, 3, datetime(2026, 10, 5, 11, 0)),
+            TransactionModel(potato, restaurant, kilogram, 10, datetime(2026, 10, 7, 8, 0)),
+            TransactionModel(beef, restaurant, gram, -4000, datetime(2026, 10, 12, 20, 0)),
+            TransactionModel(milk, workshop, milliliter, -1500, datetime(2026, 10, 20, 14, 0)),
+            TransactionModel(beef, workshop, kilogram, 2, datetime(2026, 10, 31, 23, 0)),
+            TransactionModel(beef, restaurant, kilogram, 1, datetime(2026, 11, 15, 12, 0)),
+        ]
+
     def find_recipe(self, nomenclature: NomenclatureModel) -> RecipeModel | None:
         """Возвращает технологическую карту, результатом которой является номенклатура.
 
@@ -372,7 +437,7 @@ class StorageManager(AbstractManager):
         """
         return self._entities
 
-    def find_referrers(self, target_id: uuid.UUID) -> list[NamedEntity]:
+    def find_referrers(self, target_id: uuid.UUID) -> list[BaseEntity]:
         """Возвращает сущности хранилища, которые ссылаются на сущность с указанным кодом.
 
         Ответ берётся из обратного индекса «код цели → ссылающиеся сущности» за одно обращение к словарю,
@@ -382,7 +447,8 @@ class StorageManager(AbstractManager):
         запретить удалять сущность или менять ей код, пока на неё кто-то ссылается (Docs/.homework.md, п. 3).
         Сама сущность в результат не попадает, даже если ссылается на себя (базовая единица), и сущность
         с несколькими ссылками на цель возвращается один раз. Ссылки внутри состава карты учитываются:
-        сырьё, которое входит только в основание строки, тоже считается связанным с картой.
+        сырьё, которое входит только в основание строки, тоже считается связанным с картой. Записи журнала
+        складских операций тоже попадают в индекс: номенклатуру из складского учёта удалить нельзя (п. 6.2 ТЗ).
 
         :param target_id: Код сущности, на которую ищутся ссылки. Существование сущности не проверяется:
             для неизвестного кода результат пуст.
@@ -500,7 +566,7 @@ class StorageManager(AbstractManager):
         if new_key != old_key:
             collection.add(entity)
 
-    def _index_references(self, entity: NamedEntity) -> None:
+    def _index_references(self, entity: BaseEntity) -> None:
         """Записывает сущность в обратный индекс под кодом каждой сущности, на которую она ссылается.
 
         Повторяющиеся ссылки (номенклатура в строке карты и в основании) записываются один раз: список
@@ -510,7 +576,7 @@ class StorageManager(AbstractManager):
         for target in set(entity.references()):
             self._referrers.setdefault(target.id, []).append(entity)
 
-    def _unindex_references(self, entity: NamedEntity) -> None:
+    def _unindex_references(self, entity: BaseEntity) -> None:
         """Вычёркивает сущность из обратного индекса по её текущим ссылкам.
 
         Ссылки сущности должны быть теми же, что при записи в индекс: в ``replace`` метод вызывается
@@ -554,4 +620,29 @@ class StorageManager(AbstractManager):
     def recipes(self) -> list[RecipeModel]:
         """Возвращает копию списка технологических карт."""
         return cast(list[RecipeModel], list(self._entities[EntityType.RECIPE]))
+
+    @property
+    def transactions(self) -> list[TransactionModel]:
+        """Возвращает копию журнала складских операций в порядке проведения.
+
+        Копия, а не сам список: удалить или подменить запись снаружи нельзя.
+        """
+        return list(self._transactions)
+
+    def add_transaction(self, transaction: TransactionModel) -> None:
+        """Проводит запись в журнале складских операций.
+
+        Журнал только дописывается: методов изменения и удаления записей нет (Docs/DomainEntities.md).
+        Записи не входят в ``_KINDS`` и ``EntityType``, поэтому общий CRUD API на них не распространяется.
+        Ссылки записи попадают в обратный индекс, поэтому номенклатуру, склад и единицу из журнала
+        ``EntityService`` удалить не даст. Существование ссылок в хранилище проверяет вызывающий.
+
+        :param transaction: Запись журнала.
+        :raises ArgumentsException: Если передана не запись журнала.
+        """
+        transaction = CommonValidator.validate_instance(
+            transaction, TransactionModel, "transaction", "Ожидается запись журнала"
+        )
+        self._transactions.append(transaction)
+        self._index_references(transaction)
 

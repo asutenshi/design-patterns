@@ -10,6 +10,7 @@ from Src.Core.response_format import ResponseFormat
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.storage_manager import StorageManager
 from Src.main import app
+from Src.Models.warehouse_model import WarehouseModel
 
 
 @pytest.fixture
@@ -29,6 +30,13 @@ def _url(entity_type: EntityType, entity: NamedEntity | uuid.UUID | None = None)
         return base
     entity_id = entity if isinstance(entity, uuid.UUID) else entity.id
     return f"{base}/{entity_id}"
+
+
+def _add_unreferenced_warehouse(storage: StorageManager) -> WarehouseModel:
+    """Добавляет в хранилище склад, на который никто не ссылается: склады начальных данных есть в журнале."""
+    warehouse = WarehouseModel("Склад без операций")
+    storage.add(EntityType.WAREHOUSE, warehouse)
+    return warehouse
 
 
 def _by_name[T: NamedEntity](items: list[T], name: str) -> T:
@@ -266,7 +274,7 @@ def test_put_entity_missing_required_field_returns_bad_request_and_keeps_entity(
 def test_put_entity_new_id_of_unreferenced_entity_changes_code(client: TestClient, first_start_storage: StorageManager):
     """Код склада, на который никто не ссылается, можно сменить: старый адрес больше не находит склад."""
     # Подготовка
-    warehouse = first_start_storage.warehouses[0]
+    warehouse = _add_unreferenced_warehouse(first_start_storage)
     old_id, new_id = warehouse.id, uuid.uuid4()
 
     # Действие
@@ -376,7 +384,7 @@ def test_delete_entity_unreferenced_returns_no_content_and_removes_it(
 ):
     """Склад, на который никто не ссылается, удаляется: 204 без тела, затем GET отвечает 404."""
     # Подготовка
-    warehouse = first_start_storage.warehouses[0]
+    warehouse = _add_unreferenced_warehouse(first_start_storage)
 
     # Действие
     response = client.delete(_url(EntityType.WAREHOUSE, warehouse))

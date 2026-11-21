@@ -128,6 +128,8 @@ sequenceDiagram
             loop для каждой карты
                 St->>C: add() карты, ключ — id результата
             end
+            St->>M: 9 записей журнала TransactionModel за сентябрь — ноябрь 2026
+            St->>St: add_transaction() для каждой записи, ссылки записи — в индекс
             alt дубликат по ключу коллекции
                 C-->>St: ArgumentsException
                 St->>St: _reset_collections() очищает коллекции
@@ -193,5 +195,53 @@ sequenceDiagram
     else всё загружено
         St->>St: is_loaded = True
         St-->>K: загрузка завершена
+    end
+```
+
+## Оборотно-сальдовая ведомость: POST /api/turnover
+
+Маршрут разбирает тело в `TurnoverRequestDto`, сервис отбирает записи журнала Прототипом и сам делит их
+по периоду. Ошибка в теле (дата, поле фильтра) — `ArgumentsException` и ответ 400, разные базовые единицы
+в одной строке — `OperationException` и ответ 500.
+
+```mermaid
+sequenceDiagram
+    participant K as Клиент
+    participant A as POST /api/turnover
+    participant D as TurnoverRequestDto
+    participant S as TurnoverService
+    participant St as StorageManager
+    participant P as Prototype
+    participant R as FieldPathReader
+    participant F as ConverterFactory
+
+    K->>A: {"start": "2026-10-01", "end": "2026-10-31", "filters": [...]}
+    A->>D: from_dict(body)
+    alt неверная дата или условие
+        D-->>A: ArgumentsException
+        A-->>K: 400
+    else данные верны
+        D-->>A: запрос
+        A->>S: build(request)
+        S->>St: transactions
+        St-->>S: копия журнала
+        S->>P: Prototype(журнал).clone(request.filter)
+        loop для каждого условия
+            P->>R: read(запись, field_name)
+            R-->>P: значения по пути
+        end
+        P-->>S: новый прототип с отобранными записями
+        Note over S: нет end — сегодня, нет start — дата первой отобранной записи
+        S->>S: _calculate_rows(записи, start, end)
+        Note over S: группа «номенклатура + склад», quantity × factor; до start — начало, start…end — приход или расход, после end — пропуск
+        alt базы единиц не совпадают
+            S-->>A: OperationException
+            A-->>K: 500
+        else
+            S-->>A: TurnoverReport
+            A->>F: convert(report)
+            F-->>A: словарь
+            A-->>K: 200 {"start", "end", "rows": [...]}
+        end
     end
 ```

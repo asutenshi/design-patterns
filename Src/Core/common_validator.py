@@ -1,4 +1,5 @@
 import math
+from datetime import date, datetime
 from enum import Enum
 from typing import cast
 
@@ -31,7 +32,7 @@ class CommonValidator:
         return cleaned_value
 
     @staticmethod
-    def _validate_finite_number(value: object, field: str) -> int | float:
+    def validate_finite_number(value: object, field: str) -> int | float:
         """Проверяет, что значение — конечное число (не bool, не NaN, не бесконечность).
 
         :param value: Проверяемое значение.
@@ -56,9 +57,41 @@ class CommonValidator:
         :raises ArgumentsException: Если значение не число (в том числе bool),
             не конечное (NaN, бесконечность) или не больше нуля.
         """
-        number = CommonValidator._validate_finite_number(value, field)
+        number = CommonValidator.validate_finite_number(value, field)
         if number <= 0:
             raise ArgumentsException(field, "Значение должно быть больше нуля")
+
+        return number
+
+    @staticmethod
+    def validate_non_negative_number(value: object, field: str) -> int | float:
+        """Проверяет, что значение — конечное число не меньше нуля.
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Проверенное число.
+        :raises ArgumentsException: Если значение не число (в том числе bool),
+            не конечное (NaN, бесконечность) или меньше нуля.
+        """
+        number = CommonValidator.validate_finite_number(value, field)
+        if number < 0:
+            raise ArgumentsException(field, "Значение не должно быть меньше нуля")
+
+        return number
+
+    @staticmethod
+    def validate_nonzero_number(value: object, field: str) -> int | float:
+        """Проверяет, что значение — конечное число, не равное нулю.
+
+        :param value: Проверяемое значение.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Проверенное число.
+        :raises ArgumentsException: Если значение не число (в том числе bool),
+            не конечное (NaN, бесконечность) или равно нулю.
+        """
+        number = CommonValidator.validate_finite_number(value, field)
+        if number == 0:
+            raise ArgumentsException(field, "Значение не должно быть равно нулю")
 
         return number
 
@@ -75,7 +108,7 @@ class CommonValidator:
         :raises ArgumentsException: Если значение не число (в том числе bool), не конечное
             (NaN, бесконечность) или не лежит в промежутке [0, 1).
         """
-        number = CommonValidator._validate_finite_number(value, field)
+        number = CommonValidator.validate_finite_number(value, field)
         if not 0 <= number < 1:
             raise ArgumentsException(field, "Значение должно быть не меньше 0 и меньше 1")
 
@@ -187,6 +220,45 @@ class CommonValidator:
         except (ValueError, TypeError) as ex:
             allowed = ", ".join(repr(cast(object, item.value)) for item in enum_type)
             raise ArgumentsException(field, f"Недопустимое значение {value!r}, допустимо: {allowed}") from ex
+
+    @staticmethod
+    def validate_date(value: object, field: str) -> date:
+        """Превращает дату (как она записана в JSON) в ``date``.
+
+        :param value: Строка ISO 8601 без времени (``"2026-10-01"``) или сама дата. Дата со временем
+            не принимается: время отбросилось бы молча.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Дата.
+        :raises ArgumentsException: Если значение не дата и не строка вида ``ГГГГ-ММ-ДД``.
+        """
+        if isinstance(value, datetime):
+            raise ArgumentsException(field, "Ожидается дата без времени")
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError as ex:
+                raise ArgumentsException(field, f"Ожидается дата в формате ГГГГ-ММ-ДД: {value!r}") from ex
+        raise ArgumentsException(field, "Ожидается дата")
+
+    @staticmethod
+    def validate_datetime(value: object, field: str) -> datetime:
+        """Превращает дату со временем (как она записана в JSON) в ``datetime``.
+
+        :param value: Строка ISO 8601 (``"2026-10-01T12:30:00"``, время можно не указывать) или сам ``datetime``.
+        :param field: Имя аргумента для текста ошибки.
+        :return: Дата со временем.
+        :raises ArgumentsException: Если значение не ``datetime`` и не строка ISO 8601.
+        """
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError as ex:
+                raise ArgumentsException(field, f"Ожидается дата и время в формате ISO 8601: {value!r}") from ex
+        raise ArgumentsException(field, "Ожидается дата и время")
 
     @staticmethod
     def validate_field(data: dict[str, object], key: str) -> object:
