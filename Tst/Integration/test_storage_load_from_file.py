@@ -137,6 +137,23 @@ def test_load_file_exported_first_start_fills_referrers_index(first_start_storag
     assert any(first_start_storage.find_referrers(group.id) for group in first_start_storage.nomenclature_groups)
 
 
+def test_load_file_exported_first_start_restores_journal(first_start_storage: StorageManager, tmp_path: Path):
+    """Журнал загружается из выгрузки с теми же кодами, количествами и датами и ссылается на модели коллекций."""
+    # Подготовка
+    before = [(item.id, item.quantity, item.period) for item in first_start_storage.transactions]
+    file_name = _export(first_start_storage, tmp_path / "storage.json")
+
+    # Действие
+    first_start_storage.load(file_name=file_name)
+
+    # Проверка
+    transactions = first_start_storage.transactions
+    assert [(item.id, item.quantity, item.period) for item in transactions] == before
+    assert all(any(item.nomenclature is model for model in first_start_storage.nomenclatures) for item in transactions)
+    assert all(any(item.range is model for model in first_start_storage.ranges) for item in transactions)
+    assert all(first_start_storage.find_referrers(item.warehouse.id) for item in transactions)
+
+
 def test_load_file_exported_first_start_shares_objects_between_collections(
     first_start_storage: StorageManager, tmp_path: Path
 ):

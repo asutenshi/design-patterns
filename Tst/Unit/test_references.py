@@ -172,9 +172,10 @@ def test_find_referrers_raw_material_inside_semi_finished_base_returns_recipe_on
 
 
 def test_find_referrers_unreferenced_entity_returns_empty(first_start_storage: StorageManager):
-    """Склад не используется другими сущностями, и для неизвестного кода тоже ничего не находится."""
+    """Новый склад не используется другими сущностями, и для неизвестного кода тоже ничего не находится."""
     # Подготовка
-    warehouse = first_start_storage.warehouses[0]
+    warehouse = WarehouseModel("Склад без операций")
+    first_start_storage.add(EntityType.WAREHOUSE, warehouse)
 
     # Действие и проверка
     assert first_start_storage.find_referrers(warehouse.id) == []

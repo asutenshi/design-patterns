@@ -2,6 +2,7 @@ import uuid
 from typing import cast
 
 from Src.Core.abstract_model import AbstractModel
+from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.entity_type import EntityType
 from Src.Core.exception import (
@@ -195,8 +196,13 @@ class EntityService:
         if referrers:
             raise ReferencedEntityException(entity.id, [self._describe(referrer) for referrer in referrers])
 
-    def _describe(self, entity: NamedEntity) -> str:
-        """Возвращает описание сущности для текста ошибки: тип, наименование и код."""
+    def _describe(self, entity: BaseEntity) -> str:
+        """Возвращает описание сущности для текста ошибки: тип, наименование и код.
+
+        У сущности без наименования (запись журнала) вместо типа и наименования пишется имя класса.
+        """
+        if not isinstance(entity, NamedEntity):
+            return f"{type(entity).__name__} ({entity.id})"
         for entity_type in EntityType:
             if any(item is entity for item in self._storage.entities(entity_type)):
                 return f"{entity_type.value}: {entity.name} ({entity.id})"
