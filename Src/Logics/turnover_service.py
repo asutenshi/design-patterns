@@ -1,7 +1,7 @@
-import uuid
 from datetime import date
 
-from Src.Core.exception import OperationException
+from Src.Dtos.turnover_accumulator_dto import TurnoverAccumulatorDto
+from Src.Dtos.turnover_group_key_dto import TurnoverGroupKeyDto
 from Src.Dtos.turnover_report import TurnoverReport
 from Src.Dtos.turnover_request_dto import TurnoverRequestDto
 from Src.Dtos.turnover_row import TurnoverRow
@@ -50,8 +50,10 @@ class TurnoverService:
     def _calculate_rows(self, transactions: list[TransactionModel], start: date, end: date) -> list[TurnoverRow]:
         """Считает строки ОСВ по отобранным записям журнала.
 
-        - Записи группируются по паре «номенклатура + склад». Строки идут в порядке первой записи группы в журнале.
-        - Записи после ``end`` не учитываются совсем: если у группы других записей нет, строки нет.
+        - Записи группируются по паре «номенклатура + склад» с помощью типизированного ключа ``TurnoverGroupKeyDto``.
+          Строки идут в порядке первого появления группы в журнале.
+        - Итоги каждой группы накапливает объект ``TurnoverAccumulatorDto``: остаток на начало, приход и расход.
+        - Записи после ``end`` не учитываются совсем: если у группы других записей нет, строка не создаётся.
         - Количество записи пересчитывается в базовую единицу: ``quantity × range.factor``.
         - Записи строго до ``start`` дают остаток на начало, записи с ``start`` по ``end`` включительно —
           приход (положительные) и расход (отрицательные, в колонку пишется модуль).
@@ -64,44 +66,21 @@ class TurnoverService:
         :raises OperationException: Если базовая единица записи не совпадает с базовой единицей номенклатуры
             (единицу номенклатуры сменили после проведения записи).
         """
-        # Первая запись группы: из неё берутся номенклатура и склад строки, порядок ключей — порядок строк
-        first_records: dict[tuple[uuid.UUID, uuid.UUID], TransactionModel] = {}
-        # Накопленные колонки группы: остаток на начало, приход, расход
-        totals: dict[tuple[uuid.UUID, uuid.UUID], list[float]] = {}
+        accumulators: dict[TurnoverGroupKeyDto, TurnoverAccumulatorDto] = {}
 
         for transaction in transactions:
-            day = transaction.period.date()
-            if day > end:
+            if transaction.period.date() > end:
                 continue
 
             nomenclature = transaction.nomenclature
-            if transaction.range.base is not nomenclature.range.base:
-                raise OperationException(
-                    f"Единица записи {transaction.range.name} не приводится к базовой единице номенклатуры "
-                    + f"{nomenclature.name}: {nomenclature.range.base.name}"
+            key = TurnoverGroupKeyDto(nomenclature, transaction.warehouse)
+            if key not in accumulators:
+                accumulators[key] = TurnoverAccumulatorDto(
+                    nomenclature=nomenclature,
+                    warehouse=transaction.warehouse,
+                    range=nomenclature.range.base,
                 )
 
-            key = (nomenclature.id, transaction.warehouse.id)
-            if key not in totals:
-                first_records[key] = transaction
-                totals[key] = [0, 0, 0]
+            accumulators[key].record(transaction, start)
 
-            quantity = transaction.quantity * transaction.range.factor
-            if day < start:
-                totals[key][0] += quantity
-            elif quantity > 0:
-                totals[key][1] += quantity
-            else:
-                totals[key][2] += abs(quantity)
-
-        return [
-            TurnoverRow(
-                nomenclature=record.nomenclature,
-                warehouse=record.warehouse,
-                range=record.nomenclature.range.base,
-                opening=totals[key][0],
-                income=totals[key][1],
-                outcome=totals[key][2],
-            )
-            for key, record in first_records.items()
-        ]
+        return [accumulator.to_row() for accumulator in accumulators.values()]

@@ -1225,7 +1225,8 @@ classDiagram
 `Prototype`, а период применяет сам сервис: записи до начала дают остаток на начало, поэтому Прототип их
 не отбрасывает. Нет `end` — по сегодняшний день, нет `start` — с даты первой отобранной записи.
 
-`_calculate_rows` группирует записи по паре «номенклатура + склад» (строки в порядке первой записи группы),
+`_calculate_rows` группирует записи по паре «номенклатура + склад» с помощью типизированного ключа
+`TurnoverGroupKeyDto` (строки в порядке первой записи группы), накапливает показатели в `TurnoverAccumulatorDto`,
 пересчитывает количество в базовую единицу номенклатуры (`quantity × range.factor`) и раскладывает его по датам:
 строго до `start` — начало, с `start` по `end` — приход или расход (модуль), после `end` — не учитывается.
 Если единицу номенклатуры сменили после проведения записей и базы не совпадают, сервис бросает
@@ -1243,6 +1244,24 @@ classDiagram
         +end: date | None
         +filter: FilterDto
         +from_dict(data)$ Self
+    }
+
+    class TurnoverGroupKeyDto {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +__eq__(other) bool
+        +__hash__() int
+    }
+
+    class TurnoverAccumulatorDto {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +range: RangeModel
+        +opening: float
+        +income: float
+        +outcome: float
+        +record(transaction, start) void
+        +to_row() TurnoverRow
     }
 
     class TurnoverService {
@@ -1278,8 +1297,11 @@ classDiagram
     TurnoverService --> StorageManager : transactions
     TurnoverService ..> TurnoverRequestDto : build
     TurnoverService ..> Prototype : отбор записей журнала
+    TurnoverService ..> TurnoverGroupKeyDto : группировка
+    TurnoverService ..> TurnoverAccumulatorDto : агрегация
+    TurnoverAccumulatorDto ..> TurnoverRow : создаёт
     Prototype ..> TransactionModel
     TurnoverService ..> TurnoverReport : создаёт
     TurnoverReport "1" *-- "*" TurnoverRow : rows
-    TurnoverService ..> OperationException : разные базовые единицы
+    TurnoverAccumulatorDto ..> OperationException : разные базовые единицы
 ```
