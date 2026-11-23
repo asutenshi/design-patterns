@@ -28,6 +28,7 @@ from Src.Core.response_format import ResponseFormat
 from Src.Dtos.filter_dto import FilterDto
 from Src.Dtos.turnover_request_dto import TurnoverRequestDto
 from Src.Logics.converter_factory import ConverterFactory
+from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.entity_service import EntityService
 from Src.Logics.prototype import Prototype
 from Src.Logics.report_factory import ReportFactory
@@ -478,15 +479,17 @@ def filter_entities(
 ) -> list[dict[str, object]]:
     """Возвращает сущности указанного типа, которые прошли все условия фильтра.
 
-    Отбор выполняет ``Prototype``: один прототип на любой тип сущности.
+    Тело запроса десериализуется в ``FilterDto`` через единый механизм ``DeserializerFactory``,
+    отбор выполняет ``Prototype``, а результат выгружается через ``ConverterFactory``.
 
     :param entity_type: Тип сущности.
     :param data: Условия фильтра в формате ``FilterDto``.
     :param storage: Хранилище сущностей.
     :return: Отобранные сущности в формате выгрузки, в порядке добавления.
     """
-    prototype = Prototype(storage.entities(entity_type)).clone(FilterDto.from_dict(data))
-    return [_to_json(entity) for entity in prototype.data]
+    filter_dto = DeserializerFactory().deserialize_as(FilterDto, data)
+    prototype = Prototype(storage.entities(entity_type)).clone(filter_dto)
+    return cast(list[dict[str, object]], ConverterFactory().convert(prototype.data))
 
 
 # Примеры запроса ОСВ для Swagger
@@ -538,14 +541,17 @@ def get_turnover(
 ) -> dict[str, object]:
     """Строит ОСВ: строка на пару «номенклатура + склад», количества в базовой единице номенклатуры.
 
+    Тело запроса десериализуется в ``TurnoverRequestDto`` через ``DeserializerFactory``.
     Записи журнала отбирает ``Prototype`` по условиям запроса. Записи до начала периода дают остаток
     на начало, записи периода — приход и расход, записи после конца не учитываются.
+    Сформированный отчёт сериализуется в словарь через ``ConverterFactory``.
 
     :param data: Период и условия отбора в формате ``TurnoverRequestDto``.
     :param service: Сервис ОСВ.
     :return: Период и строки ОСВ: начало, приход, расход, конец.
     """
-    report = service.build(TurnoverRequestDto.from_dict(data))
+    request_dto = DeserializerFactory().deserialize_as(TurnoverRequestDto, data)
+    report = service.build(request_dto)
     return cast(dict[str, object], ConverterFactory().convert(report))
 
 

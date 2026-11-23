@@ -4,6 +4,7 @@ from typing import Self
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
 from Src.Dtos.filter_dto import FilterDto
+from Src.Logics.deserializer_factory import DeserializerFactory
 
 
 class TurnoverRequestDto:
@@ -51,7 +52,7 @@ class TurnoverRequestDto:
         return cls(
             start=None if start is None else CommonValidator.validate_date(start, "start"),
             end=None if end is None else CommonValidator.validate_date(end, "end"),
-            filter_dto=FilterDto.from_dict(fields),
+            filter_dto=DeserializerFactory().deserialize_as(FilterDto, fields),
         )
 
     @property

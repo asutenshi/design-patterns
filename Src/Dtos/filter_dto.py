@@ -2,6 +2,7 @@ from typing import Self, cast
 
 from Src.Core.common_validator import CommonValidator
 from Src.Dtos.filter_item_dto import FilterItemDto
+from Src.Logics.deserializer_factory import DeserializerFactory
 
 
 class FilterDto:
@@ -40,7 +41,8 @@ class FilterDto:
                 CommonValidator.validate_field(fields, "filters"), list, "filters", "Ожидается список условий"
             ),
         )
-        return cls([FilterItemDto.from_dict(CommonValidator.validate_dict(item, "filters")) for item in items])
+        factory = DeserializerFactory()
+        return cls([factory.deserialize_as(FilterItemDto, item) for item in items])
 
     @property
     def filters(self) -> list[FilterItemDto]:
