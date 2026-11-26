@@ -57,8 +57,11 @@ def test_openapi_yaml_matches_application_spec():
         ("/api/entities/{entity_type}/{entity_id}", {"get", "put", "patch", "delete"}),
         ("/api/filter/{entity_type}", {"post"}),
         ("/api/turnover", {"post"}),
+        ("/api/logs", {"post"}),
+        ("/api/logs/{export_format}", {"post"}),
+        ("/api/settings", {"patch"}),
     ],
-    ids=["report_formats", "entity_collection", "entity_item", "filter", "turnover"],
+    ids=["report_formats", "entity_collection", "entity_item", "filter", "turnover", "logs", "logs_export", "settings"],
 )
 def test_openapi_yaml_describes_formats_and_crud_methods(path: str, methods: set[str]):
     """В описании есть метод списка форматов, CRUD-методы сущностей, фильтр и ОСВ, у каждого — краткое описание."""

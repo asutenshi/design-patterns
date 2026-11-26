@@ -28,12 +28,15 @@ from Src.Core.log_level import LogLevel
 from Src.Core.log_subsystem import LogSubsystem
 from Src.Core.named_entity import NamedEntity
 from Src.Core.response_format import ResponseFormat
+from Src.Core.table_export_format import TableExportFormat
 from Src.Dtos.event_dto import EventDto
 from Src.Dtos.filter_dto import FilterDto
+from Src.Dtos.log_query_dto import LogQueryDto
 from Src.Dtos.turnover_request_dto import TurnoverRequestDto
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.entity_service import EntityService
+from Src.Logics.log_service import LogService
 from Src.Logics.logger_manager import LoggerManager
 from Src.Logics.observer import Observer
 from Src.Logics.prototype import Prototype
@@ -66,6 +69,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
 _REPORTS_TAG = "Отчёты"
 _ENTITIES_TAG = "Сущности"
 _FILTER_TAG = "Фильтрация"
+_LOGS_TAG = "Логирование"
+_SETTINGS_TAG = "Настройки"
 
 app = FastAPI(
     title="Ромашка",
@@ -76,6 +81,8 @@ app = FastAPI(
         {"name": _REPORTS_TAG, "description": "Отчёты по сущностям в разных форматах"},
         {"name": _ENTITIES_TAG, "description": "Создание, чтение, изменение и удаление доменных сущностей"},
         {"name": _FILTER_TAG, "description": "Отбор сущностей и записей журнала по условиям (шаблон «Прототип»)"},
+        {"name": _LOGS_TAG, "description": "Просмотр, фильтрация, сортировка и выгрузка журнала логов"},
+        {"name": _SETTINGS_TAG, "description": "Обновление параметров настроек приложения"},
     ],
 )
 
@@ -98,6 +105,16 @@ def get_turnover_service(storage: Annotated[StorageManager, Depends(get_storage)
 def get_report_factory() -> AbstractReportFactory:
     """Зависимость маршрутов: фабрика отчётов с текущими настройками приложения."""
     return ReportFactory(SettingsManager().settings)
+
+
+def get_settings_manager() -> SettingsManager:
+    """Зависимость маршрутов: менеджер настроек приложения."""
+    return SettingsManager()
+
+
+def get_log_service() -> LogService:
+    """Зависимость маршрутов: сервис выборки и выгрузки журнала логов."""
+    return LogService(LoggerManager())
 
 
 @app.middleware("http")
@@ -608,6 +625,141 @@ def get_turnover(
     request_dto = DeserializerFactory().deserialize_as(TurnoverRequestDto, data)
     report = service.build(request_dto)
     return cast(dict[str, object], ConverterFactory().convert(report))
+
+
+# Примеры запроса логов для Swagger
+_LOG_QUERY_EXAMPLES: dict[str, Example] = {
+    "all_newest": {
+        "summary": "Все записи, новые сверху",
+        "value": {"filters": [], "sort": {"field_name": "period", "direction": "DESC"}},
+    },
+    "crud_info": {
+        "summary": "Только CRUD-операции уровня INFO",
+        "value": {
+            "filters": [
+                {"field_name": "subsystem", "filter_type": "EQUALS", "value": "CRUD"},
+                {"field_name": "level", "filter_type": "EQUALS", "value": "INFO"},
+            ],
+            "sort": {"field_name": "period", "direction": "ASC"},
+        },
+    },
+    "errors": {
+        "summary": "Все ошибки по подсистеме",
+        "value": {
+            "filters": [{"field_name": "level", "filter_type": "EQUALS", "value": "ERROR"}],
+            "sort": {"field_name": "subsystem", "direction": "ASC"},
+        },
+    },
+}
+
+# Тело запроса логов: фильтр и необязательная сортировка
+LogQueryBody = Annotated[
+    dict[str, object],
+    Body(
+        description=(
+            "Условия фильтрации ``filters`` в формате ``FilterDto`` и необязательная сортировка ``sort`` "
+            "с полями ``field_name`` и ``direction`` со значением ``ASC`` или ``DESC``."
+        ),
+        openapi_examples=_LOG_QUERY_EXAMPLES,
+    ),
+]
+
+
+@app.post(
+    "/api/logs",
+    summary="Журнал логов в JSON с фильтрацией и сортировкой",
+    tags=[_LOGS_TAG],
+    responses=_INVALID_FILTER_RESPONSE,
+)
+def get_logs(
+    service: Annotated[LogService, Depends(get_log_service)],
+    data: LogQueryBody | None = None,
+) -> list[dict[str, object]]:
+    """Возвращает записи журнала логов в формате JSON с фильтрацией и сортировкой.
+
+    Отбор записей выполняет ``Prototype``, сортировку — универсальный ``Sorter``,
+    а сериализацию — ``ConverterFactory``.
+
+    :param service: Сервис работы с логами.
+    :param data: Условия фильтрации и сортировки в формате ``LogQueryDto``.
+    :return: Список записей лога в формате JSON.
+    """
+    query = DeserializerFactory().deserialize_as(LogQueryDto, data or {})
+    entries = service.query(query)
+    return cast(list[dict[str, object]], ConverterFactory().convert(entries))
+
+
+# Описание ответов табличной выгрузки логов для Swagger
+_LOG_EXPORT_RESPONSES: dict[int | str, dict[str, str]] = {
+    200: {"description": "Лог: TXT и CSV отдаются файлом на скачивание, Markdown — текстом в браузере"},
+    400: {"description": "Некорректные условия фильтрации или сортировки"},
+}
+
+
+@app.post(
+    "/api/logs/{export_format}",
+    summary="Выгрузка логов в TXT, CSV или Markdown",
+    response_class=Response,
+    tags=[_LOGS_TAG],
+    responses=_LOG_EXPORT_RESPONSES,
+)
+def export_logs(
+    export_format: Annotated[TableExportFormat, Path(description="Формат выгрузки лога: txt, csv или markdown")],
+    service: Annotated[LogService, Depends(get_log_service)],
+    data: LogQueryBody | None = None,
+) -> Response:
+    """Возвращает журнал логов в указанном табличном формате с фильтрацией и сортировкой.
+
+    TXT и CSV отдаются файлом на скачивание, Markdown — текстом в браузере.
+
+    :param export_format: Формат выгрузки.
+    :param service: Сервис работы с логами.
+    :param data: Необязательные условия фильтрации и сортировки.
+    :return: HTTP-ответ с таблицей логов.
+    """
+    query = DeserializerFactory().deserialize_as(LogQueryDto, data or {})
+    return service.export(export_format, query).to_response("logs")
+
+
+# Примеры обновления настроек для Swagger
+_SETTINGS_UPDATE_EXAMPLES: dict[str, Example] = {
+    "format": {
+        "summary": "Сменить формат отчётов по умолчанию",
+        "value": {"response_format": "markdown"},
+    },
+    "boss": {
+        "summary": "Сменить руководителя и наименование организации",
+        "value": {"boss_name": "Сидоров Пётр Иванович", "organization": {"name": "Ромашка Плюс"}},
+    },
+}
+
+SettingsUpdateBody = Annotated[
+    dict[str, object],
+    Body(
+        description="Изменяемые поля настроек приложения; остальные поля сохраняются.",
+        openapi_examples=_SETTINGS_UPDATE_EXAMPLES,
+    ),
+]
+
+
+@app.patch(
+    "/api/settings",
+    summary="Изменить параметры настроек",
+    tags=[_SETTINGS_TAG],
+    responses={400: {"description": "Некорректные параметры настроек"}},
+)
+def patch_settings(
+    data: SettingsUpdateBody,
+    settings_manager: Annotated[SettingsManager, Depends(get_settings_manager)],
+) -> dict[str, object]:
+    """Обновляет указанные параметры загруженных настроек и публикует событие через ``Observer``.
+
+    :param data: Словарь изменяемых полей настроек.
+    :param settings_manager: Менеджер настроек.
+    :return: Актуальная модель настроек в формате выгрузки.
+    """
+    updated = settings_manager.update(data)
+    return cast(dict[str, object], ConverterFactory().convert(updated))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,186 @@
+[
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "cc9fdc99-8d51-49ff-9f57-dd23fbb268fd",
+    "period": "2026-11-26T20:35:59.256621",
+    "subsystem": "SETTINGS",
+    "level": "DEBUG",
+    "message": "Загружены настройки организации «Ромашка»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "fff5bdfa-e609-48d0-beb5-ff0a5e8eb219",
+    "period": "2026-11-26T20:35:59.259157",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 5 килограмм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "eaab3064-6eae-40c5-b1c3-89535bd44faa",
+    "period": "2026-11-26T20:35:59.259196",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: расход 2000 грамм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "5c97b468-f306-49c5-a5c9-d09d6011e054",
+    "period": "2026-11-26T20:35:59.259219",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 5 литр «Молоко» на складе «Склад производственного цеха»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "5ca27c2c-952c-431c-b2f5-8edc421d864c",
+    "period": "2026-11-26T20:35:59.259239",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 3 килограмм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "9d28062f-bf84-45e1-bdb9-f9056f22eabc",
+    "period": "2026-11-26T20:35:59.259258",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 10 килограмм «Картофель» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "2eb23801-bb12-43ed-96e2-47d35df857b3",
+    "period": "2026-11-26T20:35:59.259277",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: расход 4000 грамм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "fd079aab-a534-44f5-84d1-671e383ca8d9",
+    "period": "2026-11-26T20:35:59.259294",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: расход 1500 миллилитр «Молоко» на складе «Склад производственного цеха»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "60bfd055-a3b2-4149-a1cb-bf7af6999640",
+    "period": "2026-11-26T20:35:59.259312",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 2 килограмм «Говядина» на складе «Склад производственного цеха»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "f8a629f5-ce27-4c9d-8fd9-1389e57b25b7",
+    "period": "2026-11-26T20:35:59.259329",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 1 килограмм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "cb30bc1a-5f14-4cc1-9e92-34f65cb97b98",
+    "period": "2026-11-26T20:35:59.263917",
+    "subsystem": "CRUD",
+    "level": "INFO",
+    "message": "Создана сущность warehouse: «Склад доставки №1» [c6b80777-ed5d-420f-a6b3-db8751ff0713]"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "00f9ba52-83a6-4e06-8373-692d967dd03f",
+    "period": "2026-11-26T20:35:59.264536",
+    "subsystem": "WEB",
+    "level": "INFO",
+    "message": "POST /api/entities/warehouse -> 201"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "26a65244-8e0e-4ef4-8bd9-3811f2299875",
+    "period": "2026-11-26T20:35:59.267879",
+    "subsystem": "CRUD",
+    "level": "INFO",
+    "message": "Обновлена сущность warehouse через PATCH: «Склад доставки Север» [c6b80777-ed5d-420f-a6b3-db8751ff0713]"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "62621fd7-703d-4cf3-a9fc-5211b6cb7d67",
+    "period": "2026-11-26T20:35:59.268447",
+    "subsystem": "WEB",
+    "level": "INFO",
+    "message": "PATCH /api/entities/warehouse/c6b80777-ed5d-420f-a6b3-db8751ff0713 -> 200"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "daed6e16-d595-420a-a44f-25835ee08156",
+    "period": "2026-11-26T20:35:59.270426",
+    "subsystem": "CRUD",
+    "level": "INFO",
+    "message": "Удалена сущность warehouse: «Склад доставки Север» [c6b80777-ed5d-420f-a6b3-db8751ff0713]"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "59a77efb-c567-40b4-9815-d670385e8d50",
+    "period": "2026-11-26T20:35:59.270668",
+    "subsystem": "WEB",
+    "level": "INFO",
+    "message": "DELETE /api/entities/warehouse/c6b80777-ed5d-420f-a6b3-db8751ff0713 -> 204"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "15fc6735-9be8-4030-b209-bd379e6498ab",
+    "period": "2026-11-26T20:35:59.270951",
+    "subsystem": "WAREHOUSE",
+    "level": "INFO",
+    "message": "Складская операция: приход 4 килограмм «Говядина» на складе «Склад ресторана»"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "395e9584-c3e2-4a01-82a5-c372d59e9b04",
+    "period": "2026-11-26T20:35:59.272962",
+    "subsystem": "SETTINGS",
+    "level": "INFO",
+    "message": "Изменены параметры настроек: response_format"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "9fb226e7-e51c-4b7c-ab8a-5f37f03835b4",
+    "period": "2026-11-26T20:35:59.273573",
+    "subsystem": "WEB",
+    "level": "INFO",
+    "message": "PATCH /api/settings -> 200"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "a60930ca-76dd-41ee-9ff0-6c4e39c8abfa",
+    "period": "2026-11-26T20:35:59.275317",
+    "subsystem": "SETTINGS",
+    "level": "ERROR",
+    "message": "Ошибка изменения настроек: Ошибка. Некорректный аргумент response_format!\nНедопустимое значение 'invalid_format', допустимо: 'txt', 'markdown', 'csv', 'xml', 'html'"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "c0f3e656-cd68-402b-ad81-aa1f1615d2cc",
+    "period": "2026-11-26T20:35:59.275508",
+    "subsystem": "WEB",
+    "level": "ERROR",
+    "message": "PATCH /api/settings -> 400"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "3f501122-9322-4e9f-a5f0-f89500bc0f76",
+    "period": "2026-11-26T20:35:59.276929",
+    "subsystem": "WEB",
+    "level": "DEBUG",
+    "message": "GET /api/get_report_formats -> 200"
+  },
+  {
+    "model_type": "Src.Models.log_model.LogModel",
+    "id": "42e35d57-d1a2-4992-9ecf-5afecf348273",
+    "period": "2026-11-26T20:35:59.278392",
+    "subsystem": "WEB",
+    "level": "ERROR",
+    "message": "GET /api/entities/warehouse/00000000-0000-0000-0000-000000000000 -> 404"
+  }
+]
