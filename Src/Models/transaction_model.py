@@ -115,11 +115,3 @@ class TransactionModel(BaseEntity):
     def period(self) -> datetime:
         """Возвращает дату и время операции."""
         return self._period
-
-    @override
-    def references(self) -> list[BaseEntity]:
-        """Возвращает номенклатуру, склад и единицу измерения записи.
-
-        :return: Сущности, на которые ссылается запись.
-        """
-        return [self._nomenclature, self._warehouse, self._range]

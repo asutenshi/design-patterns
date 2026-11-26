@@ -17,6 +17,7 @@ from Src.Core.exception import (
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Logics.reference_scanner import ReferenceScanner
 from Src.Logics.settings_manager import SettingsManager
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
 from Src.Models.nomenclature_group_model import NomenclatureGroupModel
@@ -100,6 +101,9 @@ class StorageManager(AbstractManager):
     # Обратный индекс ссылок: код сущности → сущности хранилища, которые на неё ссылаются
     _referrers: dict[uuid.UUID, list[BaseEntity]]
 
+    # Сканер прямых ссылок сущностей для ведения обратного индекса
+    _scanner: ReferenceScanner
+
     # Ключ журнала складских операций в файле выгрузки: имя свойства transactions
     _TRANSACTIONS_FILE_KEY: ClassVar[str] = "transactions"
 
@@ -123,8 +127,9 @@ class StorageManager(AbstractManager):
 
     @override
     def _initialize(self) -> None:
-        """Готовит флаг загрузки и создаёт пустые коллекции."""
+        """Готовит флаг загрузки, сканер ссылок и создаёт пустые коллекции."""
         super()._initialize()
+        self._scanner = ReferenceScanner()
         self._reset_collections()
 
     def _reset_collections(self) -> None:
@@ -441,8 +446,8 @@ class StorageManager(AbstractManager):
         """Возвращает сущности хранилища, которые ссылаются на сущность с указанным кодом.
 
         Ответ берётся из обратного индекса «код цели → ссылающиеся сущности» за одно обращение к словарю,
-        без обхода коллекций. Индекс ведут ``add()``, ``remove()`` и ``replace()`` по ``references()``
-        сущности, а начальные данные и данные из файла попадают в хранилище тоже через ``add()``.
+        без обхода коллекций. Индекс ведут ``add()``, ``remove()`` и ``replace()`` с помощью
+        ``ReferenceScanner``, а начальные данные и данные из файла попадают в хранилище тоже через ``add()``.
         Результат нужен ``EntityService``, чтобы
         запретить удалять сущность или менять ей код, пока на неё кто-то ссылается (Docs/.homework.md, п. 3).
         Сама сущность в результат не попадает, даже если ссылается на себя (базовая единица), и сущность
@@ -569,11 +574,10 @@ class StorageManager(AbstractManager):
     def _index_references(self, entity: BaseEntity) -> None:
         """Записывает сущность в обратный индекс под кодом каждой сущности, на которую она ссылается.
 
-        Повторяющиеся ссылки (номенклатура в строке карты и в основании) записываются один раз: список
-        ссылок схлопывается в множество. Множество живёт только внутри вызова, поэтому смена кода
-        сущности ему не мешает.
+        Прямые ссылки находит ``ReferenceScanner`` без повторов, поэтому сущность с несколькими
+        ссылками на цель (сырьё в строке карты и в основании) записывается один раз.
         """
-        for target in set(entity.references()):
+        for target in self._scanner.scan(entity):
             self._referrers.setdefault(target.id, []).append(entity)
 
     def _unindex_references(self, entity: BaseEntity) -> None:
@@ -582,7 +586,7 @@ class StorageManager(AbstractManager):
         Ссылки сущности должны быть теми же, что при записи в индекс: в ``replace`` метод вызывается
         до ``replace_state``.
         """
-        for target in set(entity.references()):
+        for target in self._scanner.scan(entity):
             self._referrers[target.id].remove(entity)
 
     def _validate_entity(self, entity_type: EntityType, entity: NamedEntity) -> NamedEntity:

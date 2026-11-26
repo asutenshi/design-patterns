@@ -35,11 +35,10 @@ classDiagram
     class BaseEntity {
         <<abstract>>
         +id: UUID
-        +references() list~BaseEntity~
         +replace_state(other) None
     }
 
-    note for BaseEntity "Равенство и хэш определяются по id и типу. references() — прямые ссылки на другие сущности (по умолчанию пусто): группа и единица у номенклатуры, база у производной единицы, результат и состав у карты. Склад и группа номенклатуры ни на что не ссылаются. Нужен для запрета удаления связанных сущностей. replace_state копирует состояние другой сущности того же типа, чтобы менять сущность на месте: ссылки на неё остаются верными"
+    note for BaseEntity "Равенство и хэш определяются по id и типу. replace_state копирует состояние другой сущности того же типа, чтобы менять сущность на месте: ссылки на неё остаются верными. Прямые ссылки модели на другие сущности находит ReferenceScanner"
 
     class NamedEntity {
         <<abstract>>
@@ -53,7 +52,6 @@ classDiagram
         +base: RangeModel
         +factor: int | float
         +is_base: bool
-        +references() list~BaseEntity~
         +create_kilogram()$ RangeModel
         +create_liter()$ RangeModel
         +create_piece()$ RangeModel
@@ -67,7 +65,6 @@ classDiagram
         +range: RangeModel
         +type: NomenclatureType
         +grams_per_base_unit: int | float
-        +references() list~BaseEntity~
         +create_raw_material(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
         +create_semi_finished(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
         +create_dish(name, full_name, group, range, grams_per_base_unit)$ NomenclatureModel
@@ -92,7 +89,6 @@ classDiagram
         +net_weight: float
         +scaled(factor) IngredientModel
         +contains(nomenclature) bool
-        +references() list~BaseEntity~
         +nomenclature_key() UUID
     }
 
@@ -118,7 +114,6 @@ classDiagram
         +add_item(item) None
         +remove_item(nomenclature) None
         +as_ingredient(quantity, loss_ratio) IngredientModel
-        +references() list~BaseEntity~
         +result_key() UUID
         +create_beef_bouillon(catalog)$ RecipeModel
         +create_boiled_beef(catalog)$ RecipeModel
@@ -166,7 +161,6 @@ classDiagram
         +range: RangeModel
         +quantity: int | float
         +period: datetime
-        +references() list~BaseEntity~
     }
 
     class OwnershipForm {
@@ -558,8 +552,8 @@ classDiagram
 По наименованию карту ищет `find_recipe_by_name()` (без учёта регистра), её использует API отчёта.
 Сущность по типу (`EntityType`: номенклатура, группа номенклатуры, единица измерения, склад, карта) и коду ищет `find()` перебором коллекции этого типа,
 все сущности типа возвращает `entities()` (копия списка): по ним API отдаёт коллекцию.
-Сущности, ссылающиеся на сущность с заданным кодом (по `references()`), возвращает `find_referrers()`: он берёт ответ из обратного индекса `_referrers` (код цели → ссылающиеся сущности) за одно обращение к словарю и отдаёт копию списка. Это основа запрета удаления связанных сущностей.
-Индекс ведут `add`, `remove` и `replace` через `_index_references()` и `_unindex_references()`; `replace` вычёркивает старые ссылки до `replace_state` и записывает новые после.
+Сущности, ссылающиеся на сущность с заданным кодом, возвращает `find_referrers()`: он берёт ответ из обратного индекса `_referrers` (код цели → ссылающиеся сущности) за одно обращение к словарю и отдаёт копию списка. Это основа запрета удаления связанных сущностей.
+Прямые ссылки сущности находит `ReferenceScanner` (`Src/Logics/reference_scanner.py`): он сам обходит состояние модели (`vars`), коллекции, словари и вложенные `AbstractModel`, останавливаясь на встреченных `BaseEntity` и пропуская ссылку на саму сущность. Индекс ведут `add`, `remove` и `replace` через `_index_references()` и `_unindex_references()`; `replace` вычёркивает старые ссылки до `replace_state` и записывает новые после.
 Повторы ссылок (сырьё в строке карты и в основании полуфабриката) записываются один раз. Значения индекса — списки, а не множества:
 хэш сущности считается по `id`, а `replace` может сменить код ссылающейся сущности. Поэтому начальные данные
 и данные из файла тоже добавляются через `add()`, а `_reset_collections()` очищает индекс вместе с коллекциями.
@@ -609,6 +603,7 @@ classDiagram
         -_KINDS$: dict~EntityType, _EntityKind~
         -_entities: dict~EntityType, UniqueCollection~NamedEntity~~
         -_referrers: dict~UUID, list~BaseEntity~~
+        -_scanner: ReferenceScanner
         -_transactions: list~TransactionModel~
         +ranges: list~RangeModel~
         +nomenclature_groups: list~NomenclatureGroupModel~
@@ -684,11 +679,17 @@ classDiagram
     class TransactionModel
     class NomenclatureCatalog
     class DeserializerFactory
+    class ReferenceScanner {
+        +scan(source) list~BaseEntity~
+        -_walk(value, root, visited, seen_references, references) None
+        -_field_values(model)$ Iterable~object~
+    }
     class ArgumentsException
     class OperationException
 
     AbstractManager <|-- StorageManager
     StorageManager "1" *-- "5" UniqueCollection : коллекции
+    StorageManager *-- ReferenceScanner : _scanner
     StorageManager --> _EntityKind : _KINDS
     StorageManager ..> SettingsManager : зависимость, параметр load(), читает is_first_start
     StorageManager --> RangeModel : ranges
@@ -725,7 +726,8 @@ classDiagram
 
     class EntityService {
         -_storage: StorageManager
-        +__init__(storage)
+        -_scanner: ReferenceScanner
+        +__init__(storage, scanner)
         +create(entity_type, data) NamedEntity
         +put(entity_type, entity_id, data) NamedEntity
         +patch(entity_type, entity_id, data) NamedEntity
@@ -736,6 +738,10 @@ classDiagram
         -_ensure_id_is_free(entity) None
         -_ensure_not_referenced(entity) None
         -_describe(entity) str
+    }
+
+    class ReferenceScanner {
+        +scan(source) list~BaseEntity~
     }
 
     class StorageManager {
@@ -755,6 +761,7 @@ classDiagram
     class ReferencedEntityException
 
     EntityService --> StorageManager : публичные методы
+    EntityService --> ReferenceScanner : проверка ссылок новой сущности
     EntityService ..> DeserializerFactory : собирает сущность из данных
     EntityService ..> ConverterFactory : patch — текущие поля
     EntityService ..> ArgumentsException : некорректные данные, занятый код

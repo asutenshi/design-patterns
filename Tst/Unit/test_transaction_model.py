@@ -109,17 +109,3 @@ def test_from_dict_iso_period_creates_transaction(
     # Проверка
     assert transaction.period == PERIOD
     assert transaction.quantity == 3
-
-
-def test_references_returns_nomenclature_warehouse_and_range(
-    beef: NomenclatureModel, warehouse: WarehouseModel, kilogram: RangeModel
-):
-    """Запись ссылается на номенклатуру, склад и единицу: их нельзя удалить, пока запись в журнале."""
-    # Подготовка
-    transaction = TransactionModel(beef, warehouse, kilogram, 1, PERIOD)
-
-    # Действие
-    references = transaction.references()
-
-    # Проверка
-    assert references == [beef, warehouse, kilogram]

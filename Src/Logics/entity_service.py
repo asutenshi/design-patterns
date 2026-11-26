@@ -13,6 +13,7 @@ from Src.Core.exception import (
 from Src.Core.named_entity import NamedEntity
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Logics.reference_scanner import ReferenceScanner
 from Src.Logics.storage_manager import StorageManager
 
 
@@ -34,12 +35,16 @@ class EntityService:
     - Каскадной пересборки снимков карт полуфабрикатов при правке сущностей пока нет.
     """
 
-    def __init__(self, storage: StorageManager | None = None) -> None:
+    def __init__(
+        self, storage: StorageManager | None = None, scanner: ReferenceScanner | None = None
+    ) -> None:
         """Создаёт сервис поверх хранилища.
 
         :param storage: Хранилище, с которым работает сервис; None — единственный экземпляр StorageManager.
+        :param scanner: Сканер прямых ссылок модели; None — новый экземпляр ReferenceScanner.
         """
         self._storage: StorageManager = storage if storage is not None else StorageManager()
+        self._scanner: ReferenceScanner = scanner if scanner is not None else ReferenceScanner()
 
     def create(self, entity_type: EntityType, data: dict[str, object]) -> NamedEntity:
         """Создаёт сущность указанного типа из данных и добавляет её в хранилище.
@@ -172,7 +177,7 @@ class EntityService:
             raise ArgumentsException("data", str(ex)) from ex
 
         stored_ids = {id(item) for item in stored}
-        unknown = [str(ref.id) for ref in entity.references() if id(ref) not in stored_ids]
+        unknown = [str(ref.id) for ref in self._scanner.scan(entity) if id(ref) not in stored_ids]
         if unknown:
             raise ArgumentsException("data", f"Ссылки на сущности, которых нет в хранилище: {', '.join(unknown)}")
         return entity
