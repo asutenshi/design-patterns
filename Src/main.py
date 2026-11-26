@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated, cast
 
@@ -18,18 +18,24 @@ from fastapi.openapi.models import Example
 from fastapi.responses import JSONResponse
 from Src.Core.abstract_report_factory import AbstractReportFactory
 from Src.Core.entity_type import EntityType
+from Src.Core.event_type import EventType
 from Src.Core.exception import (
     ArgumentsException,
     OperationException,
     ReferencedEntityException,
 )
+from Src.Core.log_level import LogLevel
+from Src.Core.log_subsystem import LogSubsystem
 from Src.Core.named_entity import NamedEntity
 from Src.Core.response_format import ResponseFormat
+from Src.Dtos.event_dto import EventDto
 from Src.Dtos.filter_dto import FilterDto
 from Src.Dtos.turnover_request_dto import TurnoverRequestDto
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.entity_service import EntityService
+from Src.Logics.logger_manager import LoggerManager
+from Src.Logics.observer import Observer
 from Src.Logics.prototype import Prototype
 from Src.Logics.report_factory import ReportFactory
 from Src.Logics.settings_manager import SettingsManager
@@ -39,11 +45,14 @@ from Src.Logics.turnover_service import TurnoverService
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    """Загружает настройки и хранилище при старте приложения.
+    """Загружает логгер, настройки и хранилище при старте приложения.
 
     Уже загруженные менеджеры не перезагружаются: так тесты и другой код запуска
     могут подготовить их заранее, например загрузить настройки из своего файла.
     """
+    logger_manager = LoggerManager()
+    if not logger_manager.is_loaded:
+        logger_manager.load()
     settings_manager = SettingsManager()
     if not settings_manager.is_loaded:
         settings_manager.load()
@@ -89,6 +98,52 @@ def get_turnover_service(storage: Annotated[StorageManager, Depends(get_storage)
 def get_report_factory() -> AbstractReportFactory:
     """Зависимость маршрутов: фабрика отчётов с текущими настройками приложения."""
     return ReportFactory(SettingsManager().settings)
+
+
+@app.middleware("http")
+async def log_http_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Логирует каждый HTTP-запрос к Web API через шаблон «Наблюдатель».
+
+    Ошибочные ответы со статусом 400 и выше и необработанные исключения пишутся с уровнем ERROR,
+    успешные GET-запросы — с уровнем DEBUG, остальные успешные запросы — с уровнем INFO.
+
+    :param request: Входящий HTTP-запрос.
+    :param call_next: Передача запроса следующему обработчику.
+    :return: HTTP-ответ маршрута.
+    """
+    try:
+        response = await call_next(request)
+    except Exception as ex:
+        Observer.notify(
+            EventDto(
+                event_type=EventType.WEB_ERROR,
+                subsystem=LogSubsystem.WEB,
+                level=LogLevel.ERROR,
+                message=f"{request.method} {request.url.path} -> 500: {ex}",
+            )
+        )
+        raise
+
+    is_error = response.status_code >= 400
+    event_type = EventType.WEB_ERROR if is_error else EventType.WEB_REQUEST
+    if is_error:
+        level = LogLevel.ERROR
+    elif request.method == "GET":
+        level = LogLevel.DEBUG
+    else:
+        level = LogLevel.INFO
+
+    Observer.notify(
+        EventDto(
+            event_type=event_type,
+            subsystem=LogSubsystem.WEB,
+            level=level,
+            message=f"{request.method} {request.url.path} -> {response.status_code}",
+        )
+    )
+    return response
 
 
 @app.exception_handler(ArgumentsException)
