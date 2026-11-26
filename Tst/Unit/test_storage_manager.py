@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import cast
 
@@ -14,6 +15,7 @@ from Src.Logics.storage_manager import StorageManager
 from Src.Models.ingredient_model import IngredientModel
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.recipe_model import RecipeModel
+from Src.Models.transaction_model import TransactionModel
 from Src.Models.warehouse_model import WarehouseModel
 
 # Начальные данные, которые создаются при первом запуске
@@ -610,6 +612,73 @@ def test_properties_returned_list_modification_does_not_change_storage(first_sta
     assert len(first_start_storage.ranges) == len(EXPECTED_RANGES)
 
 # ---------------------------------------------------------------------------
+# Журнал складских операций
+# ---------------------------------------------------------------------------
+
+
+def test_transactions_first_start_contains_initial_records(first_start_storage: StorageManager):
+    """При первом запуске журнал заполняется записями сентября — ноября в порядке проведения."""
+    # Действие
+    transactions = first_start_storage.transactions
+
+    # Проверка
+    assert len(transactions) == 9
+    assert [item.period for item in transactions] == sorted(item.period for item in transactions)
+    assert all(item.nomenclature in first_start_storage.nomenclatures for item in transactions)
+    assert all(item.warehouse in first_start_storage.warehouses for item in transactions)
+
+
+def test_transactions_returned_list_modification_does_not_change_journal(first_start_storage: StorageManager):
+    """Очистка возвращённого списка не удаляет записи: журнал только дописывается."""
+    # Подготовка
+    transactions = first_start_storage.transactions
+
+    # Действие
+    transactions.clear()
+
+    # Проверка
+    assert len(first_start_storage.transactions) == 9
+
+
+def test_add_transaction_appends_record_and_indexes_references(first_start_storage: StorageManager):
+    """Проведённая запись попадает в конец журнала и в индекс ссылок своего склада."""
+    # Подготовка
+    warehouse = WarehouseModel("Склад бара")
+    first_start_storage.add(EntityType.WAREHOUSE, warehouse)
+    milk = next(item for item in first_start_storage.nomenclatures if item.name == "Молоко")
+    transaction = TransactionModel(milk, warehouse, milk.range, 2, datetime(2026, 10, 1))
+
+    # Действие
+    first_start_storage.add_transaction(transaction)
+
+    # Проверка
+    assert first_start_storage.transactions[-1] is transaction
+    assert first_start_storage.find_referrers(warehouse.id) == [transaction]
+
+
+def test_add_transaction_not_transaction_raises(first_start_storage: StorageManager):
+    """В журнал нельзя провести сущность другого класса."""
+    # Подготовка
+    warehouse = first_start_storage.warehouses[0]
+
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        first_start_storage.add_transaction(warehouse)  # pyright: ignore[reportArgumentType]
+
+
+def test_load_first_start_false_leaves_journal_empty(load_settings: Callable[[bool], None]):
+    """Без флага первого запуска журнал пуст, как и коллекции."""
+    # Подготовка
+    load_settings(False)
+    storage = StorageManager()
+
+    # Действие
+    storage.load()
+
+    # Проверка
+    assert storage.transactions == []
+
+# ---------------------------------------------------------------------------
 # Загрузка из файла
 # ---------------------------------------------------------------------------
 
@@ -672,6 +741,19 @@ def test_load_file_replaces_previous_collections(first_start_storage: StorageMan
     # Проверка
     assert len(first_start_storage.nomenclature_groups) == 1
     assert first_start_storage.nomenclatures == []
+
+
+def test_load_file_without_transactions_key_loads_empty_journal(first_start_storage: StorageManager, tmp_path: Path):
+    """Выгрузка, сделанная до появления журнала, загружается: журнал после загрузки пуст."""
+    # Подготовка
+    file_name = _write_storage_file(tmp_path)
+
+    # Действие
+    first_start_storage.load(file_name=file_name)
+
+    # Проверка
+    assert first_start_storage.is_loaded
+    assert first_start_storage.transactions == []
 
 
 def test_load_file_ignores_unknown_keys(tmp_path: Path):

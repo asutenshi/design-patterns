@@ -11,6 +11,7 @@ from Src.Logics.storage_manager import StorageManager
 from Src.Models.nomenclature_model import NomenclatureModel
 from Src.Models.range_model import RangeModel
 from Src.Models.recipe_model import RecipeModel
+from Src.Models.warehouse_model import WarehouseModel
 
 
 @pytest.fixture
@@ -243,7 +244,8 @@ def test_put_same_name_keeps_collection_order(first_start_storage: StorageManage
 def test_put_unreferenced_entity_changes_id(first_start_storage: StorageManager, service: EntityService):
     """Код сущности, на которую никто не ссылается, можно заменить."""
     # Подготовка
-    warehouse = first_start_storage.warehouses[0]
+    warehouse = WarehouseModel("Склад без операций")
+    first_start_storage.add(EntityType.WAREHOUSE, warehouse)
     old_id = warehouse.id
     new_id = uuid.uuid4()
 
@@ -466,7 +468,8 @@ def test_patch_unknown_entity_raises_arguments_exception(first_start_storage: St
 def test_delete_unreferenced_entity_removes_it(first_start_storage: StorageManager, service: EntityService):
     """Склад, на который никто не ссылается, удаляется и больше не находится; наименование освобождается."""
     # Подготовка
-    warehouse = first_start_storage.warehouses[0]
+    warehouse = WarehouseModel("Склад без операций")
+    first_start_storage.add(EntityType.WAREHOUSE, warehouse)
 
     # Действие
     service.delete(EntityType.WAREHOUSE, warehouse.id)
@@ -491,6 +494,20 @@ def test_delete_referenced_entity_raises_and_keeps_it(first_start_storage: Stora
     assert exc_info.value.target_id == group.id
     assert len(exc_info.value.referrers) > 0
     assert _snapshot(first_start_storage) == before
+
+
+def test_delete_warehouse_from_journal_raises_and_keeps_it(first_start_storage: StorageManager, service: EntityService):
+    """Склад, по которому есть записи журнала, не удаляется (п. 6.2 ТЗ); в исключении описаны записи."""
+    # Подготовка
+    warehouse = first_start_storage.warehouses[0]
+
+    # Действие
+    with pytest.raises(ReferencedEntityException) as exc_info:
+        service.delete(EntityType.WAREHOUSE, warehouse.id)
+
+    # Проверка
+    assert warehouse in first_start_storage.warehouses
+    assert all(item.startswith("TransactionModel (") for item in exc_info.value.referrers)
 
 
 def test_delete_recipe_result_is_blocked_but_recipe_itself_can_be_deleted(

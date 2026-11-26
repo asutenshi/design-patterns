@@ -1,9 +1,11 @@
 import uuid
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from types import NoneType
+from typing import cast
 
 from Src.Core.abstract_deserializer import AbstractDeserializer
+from Src.Core.abstract_model import AbstractModel
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException, OperationException
@@ -124,20 +126,34 @@ class DeserializerFactory:
                 self._cache.clear()
 
     def deserialize_as[T](self, target_type: type[T], data: object) -> T:
-        """Превращает данные из JSON в объект и проверяет, что получен ожидаемый тип.
+        """Превращает данные из JSON в объект ожидаемого типа.
 
-        Тип не выбирает модель, её выбирают данные (``model_type``). Он только проверяет результат:
-        например, что в коллекции единиц измерения лежат именно единицы.
+        Если в данных есть ``model_type``, модель выбирается по нему, а ``target_type``
+        проверяет соответствие типа (например, что в коллекции единиц измерения лежат именно единицы).
+        Если ``model_type`` в данных нет, но целевой тип реализует фабричный метод ``from_dict``
+        (DTO запроса), объект создаётся через него.
 
         :param target_type: Ожидаемый тип результата.
-        :param data: Данные, как их записал ``ConverterFactory`` и прочитал ``json.load``.
+        :param data: Данные, как их записал ``ConverterFactory`` или передал клиент API.
         :return: Объект ожидаемого типа.
         :raises ArgumentsException: Если данные некорректны (см. ``deserialize``) или собран объект другого типа.
         :raises OperationException: Если в данных ссылка на модель, которой нет в данных.
         """
         target_type = CommonValidator.validate_instance(target_type, type, "target_type", "Ожидается тип")
+        from_dict = cast(Callable[[dict[str, object]], object] | None, getattr(target_type, "from_dict", None))
+        if callable(from_dict):
+            if not isinstance(data, dict):
+                fields = CommonValidator.validate_dict(data, "data")
+                return CommonValidator.validate_instance(
+                    from_dict(fields), target_type, "data", f"Ожидается {target_type.__name__}"
+                )
+            if AbstractModel.TYPE_FIELD not in data:
+                fields = cast(dict[str, object], data)
+                return CommonValidator.validate_instance(
+                    from_dict(fields), target_type, "data", f"Ожидается {target_type.__name__}"
+                )
         return CommonValidator.validate_instance(
-            self.deserialize(data), target_type, "data", f"Ожидается {target_type.__name__}"
+            self.deserialize(cast(object, data)), target_type, "data", f"Ожидается {target_type.__name__}"
         )
 
     def _resolve(self, data: object) -> object:

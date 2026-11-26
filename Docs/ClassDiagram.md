@@ -160,6 +160,15 @@ classDiagram
         +ownership_form: OwnershipForm
     }
 
+    class TransactionModel {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +range: RangeModel
+        +quantity: int | float
+        +period: datetime
+        +references() list~BaseEntity~
+    }
+
     class OwnershipForm {
         <<enumeration>>
         LLC
@@ -182,6 +191,7 @@ classDiagram
     NamedEntity <|-- WarehouseModel
     NamedEntity <|-- OrganizationModel
     NamedEntity <|-- RecipeModel
+    BaseEntity <|-- TransactionModel
 
     NomenclatureModel --> NomenclatureGroupModel : group
     NomenclatureModel --> RangeModel : range
@@ -197,7 +207,15 @@ classDiagram
     OrganizationModel --> OwnershipForm : ownership_form
     SettingsModel --> OrganizationModel : organization
     SettingsModel --> ResponseFormat : response_format
+    TransactionModel --> NomenclatureModel : nomenclature
+    TransactionModel --> WarehouseModel : warehouse
+    TransactionModel --> RangeModel : range
 ```
+
+`TransactionModel` — запись журнала складских операций. Наименования у неё нет, поэтому она наследует
+`BaseEntity`. Знак `quantity` различает приход (+) и расход (−), ноль запрещён. Сеттеров нет: проведённая
+запись не меняется. Единица записи — как в первичном документе («2 кг»), но её базовая единица должна совпадать
+с базовой единицей номенклатуры (`range.base is nomenclature.range.base`), иначе `ArgumentsException`.
 
 ## Рецепты
 
@@ -296,7 +314,7 @@ classDiagram
         +find_recipe_by_name(name) RecipeModel | None
         +find(entity_type, entity_id) NamedEntity | None
         +entities(entity_type) list~NamedEntity~
-        +find_referrers(target_id) list~NamedEntity~
+        +find_referrers(target_id) list~BaseEntity~
         +entity_class(entity_type) type~NamedEntity~
         +all_entities() list~NamedEntity~
         +add(entity_type, entity) None
@@ -319,6 +337,7 @@ classDiagram
     RecipeModel *-- UniqueCollection : items
     StorageManager *-- UniqueCollection : recipes
     StorageManager --> RecipeModel : recipes
+    StorageManager --> TransactionModel : transactions
     RecipeModel ..> ArgumentsException : нет номенклатуры в справочнике, дубликат, результат в составе или в основании строки
     StorageManager ..> ArgumentsException : вторая карта на результат
 ```
@@ -341,6 +360,11 @@ classDiagram
     class CommonValidator {
         +validate_string(value, field, max_length)$ str
         +validate_positive_number(value, field)$ int | float
+        +validate_finite_number(value, field)$ int | float
+        +validate_nonzero_number(value, field)$ int | float
+        +validate_non_negative_number(value, field)$ int | float
+        +validate_date(value, field)$ date
+        +validate_datetime(value, field)$ datetime
         +validate_fraction(value, field)$ int | float
         +validate_digits(value, field, lengths)$ str
         +validate_instance(value, expected_type, field, message)$ T
@@ -559,6 +583,12 @@ classDiagram
 говорит сам файл (`model_type`). Все коллекции загружаются в одной сессии `DeserializerFactory`, поэтому
 единицы, группы и номенклатура становятся общими объектами, а не копиями, и `find_recipe()` их находит.
 Порядок коллекций в файле на результат не влияет: модели записаны целиком, общие объекты сводит кэш по `id`.
+Журнал складских операций (`TransactionModel`) хранится отдельно от `_KINDS`, в списке `_transactions`: журнал
+только дописывается (`add_transaction`), а общий CRUD с PUT и DELETE противоречит доменной модели. Свойство
+`transactions` отдаёт копию списка в порядке проведения. Записи журнала попадают в обратный индекс ссылок,
+поэтому номенклатуру, склад и единицу из журнала удалить нельзя. При первом запуске создаются 9 записей
+за сентябрь — ноябрь 2026. В файле выгрузки ключ `transactions` необязателен: старая выгрузка загружается
+с пустым журналом.
 `StorageManager` читает файл сам, а не через `AbstractFileManager`: у того `load(file_name)` и жёсткая схема
 `_read` + `convert`, а хранилищу нужен ещё и параметр `settings_manager`, поэтому наследует `AbstractManager`.
 
@@ -578,24 +608,27 @@ classDiagram
         -_instance$: StorageManager | None
         -_KINDS$: dict~EntityType, _EntityKind~
         -_entities: dict~EntityType, UniqueCollection~NamedEntity~~
-        -_referrers: dict~UUID, list~NamedEntity~~
+        -_referrers: dict~UUID, list~BaseEntity~~
+        -_transactions: list~TransactionModel~
         +ranges: list~RangeModel~
         +nomenclature_groups: list~NomenclatureGroupModel~
         +nomenclatures: list~NomenclatureModel~
         +warehouses: list~WarehouseModel~
         +recipes: list~RecipeModel~
+        +transactions: list~TransactionModel~
         +__new__() Self
         +load(settings_manager, file_name) None
         +find_recipe(nomenclature) RecipeModel | None
         +find_recipe_by_name(name) RecipeModel | None
         +find(entity_type, entity_id) NamedEntity | None
         +entities(entity_type) list~NamedEntity~
-        +find_referrers(target_id) list~NamedEntity~
+        +find_referrers(target_id) list~BaseEntity~
         +entity_class(entity_type) type~NamedEntity~
         +all_entities() list~NamedEntity~
         +add(entity_type, entity) None
         +remove(entity_type, entity) None
         +replace(entity_type, entity, state) None
+        +add_transaction(transaction) None
         #_initialize() None
         -_reset_collections() None
         -_fill_first_start_data() None
@@ -648,6 +681,7 @@ classDiagram
     class NomenclatureGroupModel
     class WarehouseModel
     class RecipeModel
+    class TransactionModel
     class NomenclatureCatalog
     class DeserializerFactory
     class ArgumentsException
@@ -707,7 +741,7 @@ classDiagram
     class StorageManager {
         +find(entity_type, entity_id) NamedEntity | None
         +entities(entity_type) list~NamedEntity~
-        +find_referrers(target_id) list~NamedEntity~
+        +find_referrers(target_id) list~BaseEntity~
         +entity_class(entity_type) type~NamedEntity~
         +all_entities() list~NamedEntity~
         +add(entity_type, entity) None
@@ -1106,4 +1140,168 @@ classDiagram
     ModelDeserializer ..> OperationException : ссылка на неизвестный объект
     DeserializerFactory ..> ArgumentsException : значение не из JSON, неверный тип
     DeserializerFactory ..> OperationException : вложенная сессия
+```
+
+## Фильтрация
+
+Фильтр отбирает доменные модели любого типа по условиям из тела запроса (паттерн «Прототип»).
+Условие (`FilterItemDto`) — путь к полю через точку (`field_name`), способ сравнения (`FilterType`: `EQUALS` —
+полное совпадение, `LIKE` — вхождение строки) и значение. Набор условий (`FilterDto`) работает как логическое И,
+пустой набор пропускает всё. Перечисление лежит в `Src/Core/`, DTO — в `Src/Dtos/`.
+
+`AbstractPrototype` (`Src/Core/`) хранит копию списка данных и объявляет `clone(filter_dto)`. `Prototype` — один
+на все модели: `clone` проверяет первое условие и рекурсивно клонирует новый прототип с остальными условиями.
+Исходный прототип не меняется, копируется только список, модели остаются теми же объектами хранилища.
+`_matches` знает способ сравнения: новое значение `FilterType` меняет только его, а `assert_never` заставляет
+проверку типов указать на забытую ветку. Значения сравниваются строками, у перечисления — его значение
+(`"сырьё"`), как в выгрузке.
+
+`FieldPathReader` читает значения по пути (`range.base.name`, `items.nomenclature.name`). Шаг пути допустим, только
+если это публичное свойство (`Common.get_fields`): новой модели ничего объявлять не нужно, а приватные поля
+недоступны (`ArgumentsException`, API отвечает 400). Коллекция на пути шаг не тратит: остаток пути применяется
+к каждому элементу, поэтому результат — список значений, и условие выполнено, если совпало хотя бы одно.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class FilterType {
+        <<enumeration>>
+        EQUALS
+        LIKE
+    }
+
+    class FilterItemDto {
+        +field_name: str
+        +filter_type: FilterType
+        +value: str
+        +from_dict(data)$ Self
+    }
+
+    class FilterDto {
+        +filters: list~FilterItemDto~
+        +from_dict(data)$ Self
+    }
+
+    class AbstractPrototype~T~ {
+        <<abstract>>
+        -_data: list~T~
+        +data: list~T~
+        +clone(filter_dto)* AbstractPrototype~T~
+    }
+
+    class Prototype~T~ {
+        -_reader: FieldPathReader
+        +clone(filter_dto) Prototype~T~
+        -_matches(model, item) bool
+        -_to_text(value)$ str
+    }
+
+    class FieldPathReader {
+        +read(source, path) list~object~
+        -_read_field(source, field) object
+        -_walk(value, steps) list~object~
+    }
+
+    class Common {
+        +get_fields(source)$ list~str~
+    }
+
+    class ArgumentsException
+
+    FilterDto "1" *-- "*" FilterItemDto : filters
+    FilterItemDto --> FilterType : filter_type
+    AbstractPrototype <|-- Prototype
+    AbstractPrototype ..> FilterDto : clone
+    Prototype --> FieldPathReader : читает значения
+    FieldPathReader ..> Common : публичные свойства
+    FieldPathReader ..> ArgumentsException : недоступное поле
+```
+
+## Оборотно-сальдовая ведомость
+
+ОСВ строит `TurnoverService` (`Src/Logics/`) по журналу хранилища. Запрос (`TurnoverRequestDto`) — период `start`
+и `end` (обе границы включительно, `ГГГГ-ММ-ДД`) и условия `FilterDto` в том же теле. Записи журнала отбирает
+`Prototype`, а период применяет сам сервис: записи до начала дают остаток на начало, поэтому Прототип их
+не отбрасывает. Нет `end` — по сегодняшний день, нет `start` — с даты первой отобранной записи.
+
+`_calculate_rows` группирует записи по паре «номенклатура + склад» с помощью типизированного ключа
+`TurnoverGroupKeyDto` (строки в порядке первой записи группы), накапливает показатели в `TurnoverAccumulatorDto`,
+пересчитывает количество в базовую единицу номенклатуры (`quantity × range.factor`) и раскладывает его по датам:
+строго до `start` — начало, с `start` по `end` — приход или расход (модуль), после `end` — не учитывается.
+Если единицу номенклатуры сменили после проведения записей и базы не совпадают, сервис бросает
+`OperationException` (API отвечает 500).
+
+Результат — объекты, а не словари: `TurnoverReport` хранит период и строки `TurnoverRow`, остаток на конец строка
+вычисляет сама (`opening + income − outcome`). В JSON отчёт превращает `ConverterFactory`.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class TurnoverRequestDto {
+        +start: date | None
+        +end: date | None
+        +filter: FilterDto
+        +from_dict(data)$ Self
+    }
+
+    class TurnoverGroupKeyDto {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +__eq__(other) bool
+        +__hash__() int
+    }
+
+    class TurnoverAccumulatorDto {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +range: RangeModel
+        +opening: float
+        +income: float
+        +outcome: float
+        +record(transaction, start) void
+        +to_row() TurnoverRow
+    }
+
+    class TurnoverService {
+        -_storage: StorageManager
+        +__init__(storage)
+        +build(request) TurnoverReport
+        -_calculate_rows(transactions, start, end) list~TurnoverRow~
+    }
+
+    class TurnoverReport {
+        +start: date
+        +end: date
+        +rows: list~TurnoverRow~
+    }
+
+    class TurnoverRow {
+        +nomenclature: NomenclatureModel
+        +warehouse: WarehouseModel
+        +range: RangeModel
+        +opening: int | float
+        +income: int | float
+        +outcome: int | float
+        +closing: int | float
+    }
+
+    class Prototype~T~
+    class StorageManager
+    class TransactionModel
+    class FilterDto
+    class OperationException
+
+    TurnoverRequestDto --> FilterDto : filter
+    TurnoverService --> StorageManager : transactions
+    TurnoverService ..> TurnoverRequestDto : build
+    TurnoverService ..> Prototype : отбор записей журнала
+    TurnoverService ..> TurnoverGroupKeyDto : группировка
+    TurnoverService ..> TurnoverAccumulatorDto : агрегация
+    TurnoverAccumulatorDto ..> TurnoverRow : создаёт
+    Prototype ..> TransactionModel
+    TurnoverService ..> TurnoverReport : создаёт
+    TurnoverReport "1" *-- "*" TurnoverRow : rows
+    TurnoverAccumulatorDto ..> OperationException : разные базовые единицы
 ```

@@ -59,12 +59,12 @@ def exported_path(first_start_storage: StorageManager, tmp_path: Path) -> Path:
 
 
 def test_export_first_start_contains_all_collections(exported_path: Path):
-    """Выгрузка содержит флаг загрузки и все пять коллекций хранилища, и ничего больше."""
+    """Выгрузка содержит флаг загрузки, все пять коллекций хранилища и журнал складских операций, и ничего больше."""
     # Действие
     exported = _read(exported_path)
 
     # Проверка
-    assert list(exported) == ["is_loaded", *_COLLECTIONS]
+    assert list(exported) == ["is_loaded", *_COLLECTIONS, "transactions"]
     assert exported["is_loaded"] is True
 
 

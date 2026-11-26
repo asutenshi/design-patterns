@@ -55,11 +55,13 @@ def test_openapi_yaml_matches_application_spec():
         ("/api/get_report_formats", {"get"}),
         ("/api/entities/{entity_type}", {"get", "post"}),
         ("/api/entities/{entity_type}/{entity_id}", {"get", "put", "patch", "delete"}),
+        ("/api/filter/{entity_type}", {"post"}),
+        ("/api/turnover", {"post"}),
     ],
-    ids=["report_formats", "entity_collection", "entity_item"],
+    ids=["report_formats", "entity_collection", "entity_item", "filter", "turnover"],
 )
 def test_openapi_yaml_describes_formats_and_crud_methods(path: str, methods: set[str]):
-    """В описании есть метод списка форматов и все CRUD-методы сущностей, у каждого — краткое описание."""
+    """В описании есть метод списка форматов, CRUD-методы сущностей, фильтр и ОСВ, у каждого — краткое описание."""
     # Подготовка
     paths = cast(dict[str, dict[str, dict[str, object]]], _read_spec()["paths"])
 

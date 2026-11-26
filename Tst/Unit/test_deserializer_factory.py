@@ -493,3 +493,36 @@ def test_session_known_entities_are_resolved_by_id_reference():
     assert resolved is known
     assert factory._cache == {}  # pyright: ignore[reportPrivateUsage]
 
+
+class DtoStub:
+    """DTO-заглушка с фабричным методом from_dict."""
+
+    value: str
+
+    def __init__(self, value: str) -> None:
+        """Инициализирует заглушку строковым значением."""
+        self.value = value
+
+    @classmethod
+    def from_dict(cls, data: dict[str, object]) -> "DtoStub":
+        """Создаёт экземпляр по словарю данных."""
+        return cls(cast(str, data["value"]))
+
+
+def test_deserialize_as_dto_without_model_type():
+    """deserialize_as собирает DTO по его from_dict, если в словаре нет model_type."""
+    # Действие
+    result = DeserializerFactory().deserialize_as(DtoStub, {"value": "проверка"})
+
+    # Проверка
+    assert isinstance(result, DtoStub)
+    assert result.value == "проверка"
+
+
+def test_deserialize_as_dto_with_non_dict_raises():
+    """Передача не словаря в deserialize_as для DTO — ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        DeserializerFactory().deserialize_as(DtoStub, "не словарь")
+
+

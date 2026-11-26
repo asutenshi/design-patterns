@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 import pytest
 from Src.Core.common_validator import CommonValidator
 from Src.Core.exception import ArgumentsException
@@ -393,3 +395,90 @@ def test_validate_field_missing_key_raises_with_field_name():
     with pytest.raises(ArgumentsException) as exc_info:
         CommonValidator.validate_field({"name": "Мука"}, "factor")
     assert "factor" in str(exc_info.value)
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [1, -1, 0.5, -2000])
+def test_validate_nonzero_number_valid_value_returned(value):
+    """Положительные и отрицательные числа возвращаются без изменений."""
+    # Действие
+    result = CommonValidator.validate_nonzero_number(value, "quantity")
+
+    # Проверка
+    assert result == value
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [0, 0.0, float("nan"), float("inf"), True, None, "1"])
+def test_validate_nonzero_number_invalid_value_raises(value):
+    """Ноль, нечисловые значения, bool, NaN и бесконечность вызывают ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_nonzero_number(value, "quantity")
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["2026-10-01", date(2026, 10, 1)])
+def test_validate_date_iso_string_or_date_returns_date(value):
+    """Строка ГГГГ-ММ-ДД и сама дата превращаются в одну и ту же дату."""
+    # Действие
+    result = CommonValidator.validate_date(value, "start")
+
+    # Проверка
+    assert result == date(2026, 10, 1)
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["01.10.2026", "2026-13-01", "", 20261001, None, datetime(2026, 10, 1, 12, 0)])
+def test_validate_date_invalid_value_raises(value):
+    """Чужой формат, несуществующая дата, не строка и дата со временем вызывают ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_date(value, "start")
+
+
+# Подготовка
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("2026-10-05T11:00:00", datetime(2026, 10, 5, 11, 0)),
+        ("2026-10-05", datetime(2026, 10, 5)),
+        (datetime(2026, 10, 5, 11, 0), datetime(2026, 10, 5, 11, 0)),
+    ],
+)
+def test_validate_datetime_iso_string_or_datetime_returns_datetime(value, expected):
+    """Строка ISO 8601 (с временем или без) и сам datetime превращаются в datetime."""
+    # Действие
+    result = CommonValidator.validate_datetime(value, "period")
+
+    # Проверка
+    assert result == expected
+
+
+# Подготовка
+@pytest.mark.parametrize("value", ["05.10.2026", "", 1, None, date(2026, 10, 5)])
+def test_validate_datetime_invalid_value_raises(value):
+    """Чужой формат, не строка и дата без времени вызывают ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_datetime(value, "period")
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [0, 0.0, 1, 2500.5])
+def test_validate_non_negative_number_valid_value_returned(value):
+    """Ноль и положительные числа возвращаются без изменений."""
+    # Действие
+    result = CommonValidator.validate_non_negative_number(value, "income")
+
+    # Проверка
+    assert result == value
+
+
+# Подготовка
+@pytest.mark.parametrize("value", [-1, -0.5, float("nan"), float("inf"), True, None, "1"])
+def test_validate_non_negative_number_invalid_value_raises(value):
+    """Отрицательные и нечисловые значения, bool, NaN и бесконечность вызывают ArgumentsException."""
+    # Действие и проверка
+    with pytest.raises(ArgumentsException):
+        CommonValidator.validate_non_negative_number(value, "income")

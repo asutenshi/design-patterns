@@ -25,11 +25,16 @@ from Src.Core.exception import (
 )
 from Src.Core.named_entity import NamedEntity
 from Src.Core.response_format import ResponseFormat
+from Src.Dtos.filter_dto import FilterDto
+from Src.Dtos.turnover_request_dto import TurnoverRequestDto
 from Src.Logics.converter_factory import ConverterFactory
+from Src.Logics.deserializer_factory import DeserializerFactory
 from Src.Logics.entity_service import EntityService
+from Src.Logics.prototype import Prototype
 from Src.Logics.report_factory import ReportFactory
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
+from Src.Logics.turnover_service import TurnoverService
 
 
 @asynccontextmanager
@@ -51,6 +56,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
 # Группы маршрутов в Swagger
 _REPORTS_TAG = "Отчёты"
 _ENTITIES_TAG = "Сущности"
+_FILTER_TAG = "Фильтрация"
 
 app = FastAPI(
     title="Ромашка",
@@ -60,6 +66,7 @@ app = FastAPI(
     openapi_tags=[
         {"name": _REPORTS_TAG, "description": "Отчёты по сущностям в разных форматах"},
         {"name": _ENTITIES_TAG, "description": "Создание, чтение, изменение и удаление доменных сущностей"},
+        {"name": _FILTER_TAG, "description": "Отбор сущностей и записей журнала по условиям (шаблон «Прототип»)"},
     ],
 )
 
@@ -72,6 +79,11 @@ def get_storage() -> StorageManager:
 def get_entity_service(storage: Annotated[StorageManager, Depends(get_storage)]) -> EntityService:
     """Зависимость маршрутов: сервис доменных сущностей поверх хранилища приложения."""
     return EntityService(storage)
+
+
+def get_turnover_service(storage: Annotated[StorageManager, Depends(get_storage)]) -> TurnoverService:
+    """Зависимость маршрутов: сервис оборотно-сальдовой ведомости поверх хранилища приложения."""
+    return TurnoverService(storage)
 
 
 def get_report_factory() -> AbstractReportFactory:
@@ -416,6 +428,131 @@ def delete_entity(
     """
     _ = _find_entity(storage, entity_type, entity_id)
     service.delete(entity_type, entity_id)
+
+
+# Ответ с ошибкой в условиях фильтра
+_INVALID_FILTER_RESPONSE: dict[int | str, dict[str, str]] = {
+    400: {"description": "Некорректное тело запроса, неизвестный способ сравнения или недоступное поле в пути"},
+}
+
+# Примеры условий фильтра для Swagger
+_FILTER_EXAMPLES: dict[str, Example] = {
+    "name_like": {
+        "summary": "Вхождение строки в наименование",
+        "value": {"filters": [{"field_name": "name", "filter_type": "LIKE", "value": "Говядина"}]},
+    },
+    "nested_equals": {
+        "summary": "Полное совпадение во вложенной модели",
+        "description": "Путь через точку: номенклатура, у которой базовая единица — грамм.",
+        "value": {"filters": [{"field_name": "range.base.name", "filter_type": "EQUALS", "value": "грамм"}]},
+    },
+    "collection": {
+        "summary": "Поиск в коллекции",
+        "description": "Для рецептов: карты, в составе которых есть картофель.",
+        "value": {"filters": [{"field_name": "items.nomenclature.name", "filter_type": "EQUALS", "value": "Картофель"}]},
+    },
+}
+
+# Тело запроса фильтра: список условий FilterDto
+FilterBody = Annotated[
+    dict[str, object],
+    Body(
+        description=(
+            "Условия ``filters``: путь к полю через точку (``field_name``), способ сравнения ``EQUALS`` "
+            "или ``LIKE`` (``filter_type``) и значение (``value``). Модель проходит фильтр, если выполнены "
+            "все условия; условие выполнено, если совпало хотя бы одно значение по пути. Пустой список "
+            "пропускает всё."
+        ),
+        openapi_examples=_FILTER_EXAMPLES,
+    ),
+]
+
+
+@app.post(
+    "/api/filter/{entity_type}",
+    summary="Отбор сущностей типа по условиям",
+    tags=[_FILTER_TAG],
+    responses=_INVALID_FILTER_RESPONSE,
+)
+def filter_entities(
+    entity_type: EntityTypePath, data: FilterBody, storage: Annotated[StorageManager, Depends(get_storage)]
+) -> list[dict[str, object]]:
+    """Возвращает сущности указанного типа, которые прошли все условия фильтра.
+
+    Тело запроса десериализуется в ``FilterDto`` через единый механизм ``DeserializerFactory``,
+    отбор выполняет ``Prototype``, а результат выгружается через ``ConverterFactory``.
+
+    :param entity_type: Тип сущности.
+    :param data: Условия фильтра в формате ``FilterDto``.
+    :param storage: Хранилище сущностей.
+    :return: Отобранные сущности в формате выгрузки, в порядке добавления.
+    """
+    filter_dto = DeserializerFactory().deserialize_as(FilterDto, data)
+    prototype = Prototype(storage.entities(entity_type)).clone(filter_dto)
+    return cast(list[dict[str, object]], ConverterFactory().convert(prototype.data))
+
+
+# Примеры запроса ОСВ для Swagger
+_TURNOVER_EXAMPLES: dict[str, Example] = {
+    "october": {
+        "summary": "ОСВ за октябрь по всем записям",
+        "value": {"start": "2026-10-01", "end": "2026-10-31", "filters": []},
+    },
+    "warehouse": {
+        "summary": "ОСВ за октябрь по одному складу",
+        "value": {
+            "start": "2026-10-01",
+            "end": "2026-10-31",
+            "filters": [{"field_name": "warehouse.name", "filter_type": "EQUALS", "value": "Склад ресторана"}],
+        },
+    },
+    "no_period": {
+        "summary": "ОСВ с первой записи по сегодняшний день",
+        "value": {"filters": [{"field_name": "nomenclature.name", "filter_type": "EQUALS", "value": "Говядина"}]},
+    },
+}
+
+# Тело запроса ОСВ: период и условия отбора записей журнала
+TurnoverBody = Annotated[
+    dict[str, object],
+    Body(
+        description=(
+            "Период ``start`` и ``end`` в формате ``ГГГГ-ММ-ДД``, обе границы включительно и необязательны: "
+            "без ``start`` — с первой отобранной записи, без ``end`` — по сегодняшний день. ``filters`` — "
+            "условия отбора записей журнала в том же формате, что у фильтра сущностей "
+            "(например, ``nomenclature.name`` или ``warehouse.name``)."
+        ),
+        openapi_examples=_TURNOVER_EXAMPLES,
+    ),
+]
+
+
+@app.post(
+    "/api/turnover",
+    summary="Оборотно-сальдовая ведомость с фильтром",
+    tags=[_REPORTS_TAG, _FILTER_TAG],
+    responses={
+        **_INVALID_FILTER_RESPONSE,
+        500: {"description": "Единицу номенклатуры сменили после проведения записей: количества не сложить"},
+    },
+)
+def get_turnover(
+    data: TurnoverBody, service: Annotated[TurnoverService, Depends(get_turnover_service)]
+) -> dict[str, object]:
+    """Строит ОСВ: строка на пару «номенклатура + склад», количества в базовой единице номенклатуры.
+
+    Тело запроса десериализуется в ``TurnoverRequestDto`` через ``DeserializerFactory``.
+    Записи журнала отбирает ``Prototype`` по условиям запроса. Записи до начала периода дают остаток
+    на начало, записи периода — приход и расход, записи после конца не учитываются.
+    Сформированный отчёт сериализуется в словарь через ``ConverterFactory``.
+
+    :param data: Период и условия отбора в формате ``TurnoverRequestDto``.
+    :param service: Сервис ОСВ.
+    :return: Период и строки ОСВ: начало, приход, расход, конец.
+    """
+    request_dto = DeserializerFactory().deserialize_as(TurnoverRequestDto, data)
+    report = service.build(request_dto)
+    return cast(dict[str, object], ConverterFactory().convert(report))
 
 
 if __name__ == "__main__":
