@@ -4,18 +4,20 @@ from pathlib import Path
 
 import pytest
 from Src.Core.abstract_manager import AbstractManager
+from Src.Logics.observer import Observer
 from Src.Logics.settings_manager import SettingsManager
 from Src.Logics.storage_manager import StorageManager
 
 
 def _reset_manager_instances() -> None:
-    """Сбрасывает единственные экземпляры у всех подклассов AbstractManager."""
+    """Сбрасывает единственные экземпляры у всех подклассов AbstractManager и очищает Observer."""
     stack: list[type] = [AbstractManager]
     while stack:
         cls = stack.pop()
         stack.extend(cls.__subclasses__())
         if "_instance" in vars(cls):
             cls._instance = None  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]
+    Observer.clear()
 
 
 @pytest.fixture(autouse=True)
