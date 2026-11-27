@@ -10,13 +10,18 @@ from Src.Core.abstract_manager import AbstractManager
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.entity_type import EntityType
+from Src.Core.event_type import EventType
 from Src.Core.exception import (
     ArgumentsException,
     OperationException,
 )
+from Src.Core.log_level import LogLevel
+from Src.Core.log_subsystem import LogSubsystem
 from Src.Core.named_entity import NamedEntity
 from Src.Core.unique_collection import UniqueCollection
+from Src.Dtos.event_dto import EventDto
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Logics.observer import Observer
 from Src.Logics.reference_scanner import ReferenceScanner
 from Src.Logics.settings_manager import SettingsManager
 from Src.Models.nomenclature_catalog import NomenclatureCatalog
@@ -649,4 +654,17 @@ class StorageManager(AbstractManager):
         )
         self._transactions.append(transaction)
         self._index_references(transaction)
+        operation = "приход" if transaction.quantity > 0 else "расход"
+        Observer.notify(
+            EventDto(
+                event_type=EventType.TRANSACTION_ADDED,
+                subsystem=LogSubsystem.WAREHOUSE,
+                level=LogLevel.INFO,
+                message=(
+                    f"Складская операция: {operation} {abs(transaction.quantity)} {transaction.range.name} "
+                    f"«{transaction.nomenclature.name}» на складе «{transaction.warehouse.name}»"
+                ),
+                payload=transaction,
+            )
+        )
 

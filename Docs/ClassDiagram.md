@@ -1312,3 +1312,183 @@ classDiagram
     TurnoverReport "1" *-- "*" TurnoverRow : rows
     TurnoverAccumulatorDto ..> OperationException : разные базовые единицы
 ```
+
+
+## Логирование, Наблюдатель, сортировка и табличный экспорт
+
+Логирование построено на шаблоне «Наблюдатель». Источники событий (`EntityService`, `StorageManager`,
+`SettingsManager` и HTTP-middleware в `Src/main.py`) не зависят от логгера: они формируют `EventDto`
+и передают его в `Observer.notify()`. `LoggerManager` наследует `AbstractManager` и `AbstractObserver`,
+подписывается на `Observer` в `load()` и сохраняет каждое событие как неизменяемую `LogModel`.
+
+Для выборки логов `LogService` комбинирует `Prototype` для фильтрации и универсальный `Sorter` поверх
+`FieldPathReader` для сортировки любых моделей по пути к публичному полю. Табличная выгрузка отделена
+от доменных моделей через `TableDto`: `TableReportFactory` создаёт `TxtTableReport`, `CsvTableReport`
+или `MarkdownTableReport`, а результат возвращается в `ReportResult`.
+
+```mermaid
+classDiagram
+    direction TB
+
+    class LogLevel {
+        <<enumeration>>
+        DEBUG
+        INFO
+        ERROR
+    }
+
+    class LogSubsystem {
+        <<enumeration>>
+        CRUD
+        WAREHOUSE
+        WEB
+        SETTINGS
+    }
+
+    class EventType {
+        <<enumeration>>
+        ENTITY_CREATED
+        ENTITY_UPDATED
+        ENTITY_DELETED
+        TRANSACTION_ADDED
+        WEB_REQUEST
+        WEB_ERROR
+        SETTINGS_LOADED
+        SETTINGS_CHANGED
+    }
+
+    class SortOrder {
+        <<enumeration>>
+        ASC
+        DESC
+    }
+
+    class TableExportFormat {
+        <<enumeration>>
+        TXT
+        CSV
+        MARKDOWN
+    }
+
+    class LogModel {
+        +period: datetime
+        +subsystem: LogSubsystem
+        +level: LogLevel
+        +message: str
+    }
+
+    class EventDto {
+        +event_type: EventType
+        +subsystem: LogSubsystem
+        +level: LogLevel
+        +message: str
+        +period: datetime
+        +payload: object | None
+    }
+
+    class AbstractObserver {
+        <<abstract>>
+        +handle(event)* None
+    }
+
+    class Observer {
+        -_handlers$: list~AbstractObserver~
+        +add(subscriber)$ None
+        +delete(subscriber)$ None
+        +notify(event)$ None
+        +clear()$ None
+        +handlers()$ list~AbstractObserver~
+    }
+
+    class LoggerManager {
+        -_instance$: LoggerManager | None
+        -_logs: list~LogModel~
+        +logs: list~LogModel~
+        +load() None
+        +handle(event) None
+        +clear() None
+        +save(file_name, content) Path
+    }
+
+    class SortDto {
+        +field_name: str
+        +direction: SortOrder
+        +from_dict(data)$ Self
+    }
+
+    class LogQueryDto {
+        +filter: FilterDto
+        +sort: SortDto | None
+        +from_dict(data)$ Self
+    }
+
+    class Sorter {
+        -_reader: FieldPathReader
+        +sort(items, sort_dto) list~T~
+        -_extract_key(item, field_name) _Sortable
+    }
+
+    class TableDto {
+        +headers: tuple~str~
+        +rows: tuple~tuple~str~~
+    }
+
+    class AbstractTableReport {
+        <<abstract>>
+        +is_binary*: bool
+        +media_type*: str
+        +file_extension*: str
+        +build(table)* ReportResult
+    }
+
+    class TxtTableReport
+    class CsvTableReport
+    class MarkdownTableReport
+
+    class TableReportFactory {
+        +create(export_format) AbstractTableReport
+    }
+
+    class LogService {
+        +query(request) list~LogModel~
+        +export(export_format, request) ReportResult
+    }
+
+    class BaseEntity
+    class AbstractManager
+    class FieldPathReader
+    class Prototype~T~
+    class FilterDto
+    class ReportResult
+
+    BaseEntity <|-- LogModel
+    LogModel --> LogSubsystem : subsystem
+    LogModel --> LogLevel : level
+    EventDto --> EventType : event_type
+    EventDto --> LogSubsystem : subsystem
+    EventDto --> LogLevel : level
+    Observer o-- AbstractObserver : _handlers
+    Observer ..> EventDto
+    AbstractManager <|-- LoggerManager
+    AbstractObserver <|.. LoggerManager
+    LoggerManager o-- LogModel : _logs
+    LoggerManager ..> Observer : подписка в load
+    SortDto --> SortOrder : direction
+    LogQueryDto --> FilterDto : filter
+    LogQueryDto --> SortDto : sort
+    Sorter *-- FieldPathReader : _reader
+    Sorter ..> SortDto
+    AbstractTableReport <|-- TxtTableReport
+    AbstractTableReport <|-- CsvTableReport
+    AbstractTableReport <|-- MarkdownTableReport
+    AbstractTableReport ..> TableDto
+    AbstractTableReport ..> ReportResult
+    TableReportFactory ..> TableExportFormat
+    TableReportFactory ..> AbstractTableReport : создаёт
+    LogService --> LoggerManager : logs
+    LogService --> Sorter
+    LogService --> TableReportFactory
+    LogService ..> Prototype : фильтрация
+    LogService ..> LogQueryDto
+    LogService ..> TableDto
+```

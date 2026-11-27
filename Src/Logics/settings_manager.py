@@ -6,9 +6,16 @@ from typing import Any, ClassVar, Self, cast, override
 from Src.Core.abstract_file_manager import AbstractFileManager
 from Src.Core.abstract_model import AbstractModel
 from Src.Core.common import Common
+from Src.Core.common_validator import CommonValidator
+from Src.Core.event_type import EventType
 from Src.Core.exception import ArgumentsException, OperationException
+from Src.Core.log_level import LogLevel
+from Src.Core.log_subsystem import LogSubsystem
 from Src.Core.response_format import ResponseFormat
+from Src.Dtos.event_dto import EventDto
+from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Logics.observer import Observer
 from Src.Models.organization_model import OrganizationModel
 from Src.Models.settings_model import SettingsModel
 
@@ -93,6 +100,14 @@ class SettingsManager(AbstractFileManager):
             return self._read_file(path)
         except OperationException as ex:
             _logger.warning("%s. Используются настройки по умолчанию", ex.args[0])  # pyright: ignore[reportAny]
+            Observer.notify(
+                EventDto(
+                    event_type=EventType.SETTINGS_LOADED,
+                    subsystem=LogSubsystem.SETTINGS,
+                    level=LogLevel.ERROR,
+                    message=f"{ex.args[0]}. Используются настройки по умолчанию",
+                )
+            )
             self._write_defaults(path)
             return self._default_data()
 
@@ -166,7 +181,87 @@ class SettingsManager(AbstractFileManager):
         try:
             self._settings = DeserializerFactory().deserialize_as(SettingsModel, self._typed(self._data))
         except ArgumentsException as ex:
+            Observer.notify(
+                EventDto(
+                    event_type=EventType.SETTINGS_LOADED,
+                    subsystem=LogSubsystem.SETTINGS,
+                    level=LogLevel.ERROR,
+                    message=f"Некорректные настройки: {ex}",
+                )
+            )
             raise OperationException(f"Некорректные настройки: {ex}") from ex
+
+        Observer.notify(
+            EventDto(
+                event_type=EventType.SETTINGS_LOADED,
+                subsystem=LogSubsystem.SETTINGS,
+                level=LogLevel.DEBUG,
+                message=f"Загружены настройки организации «{self._settings.organization.name}»",
+                payload=self._settings,
+            )
+        )
+
+    @staticmethod
+    def _merge_data(current: SettingsModel, changes: dict[str, object]) -> dict[str, object]:
+        """Накладывает изменённые поля на словарь текущих настроек.
+
+        :param current: Текущие загруженные настройки.
+        :param changes: Словарь изменяемых полей.
+        :return: Полный словарь полей для сборки обновлённой модели.
+        :raises ArgumentsException: Если вложенный словарь организации содержит нестроковые ключи.
+        """
+        snapshot = CommonValidator.validate_dict(ConverterFactory().convert(current), "settings")
+        merged = dict(snapshot)
+        merged.update(changes)
+
+        if isinstance(snapshot.get("organization"), dict) and isinstance(changes.get("organization"), dict):
+            merged_org = dict(CommonValidator.validate_dict(snapshot["organization"], "organization"))
+            merged_org.update(CommonValidator.validate_dict(changes["organization"], "organization"))
+            merged["organization"] = merged_org
+
+        return merged
+
+    def update(self, data: dict[str, object]) -> SettingsModel:
+        """Обновляет указанные параметры загруженных настроек на месте.
+
+        Новое состояние собирается отдельно и переносится в текущий объект настроек,
+        чтобы клиенты со ссылкой на ``SettingsModel`` сразу видели изменения. При ошибке
+        текущие настройки не меняются, а в ``Observer`` уходит событие уровня ``ERROR``.
+
+        :param data: Словарь изменяемых полей настроек.
+        :return: Обновлённая модель настроек.
+        :raises OperationException: Если настройки ещё не загружены.
+        :raises ArgumentsException: Если данные некорректны или не проходят проверки модели.
+        """
+        current = self.settings
+        try:
+            changes = CommonValidator.validate_dict(data, "data")
+            merged = self._merge_data(current, changes)
+            updated = DeserializerFactory().deserialize_as(SettingsModel, self._typed(merged))
+            updated.id = current.id
+        except ArgumentsException as ex:
+            Observer.notify(
+                EventDto(
+                    event_type=EventType.SETTINGS_CHANGED,
+                    subsystem=LogSubsystem.SETTINGS,
+                    level=LogLevel.ERROR,
+                    message=f"Ошибка изменения настроек: {ex}",
+                )
+            )
+            raise
+
+        current.replace_state(updated)
+        changed_fields = ", ".join(sorted(changes)) or "без изменений"
+        Observer.notify(
+            EventDto(
+                event_type=EventType.SETTINGS_CHANGED,
+                subsystem=LogSubsystem.SETTINGS,
+                level=LogLevel.INFO,
+                message=f"Изменены параметры настроек: {changed_fields}",
+                payload=current,
+            )
+        )
+        return current
 
     @property
     def settings(self) -> SettingsModel:

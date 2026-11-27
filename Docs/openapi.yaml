@@ -697,6 +697,145 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/logs:
+    post:
+      tags:
+      - Логирование
+      summary: Журнал логов в JSON с фильтрацией и сортировкой
+      description: |-
+        Возвращает записи журнала логов в формате JSON с фильтрацией и сортировкой.
+
+        Отбор записей выполняет ``Prototype``, сортировку — универсальный ``Sorter``,
+        а сериализацию — ``ConverterFactory``.
+
+        :param service: Сервис работы с логами.
+        :param data: Условия фильтрации и сортировки в формате ``LogQueryDto``.
+        :return: Список записей лога в формате JSON.
+      operationId: get_logs_api_logs_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - additionalProperties: true
+                type: object
+                description: Условия фильтрации ``filters`` в формате ``FilterDto`` и необязательная сортировка ``sort`` с
+                  полями ``field_name`` и ``direction`` со значением ``ASC`` или ``DESC``.
+              - type: 'null'
+              title: Data
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response Get Logs Api Logs Post
+        '400':
+          description: Некорректное тело запроса, неизвестный способ сравнения или недоступное поле в пути
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/logs/{export_format}:
+    post:
+      tags:
+      - Логирование
+      summary: Выгрузка логов в TXT, CSV или Markdown
+      description: |-
+        Возвращает журнал логов в указанном табличном формате с фильтрацией и сортировкой.
+
+        TXT и CSV отдаются файлом на скачивание, Markdown — текстом в браузере.
+
+        :param export_format: Формат выгрузки.
+        :param service: Сервис работы с логами.
+        :param data: Необязательные условия фильтрации и сортировки.
+        :return: HTTP-ответ с таблицей логов.
+      operationId: export_logs_api_logs__export_format__post
+      parameters:
+      - name: export_format
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/TableExportFormat'
+          description: 'Формат выгрузки лога: txt, csv или markdown'
+        description: 'Формат выгрузки лога: txt, csv или markdown'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - type: object
+                additionalProperties: true
+                description: Условия фильтрации ``filters`` в формате ``FilterDto`` и необязательная сортировка ``sort`` с
+                  полями ``field_name`` и ``direction`` со значением ``ASC`` или ``DESC``.
+              - type: 'null'
+              title: Data
+      responses:
+        '200':
+          description: 'Лог: TXT и CSV отдаются файлом на скачивание, Markdown — текстом в браузере'
+        '400':
+          description: Некорректные условия фильтрации или сортировки
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/settings:
+    patch:
+      tags:
+      - Настройки
+      summary: Изменить параметры настроек
+      description: |-
+        Обновляет указанные параметры загруженных настроек и публикует событие через ``Observer``.
+
+        :param data: Словарь изменяемых полей настроек.
+        :param settings_manager: Менеджер настроек.
+        :return: Актуальная модель настроек в формате выгрузки.
+      operationId: patch_settings_api_settings_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Data
+              description: Изменяемые поля настроек приложения; остальные поля сохраняются.
+            examples:
+              format:
+                summary: Сменить формат отчётов по умолчанию
+                value:
+                  response_format: markdown
+              boss:
+                summary: Сменить руководителя и наименование организации
+                value:
+                  boss_name: Сидоров Пётр Иванович
+                  organization:
+                    name: Ромашка Плюс
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Patch Settings Api Settings Patch
+        '400':
+          description: Некорректные параметры настроек
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     EntityType:
@@ -734,6 +873,14 @@ components:
         Формат, в котором формируется отчёт.
 
         Значения — строки: в таком виде формат задаётся в параметре запроса API и в файле настроек.
+    TableExportFormat:
+      type: string
+      enum:
+      - txt
+      - csv
+      - markdown
+      title: TableExportFormat
+      description: 'Форматы табличной выгрузки данных: логов, ведомостей и журналов.'
     ValidationError:
       properties:
         loc:
@@ -767,3 +914,7 @@ tags:
   description: Создание, чтение, изменение и удаление доменных сущностей
 - name: Фильтрация
   description: Отбор сущностей и записей журнала по условиям (шаблон «Прототип»)
+- name: Логирование
+  description: Просмотр, фильтрация, сортировка и выгрузка журнала логов
+- name: Настройки
+  description: Обновление параметров настроек приложения

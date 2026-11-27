@@ -5,14 +5,19 @@ from Src.Core.abstract_model import AbstractModel
 from Src.Core.base_entity import BaseEntity
 from Src.Core.common_validator import CommonValidator
 from Src.Core.entity_type import EntityType
+from Src.Core.event_type import EventType
 from Src.Core.exception import (
     ArgumentsException,
     OperationException,
     ReferencedEntityException,
 )
+from Src.Core.log_level import LogLevel
+from Src.Core.log_subsystem import LogSubsystem
 from Src.Core.named_entity import NamedEntity
+from Src.Dtos.event_dto import EventDto
 from Src.Logics.converter_factory import ConverterFactory
 from Src.Logics.deserializer_factory import DeserializerFactory
+from Src.Logics.observer import Observer
 from Src.Logics.reference_scanner import ReferenceScanner
 from Src.Logics.storage_manager import StorageManager
 
@@ -60,6 +65,15 @@ class EntityService:
         entity = self._build_entity(entity_type, data, None)
         self._ensure_id_is_free(entity)
         self._storage.add(entity_type, entity)
+        Observer.notify(
+            EventDto(
+                event_type=EventType.ENTITY_CREATED,
+                subsystem=LogSubsystem.CRUD,
+                level=LogLevel.INFO,
+                message=f"Создана сущность {entity_type.value}: «{entity.name}» [{entity.id}]",
+                payload=entity,
+            )
+        )
         return entity
 
     def put(self, entity_type: EntityType, entity_id: uuid.UUID, data: dict[str, object]) -> NamedEntity:
@@ -106,6 +120,15 @@ class EntityService:
         entity = self._get(entity_type, entity_id)
         self._ensure_not_referenced(entity)
         self._storage.remove(entity_type, entity)
+        Observer.notify(
+            EventDto(
+                event_type=EventType.ENTITY_DELETED,
+                subsystem=LogSubsystem.CRUD,
+                level=LogLevel.INFO,
+                message=f"Удалена сущность {entity_type.value}: «{entity.name}» [{entity.id}]",
+                payload=entity,
+            )
+        )
 
     def _get(self, entity_type: EntityType, entity_id: uuid.UUID) -> NamedEntity:
         """Возвращает сущность по типу и коду: операции требуют, чтобы она существовала.
@@ -144,6 +167,16 @@ class EntityService:
             self._ensure_not_referenced(target)
 
         self._storage.replace(entity_type, target, fresh)
+        operation = "PATCH" if merge else "PUT"
+        Observer.notify(
+            EventDto(
+                event_type=EventType.ENTITY_UPDATED,
+                subsystem=LogSubsystem.CRUD,
+                level=LogLevel.INFO,
+                message=f"Обновлена сущность {entity_type.value} через {operation}: «{target.name}» [{target.id}]",
+                payload=target,
+            )
+        )
         return target
 
     def _build_entity(self, entity_type: EntityType, data: dict[str, object], exclude: NamedEntity | None) -> NamedEntity:
